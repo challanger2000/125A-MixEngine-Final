@@ -1,0 +1,11 @@
+125A MIXENGINE - PROPRIETARY SOFTWARE
+
+Copyright (c) 2026 125A Audio Software. All rights reserved.
+
+No open-source license is granted by this repository.
+
+The source code, binaries, graphics, branding, documentation and associated materials may not be redistributed, resold, sublicensed, published as source, or incorporated into another distributed product without prior permission from the copyright holder.
+
+A legitimately obtained binary copy may be installed and used by its purchaser for music/audio production.
+
+125A MixEngine is provided without any guarantee that it is suitable for a particular production, host configuration or commercial result. Users remain responsible for backups, gain staging, monitoring levels and final release/mastering decisions.
