@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<vstgui-ui-description version="1">
+  <colors><color name="Background" rgba="#101217FF"/></colors>
+  <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
+    <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelVUSource" origin="644,70" size="152,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelVURef" origin="644,164" size="152,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelMixTitle" origin="1240,52" size="168,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelQuality" origin="1248,84" size="152,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelBypass" origin="1252,168" size="144,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelInputTitle" origin="26,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelConsoleTitle" origin="202,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelTubeTitle" origin="378,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelTapeTitle" origin="554,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelGlueTitle" origin="730,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelVinylTitle" origin="906,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelStereoTitle" origin="1082,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelOutputTitle" origin="1258,312" size="140,22" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelInputGain" origin="41,518" size="110,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelRefLevel" origin="44,564" size="104,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelDbfs" origin="63,634" size="66,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelDrive" origin="226,518" size="92,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelMode" origin="228,552" size="88,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelConsoleNoise" origin="241,704" size="62,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelTubeAmount" origin="402,518" size="92,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelVoice" origin="406,552" size="84,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelTapeAmount" origin="578,518" size="92,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelSpeed" origin="582,552" size="84,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelIps" origin="594,624" size="60,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelStability" origin="544,704" size="84,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelHiss" origin="637,704" size="50,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelGlueAmount" origin="754,518" size="92,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelResponse" origin="759,691" size="82,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelColor" origin="930,518" size="92,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelWear" origin="909,691" size="58,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelSurface" origin="976,691" size="76,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelDepth" origin="1116,472" size="72,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelWidth" origin="1116,600" size="72,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelLowMono" origin="1104,706" size="96,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelFixed120" origin="1100,726" size="104,14" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelOutputGain" origin="1273,518" size="110,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelLevelMatch" origin="1274,560" size="108,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="BrandLogo" origin="34,92" size="176,88" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VULeft" origin="236,54" size="360,190" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="ClipL" origin="558,72" size="10,10" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VURight" origin="844,54" size="360,190" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="ClipR" origin="1166,72" size="10,10" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="UIScale" origin="62,214" size="110,28"/>
+    <view class="CView" custom-view-name="VUSourceSelector" origin="640,104" size="160,40"/>
+    <view class="CView" custom-view-name="QualitySelector" origin="1238,116" size="172,38"/>
+    <view class="CView" custom-view-name="Bypass" origin="1272,198" size="104,60"/>
+    <view class="CView" custom-view-name="Input" origin="40,396" size="112,112"/>
+    <view class="CView" custom-view-name="InputRefSelector" origin="35,592" size="122,34"/>
+    <view class="CView" custom-view-name="ConsolePower" origin="234,340" size="76,58"/>
+    <view class="CView" custom-view-name="ConsoleDrive" origin="216,396" size="112,112"/>
+    <view class="CView" custom-view-name="ConsoleModeSelector" origin="192,580" size="160,34"/>
+    <view class="CView" custom-view-name="ConsoleNoise" origin="239,630" size="66,66"/>
+    <view class="CView" custom-view-name="TubePower" origin="410,340" size="76,58"/>
+    <view class="CView" custom-view-name="TubeAmount" origin="392,396" size="112,112"/>
+    <view class="CView" custom-view-name="TubeVoiceSelector" origin="376,580" size="144,34"/>
+    <view class="CView" custom-view-name="TapePower" origin="586,340" size="76,58"/>
+    <view class="CView" custom-view-name="TapeAmount" origin="568,396" size="112,112"/>
+    <view class="CView" custom-view-name="TapeSpeedSelector" origin="552,580" size="144,34"/>
+    <view class="CView" custom-view-name="TapeStability" origin="553,630" size="66,66"/>
+    <view class="CView" custom-view-name="TapeHiss" origin="629,630" size="66,66"/>
+    <view class="CView" custom-view-name="GluePower" origin="762,340" size="76,58"/>
+    <view class="CView" custom-view-name="GlueAmount" origin="744,396" size="112,112"/>
+    <view class="CView" custom-view-name="GlueCharacter" origin="767,617" size="66,66"/>
+    <view class="CView" custom-view-name="VinylPower" origin="938,340" size="76,58"/>
+    <view class="CView" custom-view-name="VinylCharacter" origin="920,396" size="112,112"/>
+    <view class="CView" custom-view-name="VinylWear" origin="905,617" size="66,66"/>
+    <view class="CView" custom-view-name="VinylNoise" origin="981,617" size="66,66"/>
+    <view class="CView" custom-view-name="Depth" origin="1108,377" size="88,88"/>
+    <view class="CView" custom-view-name="Width" origin="1108,504" size="88,88"/>
+    <view class="CView" custom-view-name="LowMono" origin="1119,632" size="66,66"/>
+    <view class="CView" custom-view-name="Output" origin="1272,396" size="112,112"/>
+    <view class="CView" custom-view-name="LevelMatch" origin="1276,590" size="104,60"/>
+  </template>
+</vstgui-ui-description>

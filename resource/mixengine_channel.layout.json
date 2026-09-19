@@ -1,0 +1,295 @@
+{
+  "canvas": {
+    "w": 1440,
+    "h": 800
+  },
+  "modules": {
+    "Input": 96,
+    "Console": 272,
+    "Tube": 448,
+    "Tape": 624,
+    "Glue": 800,
+    "Vinyl": 976,
+    "Stereo": 1152,
+    "Output": 1328
+  },
+  "rows": {
+    "moduleTitleY": 312,
+    "mainLabelY": 518,
+    "smallLowerLabelY": 704,
+    "smallUpperLabelY": 691,
+    "stereoLowLabelY": 706,
+    "fixed120Y": 726
+  },
+  "top": {
+    "BrandLogo": [
+      34,
+      92,
+      176,
+      88
+    ],
+    "VULeft": [
+      236,
+      54,
+      360,
+      190
+    ],
+    "ClipL": [
+      558,
+      72,
+      10,
+      10
+    ],
+    "VURight": [
+      844,
+      54,
+      360,
+      190
+    ],
+    "ClipR": [
+      1166,
+      72,
+      10,
+      10
+    ],
+    "VUSourceLabel": [
+      644,
+      70,
+      152,
+      16
+    ],
+    "VUSource": [
+      640,
+      104,
+      160,
+      40
+    ],
+    "VURefLabel": [
+      644,
+      164,
+      152,
+      14
+    ],
+    "MixTitle": [
+      1240,
+      52,
+      168,
+      22
+    ],
+    "QualityLabel": [
+      1248,
+      84,
+      152,
+      14
+    ],
+    "Quality": [
+      1238,
+      116,
+      172,
+      38
+    ],
+    "BypassLabel": [
+      1252,
+      168,
+      144,
+      14
+    ],
+    "Bypass": [
+      1272,
+      198,
+      104,
+      60
+    ],
+    "UIScale": [
+      62,
+      214,
+      110,
+      28
+    ]
+  },
+  "sizes": {
+    "main": 112,
+    "stereo": 88,
+    "small": 66
+  },
+  "controls": {
+    "Input": [
+      96,
+      452
+    ],
+    "ConsoleDrive": [
+      272,
+      452
+    ],
+    "TubeAmount": [
+      448,
+      452
+    ],
+    "TapeAmount": [
+      624,
+      452
+    ],
+    "GlueAmount": [
+      800,
+      452
+    ],
+    "VinylCharacter": [
+      976,
+      452
+    ],
+    "Output": [
+      1328,
+      452
+    ],
+    "ConsoleNoise": [
+      272,
+      663
+    ],
+    "TapeStability": [
+      586,
+      663
+    ],
+    "TapeHiss": [
+      662,
+      663
+    ],
+    "GlueCharacter": [
+      800,
+      650
+    ],
+    "VinylWear": [
+      938,
+      650
+    ],
+    "VinylNoise": [
+      1014,
+      650
+    ],
+    "Depth": [
+      1152,
+      421
+    ],
+    "Width": [
+      1152,
+      548
+    ],
+    "LowMono": [
+      1152,
+      665
+    ]
+  },
+  "selectors": {
+    "InputRefLabel": [
+      44,
+      564,
+      104,
+      16
+    ],
+    "InputRef": [
+      35,
+      592,
+      122,
+      34
+    ],
+    "InputDbfs": [
+      63,
+      634,
+      66,
+      14
+    ],
+    "ConsoleModeLabel": [
+      228,
+      552,
+      88,
+      16
+    ],
+    "ConsoleMode": [
+      192,
+      580,
+      160,
+      34
+    ],
+    "TubeVoiceLabel": [
+      406,
+      552,
+      84,
+      16
+    ],
+    "TubeVoice": [
+      376,
+      580,
+      144,
+      34
+    ],
+    "TapeSpeedLabel": [
+      582,
+      552,
+      84,
+      16
+    ],
+    "TapeSpeed": [
+      552,
+      580,
+      144,
+      34
+    ],
+    "TapeIps": [
+      594,
+      624,
+      60,
+      14
+    ],
+    "LevelMatchLabel": [
+      1274,
+      560,
+      108,
+      16
+    ],
+    "LevelMatch": [
+      1276,
+      590,
+      104,
+      60
+    ]
+  },
+  "toggles": {
+    "ConsolePower": [
+      234,
+      340,
+      76,
+      58
+    ],
+    "TubePower": [
+      410,
+      340,
+      76,
+      58
+    ],
+    "TapePower": [
+      586,
+      340,
+      76,
+      58
+    ],
+    "GluePower": [
+      762,
+      340,
+      76,
+      58
+    ],
+    "VinylPower": [
+      938,
+      340,
+      76,
+      58
+    ]
+  },
+  "measurement": {
+    "source": "procedural full-custom VSTGUI redesign",
+    "targetSize": [
+      1440,
+      800
+    ],
+    "method": "new 8-strip grid; no raster faceplate geometry"
+  }
+}
