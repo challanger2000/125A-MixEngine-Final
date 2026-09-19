@@ -1,0 +1,19 @@
+#pragma once
+
+#include <cstddef>
+
+namespace MixEngine::Branding {
+
+struct MasterPathSource {
+    const char* d;
+    bool red;
+};
+
+// Generated at configure time directly from resource/125A_Logo_Master_FINAL.svg.
+// Every entry below is one original SVG path; no rasterization or redraw occurs.
+inline constexpr MasterPathSource kMasterPaths[] = {
+@MIXENGINE_BRANDING_PATHS@};
+
+inline constexpr std::size_t kMasterPathCount = @MIXENGINE_BRANDING_PATH_COUNT@;
+
+} // namespace MixEngine::Branding
