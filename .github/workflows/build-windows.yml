@@ -1,0 +1,307 @@
+name: Build Windows VST3
+
+on:
+  workflow_dispatch:
+    inputs:
+      full_validation:
+        description: Run full DSP diagnostics and validator
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+      - name: Verify GUI from central layout
+        shell: pwsh
+        run: python scripts/verify_gui_layout.py
+
+      - name: Verify parameter and routing contract
+        shell: pwsh
+        run: python scripts/verify_parameter_contract.py
+
+      - name: Verify Channel architecture contract
+        shell: pwsh
+        run: python scripts/verify_channel_contract.py
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
+      - name: Build MixEngine variants
+        run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel
+
+      - name: Build all DSP diagnostics
+        if: ${{ inputs.full_validation }}
+        run: >-
+          cmake --build build --config Release --target
+          oversampling-roundtrip
+          oversampling-alias
+          tube-oversampling
+          media-oversampling
+          console-core-equivalence
+          console-tube-island
+          console-tube-ordering
+          oversampling-latency
+          metering-diagnostic
+          stereo-field-diagnostic
+          metering-integration
+          processor-latency-integration
+          phase-mono-diagnostic
+          host-matrix-diagnostic
+          latency-matrix-diagnostic
+          level-match-diagnostic
+          automation-stress-diagnostic
+          mixfx-crosstalk-diagnostic
+
+      - name: Run all DSP diagnostics
+        if: ${{ inputs.full_validation }}
+        shell: pwsh
+        run: |
+          $tests = @(
+            "oversampling-roundtrip",
+            "oversampling-alias",
+            "tube-oversampling",
+            "media-oversampling",
+            "console-core-equivalence",
+            "console-tube-island",
+            "console-tube-ordering",
+            "oversampling-latency",
+            "metering-diagnostic",
+            "stereo-field-diagnostic",
+            "metering-integration",
+            "processor-latency-integration",
+            "phase-mono-diagnostic",
+            "host-matrix-diagnostic",
+            "latency-matrix-diagnostic",
+            "level-match-diagnostic",
+            "automation-stress-diagnostic",
+            "mixfx-crosstalk-diagnostic"
+          )
+          $failures = @()
+          foreach ($name in $tests) {
+            $test = Get-ChildItem build -Recurse -File -Filter "$name.exe" | Select-Object -First 1
+            Write-Host "===== $name ====="
+            if (-not $test) {
+              Write-Error "$name.exe not found"
+              $failures += "$name (missing)"
+              continue
+            }
+            & $test.FullName
+            $code = $LASTEXITCODE
+            if ($code -ne 0) {
+              Write-Error "$name failed with exit code $code"
+              $failures += "$name ($code)"
+            }
+          }
+          if ($failures.Count -gt 0) {
+            throw "DSP diagnostics failed: $($failures -join ', ')"
+          }
+          Write-Host "ALL DSP DIAGNOSTICS PASS"
+
+      - name: Verify GUI control contract
+        if: success()
+        shell: pwsh
+        run: |
+          $uidesc = Get-Content "resource/mixengine.uidesc" -Raw
+          $channelUidesc = Get-Content "resource/mixengine_channel.uidesc" -Raw
+          $controller = Get-Content "source/controller.cpp" -Raw
+          $hardware = Get-Content "source/HardwareControls.cpp" -Raw
+          $cmake = Get-Content "CMakeLists.txt" -Raw
+          $logoSvg = Get-Content "resource/125A_Logo_Master_FINAL.svg" -Raw
+          # Branding contract: the authoritative SVG itself is the only geometry source.
+          # CMake extracts its 30 original vector paths into branding_master.h; HardwareLogo renders those paths.
+          $logoBlob = (git hash-object "resource/125A_Logo_Master_FINAL.svg").Trim()
+          if ($logoBlob -ne "bd398ffa3b728b1a847bb519fad8168222bccb48") { throw "GUI contract: authoritative 125A master differs from Branding repo" }
+          if (-not $logoSvg.Contains('viewBox="0 0 1774 887"')) { throw "GUI contract: branding master viewBox changed" }
+          if (-not $logoSvg.Contains('fill="#D71920"')) { throw "GUI contract: branding master red A stroke missing" }
+          if (Test-Path "resource/125A_Logo_UI_170x85.png") { throw "GUI contract: raster logo derivative must not be used" }
+          if (-not (Test-Path "source/branding_master.h.in")) { throw "GUI contract: vector branding embed template missing" }
+          if (-not (Test-Path "build/branding_master.h")) { throw "GUI contract: generated vector branding header missing" }
+          $generatedBranding = Get-Content "build/branding_master.h" -Raw
+          if (-not $generatedBranding.Contains("kMasterPathCount = 30;")) { throw "GUI contract: generated vector branding does not contain exactly 30 paths" }
+          if ($generatedBranding.Contains("kMasterSvg")) { throw "GUI contract: monolithic SVG string embedding returned" }
+          if (-not $uidesc.Contains('custom-view-name="BrandLogo"')) { throw "GUI contract: vector 125A logo view is not placed on the panel" }
+          if (-not $uidesc.Contains('custom-view-name="BrandLogo" origin="34,92" size="176,88"')) { throw "GUI contract: measured logo centering drifted" }
+          if (-not $controller.Contains('std::strcmp(name,"BrandLogo")')) { throw "GUI contract: BrandLogo custom view is not mapped by Controller::createCustomView" }
+          if ($uidesc.Contains('bitmap="BrandLogo"')) { throw "GUI contract: raster BrandLogo binding returned" }
+          if ($uidesc.Contains('title="125A / MIX ENGINE"') -or $uidesc.Contains('title="125A AUDIO"')) { throw "GUI contract: legacy text branding returned" }
+          # Final GUI/resource hygiene: only the live face, authoritative logo and UIDESC remain.
+          $expectedResources = @("125A_Logo_Master_FINAL.svg", "mixengine.layout.json", "mixengine.uidesc", "mixengine_channel.layout.json", "mixengine_channel.uidesc")
+          $actualResources = @(Get-ChildItem "resource" -File | ForEach-Object { $_.Name } | Sort-Object)
+          $expectedSorted = @($expectedResources | Sort-Object)
+          if (($actualResources -join "|") -ne ($expectedSorted -join "|")) {
+            throw "GUI contract: resource directory contains stale or missing assets: $($actualResources -join ', ')"
+          }
+          foreach ($asset in @("mixengine.uidesc", "mixengine_channel.uidesc")) {
+            if (-not $cmake.Contains('resource/' + $asset)) { throw "GUI contract: CMake does not package required asset $asset" }
+          }
+          foreach ($legacy in @("main.png", "knob_large.png", "led_blue.png", "toggle.png", "vu_needle.png", "vintage_knob.png", "power_switch.png", "green_led.png", "red_led.png", "VST_Knob_01_100pix.png", "Power_switch_mod.png", "Power_switch_horizontal.png")) {
+            if ($cmake.Contains($legacy)) { throw "GUI contract: legacy packaged GUI asset returned: $legacy" }
+          }
+
+          # Pure VSTGUI hardware renderer: no raster control assets are allowed.
+          foreach ($needle in @("HardwareFaceplate::draw", "HardwareKnob::draw", "HardwareToggle::draw", "HardwareSelector::draw", "HardwareUIScale::draw", "HardwareUIScale::onMouseDown", "HardwareVUMeter::draw", "HardwareClipLed::draw", "formatKnobValue", "kNeedleHub")) {
+            if (-not $hardware.Contains($needle)) { throw "GUI contract: procedural VSTGUI rendering element missing: $needle" }
+          }
+          if ($hardware.Contains("CBitmap") -or $controller.Contains('getBitmap(') -or $uidesc.Contains('<bitmap ')) {
+            throw "GUI contract: bitmap dependency returned in pure VSTGUI GUI"
+          }
+                    if (([regex]::Matches($hardware, 'setTransparency\(true\);')).Count -lt 3) {
+            throw "GUI contract: knob/VU/clip overlays are no longer transparent"
+          }
+          if (-not $controller.Contains('constexpr int32 meterFlags=ParameterInfo::kIsReadOnly;')) {
+            throw "GUI contract: meter parameters must be read-only and host-visible"
+          }
+          if ($controller.Contains('meterFlags=ParameterInfo::kIsReadOnly|ParameterInfo::kIsHidden')) {
+            throw "GUI contract: hidden meter parameters can block host-to-controller meter updates"
+          }
+          $ids = Get-Content "source/pluginids.h" -Raw
+          $processor = Get-Content "source/processor.cpp" -Raw
+          foreach ($needle in @("kParamConsoleNoise", "kParamTapeHiss", "kParamVinylNoise")) {
+            if (-not $ids.Contains($needle)) { throw "GUI contract: module-owned noise parameter missing: $needle" }
+          }
+          if (-not $processor.Contains('params_[kParamTapeHiss]=params_[kParamConsoleNoise]') -or -not $processor.Contains('params_[kParamVinylNoise]=params_[kParamConsoleNoise]')) {
+            throw "GUI contract: legacy global Noise migration missing"
+          }
+          if (-not $processor.Contains('sendMeterExchange(normL,normR,clipL,clipR,numSamples)')) { throw "GUI contract: Mix FX meter Data Exchange sender missing" }
+          $controllerHeader = Get-Content "source/controller.h" -Raw
+          if (-not $controllerHeader.Contains('public Steinberg::Vst::IDataExchangeReceiver')) { throw "GUI contract: meter Data Exchange receiver interface missing" }
+          if (-not $controller.Contains('onDataExchangeBlocksReceived')) { throw "GUI contract: meter Data Exchange receiver implementation missing" }
+          if (-not $cmake.Contains('public.sdk/source/vst/utility/dataexchange.cpp')) { throw "GUI contract: VST3 Data Exchange helper is not linked" }
+          if ($uidesc.Contains('custom-view-name="Noise"')) { throw "GUI contract: obsolete output/global Noise control returned" }
+
+          # Full-custom selectors must replace standard CSegmentButton visuals.
+          $selectorViews = @("VUSourceSelector", "QualitySelector", "InputRefSelector", "ConsoleModeSelector", "TubeVoiceSelector", "TapeSpeedSelector")
+          foreach ($name in $selectorViews) {
+            $uiNeedle = 'custom-view-name="' + $name + '"'
+            if (-not $uidesc.Contains($uiNeedle)) { throw "GUI contract: missing custom selector $name" }
+            $controllerNeedle = 'selector("' + $name + '",'
+            if (-not $controller.Contains($controllerNeedle)) { throw "GUI contract: selector $name is not mapped by Controller::createCustomView" }
+          }
+          if ($uidesc.Contains('class="CSegmentButton"')) { throw "GUI contract: standard CSegmentButton visual returned" }
+
+          # Meter/clip views are mapped directly with strcmp in createCustomView.
+          $directViews = @("UIScale", "VULeft", "VURight", "ClipL", "ClipR")
+          foreach ($name in $directViews) {
+            $uiNeedle = 'custom-view-name="' + $name + '"'
+            if (-not $uidesc.Contains($uiNeedle)) { throw "GUI contract: missing custom view $name in mixengine.uidesc" }
+            $controllerNeedle = 'std::strcmp(name,"' + $name + '")'
+            if (-not $controller.Contains($controllerNeedle)) { throw "GUI contract: direct custom view $name is not mapped by Controller::createCustomView" }
+          }
+
+          if ($uidesc.Contains('title="OFF"') -or $uidesc.Contains('title="ON"') -or $uidesc.Contains('title="CLIP"')) {
+            throw "GUI contract: redundant utility text returned next to self-explanatory hardware controls"
+          }
+
+          $toggleViews = @("Bypass", "ConsolePower", "TubePower", "TapePower", "GluePower", "VinylPower", "LevelMatch")
+          foreach ($name in $toggleViews) {
+            $uiNeedle = 'custom-view-name="' + $name + '"'
+            if (-not $uidesc.Contains($uiNeedle)) { throw "GUI contract: missing hardware toggle $name" }
+            $controllerNeedle = 'toggle("' + $name + '",'
+            if (-not $controller.Contains($controllerNeedle)) { throw "GUI contract: hardware toggle $name is not mapped" }
+          }
+
+          # Knob views are mapped through the local knob(name, ParamID, Style) helper.
+          $knobViews = @(
+            "Input", "ConsoleDrive", "Crosstalk", "ConsoleNoise", "TubeAmount",
+            "TapeAmount", "TapeStability", "TapeHiss", "GlueAmount", "GlueCharacter",
+            "VinylCharacter", "VinylWear", "VinylNoise", "Depth", "Width", "LowMono",
+            "Output"
+          )
+          foreach ($name in $knobViews) {
+            $uiNeedle = 'custom-view-name="' + $name + '"'
+            if (-not $uidesc.Contains($uiNeedle)) { throw "GUI contract: missing custom view $name in mixengine.uidesc" }
+            $controllerNeedle = 'knob("' + $name + '",'
+            if (-not $controller.Contains($controllerNeedle)) { throw "GUI contract: knob custom view $name is not mapped by Controller::createCustomView" }
+          }
+
+          if (-not $uidesc.Contains('custom-view-name="Crosstalk"') -or -not $uidesc.Contains('custom-view-name="LabelCrosstalk"')) {
+            throw "GUI contract: real Mix FX Crosstalk control missing"
+          }
+          if ($channelUidesc.Contains('custom-view-name="Crosstalk"') -or $channelUidesc.Contains('custom-view-name="LabelCrosstalk"')) {
+            throw "GUI contract: Crosstalk must stay hidden in the standard Channel build"
+          }
+          foreach ($needle in @("mixFxCrosstalk_", "captureMixFxInputSnapshot", "mixFxCrosstalkSource")) {
+            if (-not $processor.Contains($needle)) { throw "GUI contract: true Mix FX Crosstalk routing missing: $needle" }
+          }
+          $normalMarker = 'tresult PLUGIN_API Processor::process(ProcessData& data)'
+          $normalStart = $processor.IndexOf($normalMarker)
+          if ($normalStart -lt 0) { throw "GUI contract: standard process() path missing" }
+          $normalTail = $processor.Substring($normalStart)
+          if ($normalTail.Contains('params_[kParamConsoleCrosstalk]')) {
+            throw "GUI contract: standard Channel process() unexpectedly uses Crosstalk"
+          }
+
+          # Typography is custom-rendered by HardwareLabel, never by standard CTextLabel.
+          if ($uidesc.Contains('class="CTextLabel"')) {
+            throw "GUI contract: standard CTextLabel visual returned"
+          }
+          foreach ($needle in @("HardwareSelector::draw", "HardwareSelector::onMouseDown", "HardwareLabel::draw")) {
+            if (-not $hardware.Contains($needle)) { throw "GUI contract: full-custom VSTGUI renderer missing: $needle" }
+          }
+          foreach ($name in @("LabelInputTitle", "LabelConsoleTitle", "LabelTubeTitle", "LabelTapeTitle", "LabelGlueTitle", "LabelVinylTitle", "LabelStereoTitle", "LabelOutputTitle")) {
+            if (-not $uidesc.Contains('custom-view-name="' + $name + '"')) { throw "GUI contract: missing custom module legend $name" }
+          }
+
+          if ($uidesc.Contains('<bitmaps>') -or $uidesc.Contains('<bitmap ')) { throw "GUI contract: UIDESC bitmap assets returned" }
+          foreach ($legacyAsset in @("Vintage_small.png", "Vintage_small_atlas.png", "Power_switch_horizontal_fixed.png", "led_23_green.png", "led_23_red.png", "led_23_blue.png", "mixengine_faceplate_1440x800.png")) {
+            if (Test-Path ("resource/" + $legacyAsset)) { throw "GUI contract: legacy GUI bitmap still exists: $legacyAsset" }
+            if ($cmake.Contains($legacyAsset)) { throw "GUI contract: legacy GUI bitmap still packaged: $legacyAsset" }
+          }
+          if (Test-Path "scripts/make_knob_atlas.ps1") { throw "GUI contract: obsolete bitmap-atlas generator still exists" }
+          # Geometry is generated and structurally verified by verify_gui_layout.py.
+          # Keep this contract focused on assets, mappings and runtime behaviour.
+
+          # Pure VSTGUI surface contract: no raster faceplate may remain anywhere.
+          if (-not $uidesc.Contains('custom-view-name="HardwareFaceplate"')) { throw "GUI contract: procedural HardwareFaceplate missing" }
+          if (-not $controller.Contains('std::strcmp(name,"HardwareFaceplate")')) { throw "GUI contract: HardwareFaceplate custom view is not mapped" }
+          if ($uidesc.Contains('MixEngineFaceplate') -or $uidesc.Contains('mixengine_faceplate_1440x800.png')) { throw "GUI contract: legacy raster faceplate binding returned" }
+          if ($cmake.Contains('mixengine_faceplate_1440x800.png')) { throw "GUI contract: legacy raster faceplate is still packaged" }
+          if (Test-Path "resource/mixengine_faceplate_1440x800.png") { throw "GUI contract: legacy raster faceplate file still exists" }
+          foreach ($needle in @("HardwareFaceplate::draw", "HardwareVUMeter::draw")) {
+            if (-not $hardware.Contains($needle)) { throw "GUI contract: procedural VSTGUI renderer missing: $needle" }
+          }
+          # Module/control geometry is not duplicated here. The single source is resource/mixengine.layout.json.
+          Write-Host "GUI contract PASS"
+
+      # The Mix FX target is a PreSonus-specific class, but the Channel target is a
+      # standard VST3 Audio Effect and must pass Steinberg's normal validator suite.
+      - name: Build VST3 Validator
+        if: ${{ success() && inputs.full_validation }}
+        run: cmake --build build --config Release --target validator
+
+      - name: Validate Channel VST3
+        if: ${{ success() && inputs.full_validation }}
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
+          $plugin = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3" | Select-Object -First 1
+          if (-not $validator) { throw "validator.exe not found" }
+          if (-not $plugin) { throw "125A-MixEngine-Channel.vst3 not found" }
+          & $validator.FullName $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg validator failed for Channel VST3 with exit code $LASTEXITCODE" }
+
+      - name: Upload Mix FX
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-MixFX-Windows-x64
+          path: build/**/125A-MixEngine.vst3
+          if-no-files-found: error
+
+      - name: Upload Channel
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-Channel-Windows-x64
+          path: build/**/125A-MixEngine-Channel.vst3
+          if-no-files-found: error
