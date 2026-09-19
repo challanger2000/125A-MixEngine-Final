@@ -8,10 +8,6 @@ on:
         required: false
         default: false
         type: boolean
-  push:
-    branches: [main]
-    paths:
-      - ".github/final-build-trigger"
 
 jobs:
   build:
@@ -46,7 +42,7 @@ jobs:
         run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel
 
       - name: Build all DSP diagnostics
-        if: ${{ github.event_name == 'push' || inputs.full_validation }}
+        if: ${{ inputs.full_validation }}
         run: >-
           cmake --build build --config Release --target
           oversampling-roundtrip
@@ -69,7 +65,7 @@ jobs:
           mixfx-crosstalk-diagnostic
 
       - name: Run all DSP diagnostics
-        if: ${{ github.event_name == 'push' || inputs.full_validation }}
+        if: ${{ inputs.full_validation }}
         shell: pwsh
         run: |
           $tests = @(
@@ -282,11 +278,11 @@ jobs:
       # The Mix FX target is a PreSonus-specific class, but the Channel target is a
       # standard VST3 Audio Effect and must pass Steinberg's normal validator suite.
       - name: Build VST3 Validator
-        if: ${{ success() && (github.event_name == 'push' || inputs.full_validation) }}
+        if: ${{ success() && inputs.full_validation }}
         run: cmake --build build --config Release --target validator
 
       - name: Validate Channel VST3
-        if: ${{ success() && (github.event_name == 'push' || inputs.full_validation) }}
+        if: ${{ success() && inputs.full_validation }}
         shell: pwsh
         run: |
           $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
