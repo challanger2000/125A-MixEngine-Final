@@ -8,6 +8,10 @@ on:
         required: false
         default: false
         type: boolean
+  push:
+    branches: [main]
+    paths:
+      - ".github/final-build-trigger"
 
 jobs:
   build:
@@ -42,7 +46,7 @@ jobs:
         run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel
 
       - name: Build all DSP diagnostics
-        if: ${{ inputs.full_validation }}
+        if: ${{ github.event_name == 'push' || inputs.full_validation }}
         run: >-
           cmake --build build --config Release --target
           oversampling-roundtrip
@@ -65,7 +69,7 @@ jobs:
           mixfx-crosstalk-diagnostic
 
       - name: Run all DSP diagnostics
-        if: ${{ inputs.full_validation }}
+        if: ${{ github.event_name == 'push' || inputs.full_validation }}
         shell: pwsh
         run: |
           $tests = @(
@@ -278,11 +282,11 @@ jobs:
       # The Mix FX target is a PreSonus-specific class, but the Channel target is a
       # standard VST3 Audio Effect and must pass Steinberg's normal validator suite.
       - name: Build VST3 Validator
-        if: ${{ success() && inputs.full_validation }}
+        if: ${{ success() && (github.event_name == 'push' || inputs.full_validation) }}
         run: cmake --build build --config Release --target validator
 
       - name: Validate Channel VST3
-        if: ${{ success() && inputs.full_validation }}
+        if: ${{ success() && (github.event_name == 'push' || inputs.full_validation) }}
         shell: pwsh
         run: |
           $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
@@ -291,6 +295,71 @@ jobs:
           if (-not $plugin) { throw "125A-MixEngine-Channel.vst3 not found" }
           & $validator.FullName $plugin.FullName
           if ($LASTEXITCODE -ne 0) { throw "Steinberg validator failed for Channel VST3 with exit code $LASTEXITCODE" }
+
+      - name: Package Gumroad release
+        if: success()
+        shell: pwsh
+        run: |
+          $packageRoot = "dist/125A-MixEngine-v1.0.0-Windows-x64"
+          $zipPath = "dist/125A-MixEngine-v1.0.0-Windows-x64-Gumroad.zip"
+          if (Test-Path "dist") { Remove-Item "dist" -Recurse -Force }
+          New-Item -ItemType Directory -Path "$packageRoot/VST3" -Force | Out-Null
+          New-Item -ItemType Directory -Path "$packageRoot/Documentation" -Force | Out-Null
+
+          $mixFx = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3" | Select-Object -First 1
+          if (-not $mixFx) { throw "125A-MixEngine.vst3 not found for release package" }
+          if (-not $channel) { throw "125A-MixEngine-Channel.vst3 not found for release package" }
+
+          Copy-Item $mixFx.FullName "$packageRoot/VST3/125A-MixEngine.vst3" -Recurse
+          Copy-Item $channel.FullName "$packageRoot/VST3/125A-MixEngine-Channel.vst3" -Recurse
+          Copy-Item "docs/125A_MixEngine_Bedienungsanleitung_DE.pdf" "$packageRoot/Documentation/"
+          Copy-Item "docs/125A_MixEngine_User_Manual_EN.pdf" "$packageRoot/Documentation/"
+          Copy-Item "README.md" "$packageRoot/"
+          Copy-Item "RELEASE_NOTES.md" "$packageRoot/"
+          Copy-Item "LICENSE.txt" "$packageRoot/"
+
+          @"
+          125A MixEngine v1.0.0 - Windows x64
+
+          INSTALLATION
+          1. Close the DAW.
+          2. Copy the desired .vst3 folder from VST3 to:
+             C:\Program Files\Common Files\VST3
+          3. Start the DAW and rescan VST3 plugins if required.
+
+          125A MixEngine.vst3
+          - PreSonus Studio One Mix FX edition.
+          - Use in the Studio One Mix FX slot.
+
+          125A MixEngine Channel.vst3
+          - Standard VST3 insert edition.
+          - Use on tracks/buses or in VST3 hosts without the PreSonus Mix FX API.
+
+          Both editions may be installed side by side.
+          See Documentation for the complete DE/EN manuals.
+          "@ | Set-Content "$packageRoot/INSTALL.txt" -Encoding UTF8
+
+          $checksumLines = Get-ChildItem "$packageRoot" -Recurse -File |
+            Sort-Object FullName |
+            ForEach-Object {
+              $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+              $relative = $_.FullName.Substring((Resolve-Path $packageRoot).Path.Length + 1).Replace('\','/')
+              "$hash  $relative"
+            }
+          $checksumLines | Set-Content "$packageRoot/CHECKSUMS_SHA256.txt" -Encoding ASCII
+
+          Compress-Archive -Path "$packageRoot/*" -DestinationPath $zipPath -CompressionLevel Optimal
+          Write-Host "Gumroad package created: $zipPath"
+          Get-Item $zipPath | Format-List FullName,Length
+
+      - name: Upload Gumroad package
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-v1.0.0-Gumroad
+          path: dist/125A-MixEngine-v1.0.0-Windows-x64-Gumroad.zip
+          if-no-files-found: error
 
       - name: Upload Mix FX
         uses: actions/upload-artifact@v4
