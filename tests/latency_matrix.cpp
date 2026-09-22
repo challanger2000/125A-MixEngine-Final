@@ -169,9 +169,10 @@ AlignmentResult measureAlignment(const char* path,int mask,
 
 bool acceptable(const AlignmentResult& r){
     // HIIR is minimum-phase: active oversampling changes frequency-dependent
-    // group delay, so broadband correlation can legitimately prefer a nearby
-    // integer lag even though the host/PDC transport latency remains fixed.
-    return std::abs(r.lag)<=2 && r.correlation>0.99;
+    // group delay, and stacked nonlinear/color stages also change spectrum.
+    // Broadband correlation can therefore dip slightly while transport latency
+    // is still correct. Keep lag strict and allow only a small spectral margin.
+    return std::abs(r.lag)<=2 && r.correlation>0.985;
 }
 }
 
