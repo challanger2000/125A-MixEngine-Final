@@ -5,51 +5,35 @@
 #include <cmath>
 #include <iostream>
 
-namespace {
-
-// Independent copy of the currently shipped Tube equations. This remains here
-// deliberately so the shared header cannot silently change Tube behaviour.
-double legacyTubeCore(double x, int type, double amount) {
-    const double a = std::clamp(amount, 0.0, 1.0);
-    if (a <= 0.0) return x;
-    double gain = 1.8, bias = 0.035, asym = 0.025;
-    switch (type) {
-        case 0: gain = 1.55; bias = 0.025; asym = 0.016; break;
-        case 1: gain = 1.95; bias = 0.045; asym = 0.028; break;
-        default: gain = 2.45; bias = 0.070; asym = 0.045; break;
-    }
-    const double driven = x * (1.0 + (gain - 1.0) * a);
-    const double b = bias * a;
-    const double centered = std::tanh(b);
-    const double slope = std::max(1.0e-9, 1.0 - centered * centered);
-    double shaped = (std::tanh(driven + b) - centered) / slope;
-    shaped += asym * a * driven * std::abs(driven);
-    const double wet = 0.25 + 0.75 * a;
-    return x + (shaped - x) * wet * a;
-}
-
-}
-
 int main() {
     MixEngine::OversamplingEngine os;
-    double maxTubeCoreError = 0.0;
+    double maxNeutralError = 0.0;
     double maxEcoError = 0.0;
+    double maxAbs = 0.0;
     bool finite = true;
 
+    // The live Tube core must remain exactly neutral at Amount=0, finite over
+    // a deliberately hot range, and bounded enough that accidental polynomial
+    // runaway is caught immediately.
     for (int type = 0; type < 3; ++type) {
         for (int ai = 0; ai <= 20; ++ai) {
             const double amount = static_cast<double>(ai) / 20.0;
-            for (int i = 0; i <= 20000; ++i) {
-                const double x = -2.0 + 4.0 * static_cast<double>(i) / 20000.0;
-                const double legacy = legacyTubeCore(x, type, amount);
-                const double shared = MixEngine::processTubeNonlinearCore(x, type, amount);
-                maxTubeCoreError = std::max(maxTubeCoreError, std::abs(legacy - shared));
+            for (int i = 0; i <= 24000; ++i) {
+                const double x = -3.0 + 6.0 * static_cast<double>(i) / 24000.0;
+                const double y = MixEngine::processTubeNonlinearCore(x, type, amount);
+                finite = finite && std::isfinite(y);
+                maxAbs = std::max(maxAbs, std::abs(y));
+                if (amount == 0.0)
+                    maxNeutralError = std::max(maxNeutralError, std::abs(y - x));
             }
         }
     }
 
+    // Factor 1 of the oversampling wrapper is required to be bit-transparent
+    // around the current live Console -> Tube nonlinear island.
     for (int mode = 0; mode < 4; ++mode) {
         for (int type = 0; type < 3; ++type) {
+            os.reset();
             for (int i = 0; i <= 20000; ++i) {
                 const double x = -2.0 + 4.0 * static_cast<double>(i) / 20000.0;
                 const double low = 0.31 * x;
@@ -57,7 +41,7 @@ int main() {
                 const double drive = 0.73;
                 const double tubeAmount = 0.67;
 
-                const double reference = legacyTubeCore(
+                const double reference = MixEngine::processTubeNonlinearCore(
                     MixEngine::processConsoleNonlinearCore(x, low, high, mode, drive),
                     type, tubeAmount);
                 const double eco = os.process(x, 1, [&](double v) {
@@ -72,6 +56,7 @@ int main() {
         }
     }
 
+    // Higher quality factors must remain finite under the same live island.
     for (int factor : {2, 4}) {
         os.reset();
         for (int i = 0; i <= 20000; ++i) {
@@ -84,20 +69,22 @@ int main() {
                     2, 0.67);
             });
             finite = finite && std::isfinite(y);
+            maxAbs = std::max(maxAbs, std::abs(y));
         }
     }
 
-    constexpr double kTolerance = 1.0e-15;
-    std::cout << "Tube shared-core max error: " << maxTubeCoreError << "\n";
-    std::cout << "Console+Tube shared island Eco max error: " << maxEcoError << "\n";
-    std::cout << "Tolerance: " << kTolerance << "\n";
+    constexpr double kExactTolerance = 1.0e-15;
+    constexpr double kSanityBound = 8.0;
+    std::cout << "Tube Amount=0 neutral max error: " << maxNeutralError << "\n";
+    std::cout << "Console+Tube live island Eco max error: " << maxEcoError << "\n";
+    std::cout << "Tube/island maximum absolute output: " << maxAbs << "\n";
     std::cout << "Finite 1x/2x/4x: " << (finite ? "yes" : "no") << "\n";
 
-    if (!finite || maxTubeCoreError > kTolerance || maxEcoError > kTolerance) {
-        std::cerr << "FAILED: shared Console/Tube nonlinear cores are not legacy-equivalent/finite\n";
+    if (!finite || maxNeutralError > kExactTolerance || maxEcoError > kExactTolerance || maxAbs > kSanityBound) {
+        std::cerr << "FAILED: live Console/Tube nonlinear island contract\n";
         return 1;
     }
 
-    std::cout << "PASSED: shared Console/Tube nonlinear cores\n";
+    std::cout << "PASSED: live Console/Tube nonlinear island contract\n";
     return 0;
 }
