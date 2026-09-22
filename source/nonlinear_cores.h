@@ -59,23 +59,43 @@ inline double processTubeNonlinearCore(double x, int type, double amount) noexce
     if (a <= 0.0)
         return x;
 
-    double gain = 1.8;
-    double bias = 0.035;
-    double asym = 0.025;
+    // Keep a meaningful clean path at every setting. The tube stage is intended
+    // to add density and asymmetric harmonics without flattening transients into
+    // a fully-wet static waveshaper at maximum Amount.
+    double drive = 1.75;
+    double bias = 0.030;
+    double asym = 0.020;
+    double secondStage = 0.18;
     switch (type) {
-        case 0: gain = 1.55; bias = 0.025; asym = 0.016; break;
-        case 1: gain = 1.95; bias = 0.045; asym = 0.028; break;
-        default: gain = 2.45; bias = 0.070; asym = 0.045; break;
+        case 0: drive = 1.45; bias = 0.020; asym = 0.012; secondStage = 0.12; break;
+        case 1: drive = 1.85; bias = 0.038; asym = 0.022; secondStage = 0.18; break;
+        default: drive = 2.30; bias = 0.060; asym = 0.036; secondStage = 0.25; break;
     }
 
-    const double driven = x * (1.0 + (gain - 1.0) * a);
+    const double driven = x * (1.0 + (drive - 1.0) * a);
     const double b = bias * a;
     const double centered = std::tanh(b);
     const double slope = std::max(1.0e-9, 1.0 - centered * centered);
-    double shaped = (std::tanh(driven + b) - centered) / slope;
-    shaped += asym * a * driven * std::abs(driven);
-    const double wet = 0.25 + 0.75 * a;
-    return x + (shaped - x) * wet * a;
+
+    // First triode-like stage: asymmetric, DC-centred and small-signal
+    // normalised so low-level material is not needlessly level-shifted.
+    double first = (std::tanh(driven + b) - centered) / slope;
+
+    // Bounded even-harmonic term. Unlike the old x*abs(x) term, this cannot
+    // grow without bound at hot internal levels.
+    const double d2 = driven * driven;
+    first += asym * a * (driven * std::abs(driven)) / (1.0 + 0.65 * d2);
+
+    // A gentle second stage adds density progressively. Its contribution is
+    // deliberately parallel rather than replacing the first stage.
+    const double stage2Drive = 1.0 + secondStage * a;
+    const double second = std::tanh(first * stage2Drive) / stage2Drive;
+    const double dense = first + (second - first) * (0.20 + 0.35 * a);
+
+    // Parallel tube blend: retain at least 20% of the original transient path
+    // even at maximum Amount.
+    const double wet = a * (0.22 + 0.58 * a);
+    return x + (dense - x) * wet;
 }
 
 } // namespace MixEngine
