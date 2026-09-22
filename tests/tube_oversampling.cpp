@@ -1,4 +1,5 @@
 #include "oversampling.h"
+#include "nonlinear_cores.h"
 
 #include <algorithm>
 #include <array>
@@ -16,30 +17,6 @@ constexpr double kFs = 48000.0;
 constexpr std::size_t kWarmup = 8192;
 constexpr std::size_t kCount = 131072;
 
-double tubeCore(double x, int type, double amount) {
-    const double a = std::clamp(amount, 0.0, 1.0);
-    if (a <= 0.0)
-        return x;
-
-    double gain = 1.8;
-    double bias = 0.035;
-    double asym = 0.025;
-    switch (type) {
-        case 0: gain = 1.55; bias = 0.025; asym = 0.016; break;
-        case 1: gain = 1.95; bias = 0.045; asym = 0.028; break;
-        default: gain = 2.45; bias = 0.070; asym = 0.045; break;
-    }
-
-    const double driven = x * (1.0 + (gain - 1.0) * a);
-    const double b = bias * a;
-    const double centered = std::tanh(b);
-    const double slope = std::max(1.0e-9, 1.0 - centered * centered);
-    double shaped = (std::tanh(driven + b) - centered) / slope;
-    shaped += asym * a * driven * std::abs(driven);
-    const double wet = 0.25 + 0.75 * a;
-    return x + (shaped - x) * wet * a;
-}
-
 double residualDbc(int factor, double frequency, int type) {
     MixEngine::OversamplingEngine os;
     long double ss = 0.0, cc = 0.0, ys = 0.0, yc = 0.0;
@@ -51,7 +28,7 @@ double residualDbc(int factor, double frequency, int type) {
 
     for (std::size_t n = 0; n < kCount; ++n) {
         const double x = 0.72 * std::sin(2.0 * kPi * frequency * static_cast<double>(n) / kFs);
-        y[n] = os.process(x, factor, [=](double v) { return tubeCore(v, type, 1.0); });
+        y[n] = os.process(x, factor, [=](double v) { return MixEngine::processTubeNonlinearCore(v, type, 1.0); });
         if (!std::isfinite(y[n]))
             return 999.0;
     }
