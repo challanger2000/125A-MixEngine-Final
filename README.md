@@ -1,6 +1,6 @@
 # 125A MixEngine
 
-**125A MixEngine v1.0.0** is a Windows x64 VST3 coloration and summing processor with two editions built from the same DSP core:
+**125A MixEngine v1.1.0** is a Windows x64 VST3 coloration and summing processor with two editions built from the same DSP core:
 
 - **125A MixEngine** - PreSonus Studio One **Mix FX** edition with true adjacent-channel console crosstalk.
 - **125A MixEngine Channel** - standard **VST3 insert** edition for normal channel/bus use and VST3 hosts that do not expose the PreSonus Mix FX API.
