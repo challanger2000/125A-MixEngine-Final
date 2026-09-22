@@ -1,5 +1,22 @@
 # Release Notes
 
+## 125A MixEngine v1.1.0 - 2026-09-22
+
+### Tube / Tape refinement
+
+- Tube and Tape now retain a subtle hardware-like base character when the module is enabled at 0% Amount.
+- Amount controls now span from subtle coloration to substantially stronger character at 100%.
+- Tube and Tape Level Match compensation was recalibrated against the refined DSP.
+- Input Level Match now compensates the linear input-gain component while preserving nonlinear drive into the processing chain.
+- Tape processing retains independent Hiss control and correct oversampling/latency participation at 0% Amount.
+- Channel and Mix FX editions use the same updated DSP core.
+
+### Validation
+
+- Steinberg Validator: 47/47 tests passed.
+- Full DSP diagnostics passed, including Tube/Tape oversampling, aliasing, fixed 21-sample latency, phase/mono behaviour, Level Match, automation stress, and exact Channel/Mix FX DSP parity.
+- Measured Level Match at the production test point: Tube +0.0013 dB, Tape -0.0049 dB, full chain -0.0685 dB.
+
 ## 125A MixEngine v1.0.0 - 2026-09-19
 
 Initial commercial release candidate/final source baseline.
