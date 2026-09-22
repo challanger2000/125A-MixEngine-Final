@@ -62,9 +62,17 @@ inline double consoleAutoGain(int mode, double drive) {
 }
 inline double tubeAutoGain(int type, double amount) {
     const double c = analogCharacterAmount(amount);
-    double m=2.6; switch(type){case kTube12AU7:m=1.5;break;case kTube12AT7:m=2.6;break;default:m=3.6;break;} return dbToGain(-m*c*c);
+    // Calibrated against the current live Tube transfer at production level.
+    // Preserve the relative strength of the three voices while avoiding the
+    // slight over-attenuation introduced by the previous coefficients.
+    double m=2.39; switch(type){case kTube12AU7:m=1.38;break;case kTube12AT7:m=2.39;break;default:m=3.31;break;} return dbToGain(-m*c*c);
 }
-inline double tapeAutoGain(double amount){const double c=analogCharacterAmount(amount);return dbToGain(1.2*c*c);}
+inline double tapeAutoGain(double amount){
+    const double c=analogCharacterAmount(amount);
+    // The refined tape path includes program-dependent compression and filtering;
+    // its measured RMS loss is substantially larger than the old 1.2*dB model.
+    return dbToGain(3.00*c*c);
+}
 inline double glueAutoGain(double amount,double character){const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0);return dbToGain((3.2+1.8*c)*a*a);}
 inline double vinylAutoGain(double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);return dbToGain(1.24*c+0.91*w);}
 inline double stableVariation(int sourceIndex,int lane){std::uint32_t x=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x7F4A7C15u*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return(static_cast<double>(x&0xFFFFu)/32767.5)-1.0;}
