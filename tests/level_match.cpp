@@ -164,6 +164,25 @@ int main(){
         };
 
         bool ok=true;
+
+        // Input trim contract: with every colour module disabled, Level Match
+        // must remove the trivial +/-12 dB gain shift while leaving Level Match
+        // OFF as a true input trim. This protects the intended "drive harder,
+        // do not merely get louder" workflow.
+        for(bool mixFx:{false,true}){
+            const auto lowCfg=std::vector<std::pair<ParamID,double>>{{MixEngine::kParamInput,0.25}};
+            const auto highCfg=std::vector<std::pair<ParamID,double>>{{MixEngine::kParamInput,0.75}};
+            const double lowOffDb=dbRatio(renderRms(mixFx,false,lowCfg),inRms);
+            const double highOffDb=dbRatio(renderRms(mixFx,false,highCfg),inRms);
+            const double lowOnDb=dbRatio(renderRms(mixFx,true,lowCfg),inRms);
+            const double highOnDb=dbRatio(renderRms(mixFx,true,highCfg),inRms);
+            std::cout<<(mixFx?"MixFX":"Channel")
+                     <<" Input trim OFF low/high="<<lowOffDb<<"/"<<highOffDb
+                     <<" dB ON low/high="<<lowOnDb<<"/"<<highOnDb<<" dB\n";
+            if(std::abs(lowOffDb+6.0)>0.15 || std::abs(highOffDb-6.0)>0.15)ok=false;
+            if(std::abs(lowOnDb)>0.15 || std::abs(highOnDb)>0.15)ok=false;
+        }
+
         for(bool mixFx:{false,true}){
             for(const auto& c:cases){
                 const double off=renderRms(mixFx,false,c.params);
