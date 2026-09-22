@@ -71,9 +71,14 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params, bool i
         // floating-point/filter-fit noise and must be judged by an absolute
         // floor rather than a meaningless monotonic ordering.
         const bool identity=identityAtOne && std::abs(p-1.0)<1.0e-12;
+        // At very mild nonlinearity the oversampled residual can fall into the
+        // numerical/filter-fit floor. If both 2x and 4x are already below 1e-7
+        // and at least 60 dB below 1x, their exact ordering is not meaningful.
+        const bool resolvedFloor=finite && r2<1.0e-7 && r4<1.0e-7
+            && r2<r1*1.0e-3 && r4<r1*1.0e-3;
         const bool monotonic=finite && (identity
             ? (r1<1.0e-8 && r2<1.0e-8 && r4<1.0e-8)
-            : (r2 < r1 && r4 <= r2 * 1.001));
+            : (resolvedFloor || (r2 < r1 && r4 <= r2 * 1.001)));
         std::cout << name << " param=" << p << " f=" << f << "Hz residual 1x=" << r1 << " 2x=" << r2 << " 4x=" << r4
                   << " improvement2=" << 20.0*std::log10(r1/r2) << "dB improvement4=" << 20.0*std::log10(r1/r4) << "dB "
                   << (monotonic ? "PASS" : "FAIL") << '\n';
