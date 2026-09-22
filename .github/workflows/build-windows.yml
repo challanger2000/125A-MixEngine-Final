@@ -1,6 +1,9 @@
 name: Build Windows VST3
 
 on:
+  push:
+    paths:
+      - ".github/version-build-trigger"
   workflow_dispatch:
     inputs:
       full_validation:
