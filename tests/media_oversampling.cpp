@@ -1,4 +1,5 @@
 #include "oversampling.h"
+#include "media_oversampling_live.h"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -12,7 +13,11 @@ constexpr int kWarmup = 4096;
 
 using MixEngine::OversamplingEngine;
 
-double tapeLegacy(double x, double shape) { return std::tanh(x * shape) / shape; }
+double tapeLiveCore(double x, double shape) {
+    const double k = std::max(0.0, shape - 1.0);
+    const double vv = x * x;
+    return x / std::sqrt(1.0 + (1.35 * k) * vv);
+}
 double vinylLegacy(double x, double drive) { return std::tanh(x * drive) / drive; }
 
 template <typename Fn>
@@ -72,9 +77,9 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params) {
 }
 
 int main() {
-    // Exact live ranges: Tape shape = 1 + 0.35*amount -> [1,1.35].
+    // Exact live ranges: Tape shape = 1 + 0.42*amount -> [1,1.42].
     // Vinyl drive = 1 + 0.35*character + 0.25*wear -> [1,1.60].
-    const bool tape = verify("Tape", tapeLegacy, {1.0, 1.175, 1.35});
+    const bool tape = verify("Tape", tapeLiveCore, {1.0, 1.21, 1.42});
     const bool vinyl = verify("Vinyl", vinylLegacy, {1.0, 1.30, 1.60});
     if (!(tape && vinyl)) {
         std::cerr << "FAILED: Tape/Vinyl oversampling verification\n";
