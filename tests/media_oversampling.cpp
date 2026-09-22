@@ -84,9 +84,10 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params, bool i
 }
 
 int main() {
-    // Exact live ranges: Tape shape = 1 + 0.42*amount -> [1,1.42].
+    // Exact representative live Tape shapes after the analogue Amount curve:
+    // amount 0.0 -> 1.033, amount 0.5 -> ~1.319824, amount 1.0 -> 1.55.
     // Vinyl drive = 1 + 0.35*character + 0.25*wear -> [1,1.60].
-    const bool tape = verify("Tape", tapeLiveCore, {1.0, 1.21, 1.42}, true);
+    const bool tape = verify("Tape", tapeLiveCore, {1.033, 1.3198237085, 1.55});
     const bool vinyl = verify("Vinyl", vinylLegacy, {1.0, 1.30, 1.60});
     if (!(tape && vinyl)) {
         std::cerr << "FAILED: Tape/Vinyl oversampling verification\n";
