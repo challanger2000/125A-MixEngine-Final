@@ -183,6 +183,21 @@ int main(){
             if(std::abs(lowOnDb)>0.15 || std::abs(highOnDb)>0.15)ok=false;
         }
 
+        // Enabled Tube/Tape at Amount=0 must now be subtly coloured,
+        // never identical to an OFF module, and must not create a large level jump.
+        for(bool mixFx:{false,true}){
+            const double tube0Db=dbRatio(renderRms(mixFx,false,{
+                {MixEngine::kParamTubeOn,1.0},{MixEngine::kParamTubeType,0.5},{MixEngine::kParamTubeAmount,0.0}
+            }),inRms);
+            const double tape0Db=dbRatio(renderRms(mixFx,false,{
+                {MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeAmount,0.0},{MixEngine::kParamTapeStability,1.0}
+            }),inRms);
+            std::cout<<(mixFx?"MixFX":"Channel")
+                     <<" base colour Tube0="<<tube0Db<<" dB Tape0="<<tape0Db<<" dB\n";
+            if(std::abs(tube0Db)<1.0e-5 || std::abs(tube0Db)>0.5)ok=false;
+            if(std::abs(tape0Db)<1.0e-5 || std::abs(tape0Db)>0.5)ok=false;
+        }
+
         for(bool mixFx:{false,true}){
             for(const auto& c:cases){
                 const double off=renderRms(mixFx,false,c.params);
