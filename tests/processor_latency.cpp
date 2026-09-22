@@ -24,7 +24,7 @@ void setParam(ParameterChanges& changes, ParamID id, double value) {
     if (queue->addPoint(0, value, pointIndex) != kResultTrue) throw 11;
 }
 
-int impulsePeak(const std::vector<std::pair<ParamID,double>>& params) {
+int impulsePeak(const std::vector<std::pair<ParamID,double>>& params, double minPeak = 0.99) {
     auto processor = std::make_unique<MixEngine::Processor>();
 
     ProcessSetup setup{};
@@ -75,11 +75,11 @@ int impulsePeak(const std::vector<std::pair<ParamID,double>>& params) {
         const double a = std::abs(static_cast<double>(outL[static_cast<std::size_t>(i)]));
         if (a > peak) { peak = a; peakIndex = i; }
     }
-    if (peak < 0.99) throw 24;
+    if (!std::isfinite(peak) || peak < minPeak) throw 24;
     return peakIndex;
 }
 
-int mixFxImpulsePeak(const std::vector<std::pair<ParamID,double>>& params) {
+int mixFxImpulsePeak(const std::vector<std::pair<ParamID,double>>& params, double minPeak = 0.99) {
     auto processor = std::make_unique<MixEngine::Processor>();
 
     ProcessSetup setup{};
@@ -132,13 +132,13 @@ int mixFxImpulsePeak(const std::vector<std::pair<ParamID,double>>& params) {
         const double a=std::abs(static_cast<double>(outL[static_cast<std::size_t>(i)]));
         if(a>peak){peak=a;peakIndex=i;}
     }
-    if(peak<0.99) throw 35;
+    if(!std::isfinite(peak) || peak<minPeak) throw 35;
     return peakIndex;
 }
 
-bool expect21(const char* name,const std::vector<std::pair<ParamID,double>>& params) {
-    const int peak=impulsePeak(params);
-    const int mixPeak=mixFxImpulsePeak(params);
+bool expect21(const char* name,const std::vector<std::pair<ParamID,double>>& params,double minPeak=0.99) {
+    const int peak=impulsePeak(params,minPeak);
+    const int mixPeak=mixFxImpulsePeak(params,minPeak);
     std::cout << name << ": VST3 peak=" << peak << " MixFX peak=" << mixPeak << " samples\n";
     return peak == MixEngine::kFixedLatencySamples &&
            mixPeak == MixEngine::kFixedLatencySamples;
@@ -150,17 +150,19 @@ int main() {
         if (!expect21("linear", {})) return 1;
         if (!expect21("bypass", {{MixEngine::kParamBypass,1.0}})) return 2;
 
-        // A module whose nonlinear amount is zero must not be counted as an
-        // oversampling island. These cases catch conditional-latency wiring drift.
+        // Tube/Tape Amount=0 now intentionally retains a subtle enabled-stage
+        // character, so these are real oversampling islands. Their impulse can
+        // be attenuated by the nonlinear/filtered path, but the reported and
+        // compensated host latency must remain exactly 21 samples.
         if (!expect21("tube-on-amount-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamTubeOn,1.0},
-                       {MixEngine::kParamTubeAmount,0.0}})) return 3;
+                       {MixEngine::kParamTubeAmount,0.0}},0.20)) return 3;
 
         if (!expect21("tape-on-amount-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamTapeOn,1.0},
-                       {MixEngine::kParamTapeAmount,0.0}})) return 4;
+                       {MixEngine::kParamTapeAmount,0.0}},0.20)) return 4;
 
         if (!expect21("vinyl-on-color-wear-zero-high",
                       {{MixEngine::kParamQuality,1.0},
