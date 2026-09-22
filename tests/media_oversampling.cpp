@@ -66,7 +66,14 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params) {
     for (double p : params) for (double f : {9000.0, 15000.0}) {
         const double r1=residualRms(fn,p,1,f), r2=residualRms(fn,p,2,f), r4=residualRms(fn,p,4,f);
         const bool finite=std::isfinite(r1)&&std::isfinite(r2)&&std::isfinite(r4)&&r1<1e8&&r2<1e8&&r4<1e8;
-        const bool monotonic=finite && r2 < r1 && r4 <= r2 * 1.001;
+        // Tape shape=1 is deliberately an exact identity point. At that point
+        // there is no nonlinear aliasing to reduce, so residuals are only
+        // floating-point/filter-fit noise and must be judged by an absolute
+        // floor rather than a meaningless monotonic ordering.
+        const bool identity=std::abs(param-1.0)<1.0e-12;
+        const bool monotonic=finite && (identity
+            ? (r1<1.0e-8 && r2<1.0e-8 && r4<1.0e-8)
+            : (r2 < r1 && r4 <= r2 * 1.001));
         std::cout << name << " param=" << p << " f=" << f << "Hz residual 1x=" << r1 << " 2x=" << r2 << " 4x=" << r4
                   << " improvement2=" << 20.0*std::log10(r1/r2) << "dB improvement4=" << 20.0*std::log10(r1/r4) << "dB "
                   << (monotonic ? "PASS" : "FAIL") << '\n';
