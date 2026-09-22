@@ -296,8 +296,8 @@ jobs:
         if: success()
         shell: pwsh
         run: |
-          $packageRoot = "dist/125A-MixEngine-v1.0.0-Windows-x64"
-          $zipPath = "dist/125A-MixEngine-v1.0.0-Windows-x64-Gumroad.zip"
+          $packageRoot = "dist/125A-MixEngine-v1.1.0-Windows-x64"
+          $zipPath = "dist/125A-MixEngine-v1.1.0-Windows-x64-Gumroad.zip"
           if (Test-Path "dist") { Remove-Item "dist" -Recurse -Force }
           New-Item -ItemType Directory -Path "$packageRoot/VST3" -Force | Out-Null
           New-Item -ItemType Directory -Path "$packageRoot/Documentation" -Force | Out-Null
@@ -316,7 +316,7 @@ jobs:
           Copy-Item "LICENSE.txt" "$packageRoot/"
 
           @"
-          125A MixEngine v1.0.0 - Windows x64
+          125A MixEngine v1.1.0 - Windows x64
 
           INSTALLATION
           1. Close the DAW.
@@ -353,8 +353,8 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-MixEngine-v1.0.0-Gumroad
-          path: dist/125A-MixEngine-v1.0.0-Windows-x64-Gumroad.zip
+          name: 125A-MixEngine-v1.1.0-Gumroad
+          path: dist/125A-MixEngine-v1.1.0-Windows-x64-Gumroad.zip
           if-no-files-found: error
 
       - name: Upload Mix FX
