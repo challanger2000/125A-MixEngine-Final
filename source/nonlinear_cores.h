@@ -5,6 +5,15 @@
 
 namespace MixEngine {
 
+inline double analogCharacterAmount(double amount) noexcept {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    // A switched-on analogue stage is never perfectly invisible: keep a very
+    // small base character at 0%, then use a gentle concave curve so the lower
+    // third is useful while 100% still reaches the full model.
+    return 0.06 + 0.94 * std::pow(a, 0.85);
+}
+
+
 inline double consoleSoftClip(double x, double amount) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
     if (a <= 0.0)
@@ -56,12 +65,8 @@ inline double processConsoleNonlinearCore(double x,
 // existing processor convention: 0=12AU7, 1=12AT7, 2=12AX7.
 inline double processTubeNonlinearCore(double x, int type, double amount) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
-    if (a <= 0.0)
-        return x;
+    const double character = analogCharacterAmount(a);
 
-    // Keep a meaningful clean path at every setting. The tube stage is intended
-    // to add density and asymmetric harmonics without flattening transients into
-    // a fully-wet static waveshaper at maximum Amount.
     double drive = 1.75;
     double bias = 0.030;
     double asym = 0.020;
@@ -72,29 +77,27 @@ inline double processTubeNonlinearCore(double x, int type, double amount) noexce
         default: drive = 2.30; bias = 0.060; asym = 0.036; secondStage = 0.25; break;
     }
 
-    const double driven = x * (1.0 + (drive - 1.0) * a);
-    const double b = bias * a;
+    const double driven = x * (1.0 + (drive - 1.0) * character);
+    const double b = bias * character;
     const double centered = std::tanh(b);
     const double slope = std::max(1.0e-9, 1.0 - centered * centered);
 
-    // First triode-like stage: asymmetric, DC-centred and small-signal
-    // normalised so low-level material is not needlessly level-shifted.
     double first = (std::tanh(driven + b) - centered) / slope;
 
-    // Bounded even-harmonic term. Unlike the old x*abs(x) term, this cannot
-    // grow without bound at hot internal levels.
+    // Bounded even-harmonic term: contributes tube asymmetry without polynomial
+    // runaway on deliberately hot internal levels.
     const double d2 = driven * driven;
-    first += asym * a * (driven * std::abs(driven)) / (1.0 + 0.65 * d2);
+    first += asym * character * (driven * std::abs(driven)) / (1.0 + 0.65 * d2);
 
-    // A gentle second stage adds density progressively. Its contribution is
-    // deliberately parallel rather than replacing the first stage.
-    const double stage2Drive = 1.0 + secondStage * a;
+    // Gentle secondary curvature adds density without replacing the transient.
+    const double stage2Drive = 1.0 + secondStage * character;
     const double second = std::tanh(first * stage2Drive) / stage2Drive;
-    const double dense = first + (second - first) * (0.20 + 0.35 * a);
+    const double dense = first + (second - first) * (0.15 + 0.35 * character);
 
-    // Parallel tube blend: retain at least 20% of the original transient path
-    // even at maximum Amount.
-    const double wet = a * (0.22 + 0.58 * a);
+    // At 0% Amount the enabled stage contributes only 4% processed signal.
+    // The control then opens smoothly to 90% wet at 100%, leaving a small dry
+    // path even at the most aggressive setting.
+    const double wet = 0.04 + 0.86 * std::pow(a, 0.90);
     return x + (dense - x) * wet;
 }
 
