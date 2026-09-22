@@ -60,7 +60,7 @@ double residualRms(Fn&& fn, double param, int factor, double frequency) {
 }
 
 template <typename Fn>
-bool verify(const char* name, Fn&& fn, const std::vector<double>& params) {
+bool verify(const char* name, Fn&& fn, const std::vector<double>& params, bool identityAtOne=false) {
     bool ok = ecoExact(fn, params);
     std::cout << name << " Eco exact: " << (ok ? "yes" : "NO") << '\n';
     for (double p : params) for (double f : {9000.0, 15000.0}) {
@@ -70,7 +70,7 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params) {
         // there is no nonlinear aliasing to reduce, so residuals are only
         // floating-point/filter-fit noise and must be judged by an absolute
         // floor rather than a meaningless monotonic ordering.
-        const bool identity=std::abs(p-1.0)<1.0e-12;
+        const bool identity=identityAtOne && std::abs(p-1.0)<1.0e-12;
         const bool monotonic=finite && (identity
             ? (r1<1.0e-8 && r2<1.0e-8 && r4<1.0e-8)
             : (r2 < r1 && r4 <= r2 * 1.001));
@@ -86,7 +86,7 @@ bool verify(const char* name, Fn&& fn, const std::vector<double>& params) {
 int main() {
     // Exact live ranges: Tape shape = 1 + 0.42*amount -> [1,1.42].
     // Vinyl drive = 1 + 0.35*character + 0.25*wear -> [1,1.60].
-    const bool tape = verify("Tape", tapeLiveCore, {1.0, 1.21, 1.42});
+    const bool tape = verify("Tape", tapeLiveCore, {1.0, 1.21, 1.42}, true);
     const bool vinyl = verify("Vinyl", vinylLegacy, {1.0, 1.30, 1.60});
     if (!(tape && vinyl)) {
         std::cerr << "FAILED: Tape/Vinyl oversampling verification\n";
