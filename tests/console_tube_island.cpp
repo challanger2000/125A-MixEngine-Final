@@ -7,14 +7,16 @@
 
 int main() {
     MixEngine::OversamplingEngine os;
-    double maxNeutralError = 0.0;
+    double maxBaseDelta = 0.0;
+    double baseDeltaSq = 0.0;
+    std::size_t baseDeltaCount = 0;
     double maxEcoError = 0.0;
     double maxAbs = 0.0;
     bool finite = true;
 
-    // The live Tube core must remain exactly neutral at Amount=0, finite over
-    // a deliberately hot range, and bounded enough that accidental polynomial
-    // runaway is caught immediately.
+    // With Tube enabled, Amount=0 intentionally retains a subtle hardware-like
+    // base character. It must be non-zero but restrained over the normal +/-1
+    // signal range, while all settings remain finite and bounded when driven hot.
     for (int type = 0; type < 3; ++type) {
         for (int ai = 0; ai <= 20; ++ai) {
             const double amount = static_cast<double>(ai) / 20.0;
@@ -23,8 +25,12 @@ int main() {
                 const double y = MixEngine::processTubeNonlinearCore(x, type, amount);
                 finite = finite && std::isfinite(y);
                 maxAbs = std::max(maxAbs, std::abs(y));
-                if (amount == 0.0)
-                    maxNeutralError = std::max(maxNeutralError, std::abs(y - x));
+                if (amount == 0.0 && std::abs(x) <= 1.0) {
+                    const double d = y - x;
+                    maxBaseDelta = std::max(maxBaseDelta, std::abs(d));
+                    baseDeltaSq += d * d;
+                    ++baseDeltaCount;
+                }
             }
         }
     }
@@ -75,12 +81,17 @@ int main() {
 
     constexpr double kExactTolerance = 1.0e-15;
     constexpr double kSanityBound = 8.0;
-    std::cout << "Tube Amount=0 neutral max error: " << maxNeutralError << "\n";
+    const double baseDeltaRms = baseDeltaCount > 0
+        ? std::sqrt(baseDeltaSq / static_cast<double>(baseDeltaCount)) : 0.0;
+    std::cout << "Tube Amount=0 base-colour max delta (+/-1): " << maxBaseDelta << "\n";
+    std::cout << "Tube Amount=0 base-colour RMS delta (+/-1): " << baseDeltaRms << "\n";
     std::cout << "Console+Tube live island Eco max error: " << maxEcoError << "\n";
     std::cout << "Tube/island maximum absolute output: " << maxAbs << "\n";
     std::cout << "Finite 1x/2x/4x: " << (finite ? "yes" : "no") << "\n";
 
-    if (!finite || maxNeutralError > kExactTolerance || maxEcoError > kExactTolerance || maxAbs > kSanityBound) {
+    if (!finite || maxBaseDelta < 1.0e-5 || maxBaseDelta > 0.02 ||
+        baseDeltaRms < 1.0e-6 || baseDeltaRms > 0.01 ||
+        maxEcoError > kExactTolerance || maxAbs > kSanityBound) {
         std::cerr << "FAILED: live Console/Tube nonlinear island contract\n";
         return 1;
     }
