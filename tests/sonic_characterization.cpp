@@ -218,6 +218,76 @@ int main() {
             }
         }
 
+        std::cout<<"=== V2 parameter-family signatures at -18 dBFS ===\n";
+
+        // Console modes: same Drive, same level, genuinely different transfer families.
+        for(int mode=0;mode<4;++mode) {
+            const double a=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,a,{
+                {MixEngine::kParamConsoleOn,1.0},
+                {MixEngine::kParamConsoleMode,static_cast<double>(mode)/3.0},
+                {MixEngine::kParamConsoleDrive,0.5}
+            });
+            const auto h=analyze(out,1000.0);
+            printRow((std::string("ConsoleM")+std::to_string(mode)).c_str(),-18.0,1000.0,h,a);
+        }
+
+        // Tube voices: Soft/Balanced/Hot must expose their own harmonic/dynamic signatures.
+        for(int type=0;type<3;++type) {
+            const double a=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,a,{
+                {MixEngine::kParamTubeOn,1.0},
+                {MixEngine::kParamTubeType,static_cast<double>(type)/2.0},
+                {MixEngine::kParamTubeAmount,0.5}
+            });
+            const auto h=analyze(out,1000.0);
+            printRow((std::string("TubeV")+std::to_string(type)).c_str(),-18.0,1000.0,h,a);
+        }
+
+        // Tape speed is a coupled operating mode. Report LF/body, mid and HF
+        // signatures separately so 7.5/15/30 ips cannot collapse to one curve.
+        for(int speed=0;speed<3;++speed) {
+            for(double frequency:{80.0,1000.0,8000.0}) {
+                const double a=dbToGain(-18.0);
+                const auto out=renderSine(frequency,a,{
+                    {MixEngine::kParamTapeOn,1.0},
+                    {MixEngine::kParamTapeSpeed,static_cast<double>(speed)/2.0},
+                    {MixEngine::kParamTapeAmount,0.5},
+                    {MixEngine::kParamTapeStability,1.0}
+                });
+                const auto h=analyze(out,frequency);
+                printRow((std::string("TapeS")+std::to_string(speed)).c_str(),-18.0,frequency,h,a);
+            }
+        }
+
+        // Glue RESPONSE is primarily dynamic, but its steady-state operating
+        // point should still be visible at a common production level.
+        for(double response:{0.0,0.5,1.0}) {
+            const double a=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,a,{
+                {MixEngine::kParamGlueOn,1.0},
+                {MixEngine::kParamGlueAmount,0.5},
+                {MixEngine::kParamGlueCharacter,response}
+            });
+            const auto h=analyze(out,1000.0);
+            printRow((std::string("GlueR")+std::to_string(static_cast<int>(response*2.0))).c_str(),-18.0,1000.0,h,a);
+        }
+
+        // Wear should progressively affect HF more strongly than the midband.
+        for(double wear:{0.0,0.25,0.50,0.75,1.0}) {
+            for(double frequency:{1000.0,8000.0}) {
+                const double a=dbToGain(-18.0);
+                const auto out=renderSine(frequency,a,{
+                    {MixEngine::kParamVinylOn,1.0},
+                    {MixEngine::kParamVinylCharacter,0.5},
+                    {MixEngine::kParamVinylWear,wear},
+                    {MixEngine::kParamVinylNoise,0.0}
+                });
+                const auto h=analyze(out,frequency);
+                printRow((std::string("VinylW")+std::to_string(static_cast<int>(wear*100.0))).c_str(),-18.0,frequency,h,a);
+            }
+        }
+
         std::cout<<"Sonic characterization completed with finite results\n";
         return 0;
     } catch(int code) {
