@@ -41,6 +41,27 @@ struct ContinuousSmoothingState {
     }
 };
 
+struct CharacterMorphState {
+    int tubeFrom = 0;
+    int tubeTo = 0;
+    double tubeMix = 1.0;
+    bool tubeInitialized = false;
+
+    int tapeFrom = 1;
+    int tapeTo = 1;
+    double tapeMix = 1.0;
+    bool tapeInitialized = false;
+
+    void reset() noexcept {
+        tubeFrom = tubeTo = 0;
+        tubeMix = 1.0;
+        tubeInitialized = false;
+        tapeFrom = tapeTo = 1;
+        tapeMix = 1.0;
+        tapeInitialized = false;
+    }
+};
+
 class Processor final : public Steinberg::Vst::AudioEffect
 #ifndef MIXENGINE_CHANNEL_BUILD
                         , public PresonusMixFx::IAudioMixProcessor
@@ -115,6 +136,8 @@ private:
     Steinberg::int32 blockAutomationSamples_ = 0;
     ContinuousSmoothingState channelSmoothing_{};
     std::array<ContinuousSmoothingState,kMaxMixFxChannels> mixFxSmoothing_{};
+    CharacterMorphState channelCharacterMorph_{};
+    std::array<CharacterMorphState,kMaxMixFxChannels> mixFxCharacterMorph_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
     std::array<std::array<ConsoleChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleState_{};
     std::array<TubeChannelState,kMaxAudioChannels> tubeState_{};
