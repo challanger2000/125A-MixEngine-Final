@@ -72,10 +72,10 @@ private:
 #else
     static constexpr int kMaxMixFxChannels = 128;
 #endif
-    struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
-    struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0; std::uint32_t noiseRng=0; };
+    struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,transformerMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
+    struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; };
     struct GlueChannelState { double envelope=0.0; };
-    struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
+    struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
     using StereoChannelState = StereoFieldState;
     void readParameterChanges(Steinberg::Vst::IParameterChanges* changes);
     void syncMixFxTargets();
@@ -85,11 +85,11 @@ private:
                                 bool outputSource, Steinberg::int32 numSamples);
     void sendMeterExchange(double vuL, double vuR, double clipL, double clipR,
                            Steinberg::int32 numSamples);
-    double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive);
-    double processTubeSample(double x, int type, double amount) const;
-    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability);
+    double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive, int osFactor, double noiseAmount, double calibrationNorm);
+    double processTubeSample(double x, double typeMorph, double amount) const;
+    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, double speedMorph, double amount, double stability, int osFactor, double noiseAmount, double calibrationNorm);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
-    double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear);
+    double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear, int osFactor, double noiseAmount, double calibrationNorm);
     double dcBlock(double x, ConsoleChannelState& state);
 #ifndef MIXENGINE_CHANNEL_BUILD
     Steinberg::tresult processMixFxChannelInternal(Steinberg::int32 index, Steinberg::Vst::ProcessData& data);
@@ -98,6 +98,14 @@ private:
     double mixFxCrosstalkSource(Steinberg::int32 targetIndex, Steinberg::int32 lane, Steinberg::int32 sampleIndex) const noexcept;
 #endif
     std::array<double,kParamCount> params_{};
+    // Short character ramps keep stepped selector changes and host automation
+    // click-free without changing the existing three-position GUI.
+    double tubeTypeMorphState_=0.5;
+    double tapeSpeedMorphState_=0.5;
+    double tubeCompGainState_=1.0;
+    std::array<double,kMaxMixFxChannels> mixFxTubeTypeMorphState_{};
+    std::array<double,kMaxMixFxChannels> mixFxTapeSpeedMorphState_{};
+    std::array<double,kMaxMixFxChannels> mixFxTubeCompGainState_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
     std::array<std::array<ConsoleChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleState_{};
     std::array<TapeChannelState,kMaxAudioChannels> tapeState_{};
@@ -139,6 +147,14 @@ private:
     std::array<Steinberg::int32,kMaxMixFxChannels> mixFxSnapshotChannels_{};
     Steinberg::int32 mixFxSnapshotCapacity_=0;
     std::atomic<Steinberg::int32> mixFxSnapshotSamples_{0};
+
+    struct MixFxAutomationPoint {
+        Steinberg::int32 offset=0;
+        double value=0.0;
+    };
+    std::array<std::vector<MixFxAutomationPoint>,kParamCount> mixFxAutomation_{};
+    std::array<double,kParamCount> mixFxBlockStartParams_{};
+    Steinberg::int32 mixFxAutomationSamples_=0;
 #endif
     Steinberg::Vst::DataExchangeHandler meterExchange_;
     int meterExchangeCountdown_=0;
