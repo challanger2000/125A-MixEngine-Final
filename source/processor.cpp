@@ -523,10 +523,14 @@ double Processor::processTapeSample(double x,
         if (state.noiseRng == 0u)
             state.noiseRng = makeNoiseSeed(sourceIndex, lane, 0x7A9E51A5u);
         const double white = randomBipolar(state.noiseRng);
+        const double hissCorner =
+            speed == 0 ? 850.0 : (speed == 1 ? 1200.0 : 1750.0);
         const double hissCoeff =
-            1.0 - std::exp(-2.0 * kPi * 1200.0 / sampleRate_);
+            1.0 - std::exp(-2.0 * kPi * hissCorner / sampleRate_);
         state.hissMemory += hissCoeff * (white - state.hissMemory);
-        const double hiss = white - 0.78 * state.hissMemory;
+        const double hissTilt =
+            speed == 0 ? 0.82 : (speed == 1 ? 0.78 : 0.72);
+        const double hiss = white - hissTilt * state.hissMemory;
         const double n = noiseAmount * noiseAmount;
         const double sourceScale =
             (mixFxEngaged_ && mixFxChannelCount_ > 1)
