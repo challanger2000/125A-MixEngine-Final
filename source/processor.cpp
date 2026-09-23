@@ -185,7 +185,167 @@ void Processor::publishMeterParameters(IParameterChanges* changes,double vuL,dou
 double Processor::dcBlock(double x,ConsoleChannelState& state){const double y=x-state.dcX1+dcCoeff_*state.dcY1;state.dcX1=x;state.dcY1=y;return y;}
 double Processor::processConsoleSample(double x,ConsoleChannelState& state,int sourceIndex,int lane,int mode,double drive){const double variation=stableVariation(sourceIndex,lane),tolerance=1.0+0.008*variation,bias=0.0015*variation;x=x*tolerance+bias*drive;state.lowMemory+=lowCoeff_*(x-state.lowMemory);const double low=state.lowMemory,high=x-state.lowMemory;OversamplingEngine* engine=nullptr;int* currentFactor=nullptr;const int factor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){engine=&mixFxConsoleOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];currentFactor=&mixFxConsoleOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{engine=&consoleOversampling_[static_cast<std::size_t>(lane)];currentFactor=&consoleOversamplingFactor_[static_cast<std::size_t>(lane)];}double y=processConsoleOversampledCore(*engine,*currentFactor,factor,x,low,high,mode,drive);y=dcBlock(y,state);const double noiseAmount=std::clamp(mixFxEngaged_?mixFxConsoleNoise_.load(std::memory_order_relaxed):params_[kParamConsoleNoise],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xC01150E1u);const double white=randomBipolar(state.noiseRng),coeff=1.0-std::exp(-2.0*kPi*6500.0/sampleRate_);state.noiseMemory+=coeff*(white-state.noiseMemory);const double colored=0.72*white+0.28*state.noiseMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration]));y+=colored*0.00025*n*sourceScale*calibrationNorm;}return y;}
 double Processor::processTubeSample(double x,TubeChannelState& state,int type,double amount,double effectiveSampleRate)const{return processTubeModelV2(x,state,type,amount,effectiveSampleRate);}
-double Processor::processTapeSample(double x,TapeChannelState& state,int sourceIndex,int lane,int speed,double amount,double stability){const double a=std::clamp(amount,0.0,1.0),character=analogCharacterAmount(a);speed=std::clamp(speed,0,2);const double instability=1.0-std::clamp(stability,0.0,1.0);double cutoff=15000.0,bumpFreq=80.0,bumpAmount=0.025;switch(speed){case 0:cutoff=11000.0;bumpFreq=65.0;bumpAmount=0.045;break;case 1:break;default:cutoff=19000.0;bumpFreq=100.0;bumpAmount=0.010;break;}cutoff=std::min(cutoff,sampleRate_*0.45);const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bumpCoeff=1.0-std::exp(-2.0*kPi*bumpFreq/sampleRate_),wowHz=speed==0?0.42:(speed==1?0.50:0.58),flutterHz=speed==0?5.2:(speed==1?6.0:6.8);state.wowPhase+=2.0*kPi*wowHz/sampleRate_;state.flutterPhase+=2.0*kPi*flutterHz/sampleRate_;if(state.wowPhase>=2.0*kPi)state.wowPhase-=2.0*kPi;if(state.flutterPhase>=2.0*kPi)state.flutterPhase-=2.0*kPi;const double derivative=x-state.previousInput;state.previousInput=x;const double motion=0.75*std::sin(state.wowPhase)+0.25*std::sin(state.flutterPhase),transport=x+derivative*motion*(0.35*instability*instability);const double attack=std::exp(-1.0/(0.001*2.5*sampleRate_)),release=std::exp(-1.0/(0.001*85.0*sampleRate_)),level=std::abs(transport);state.compressionEnvelope=(level>state.compressionEnvelope?attack:release)*state.compressionEnvelope+(1.0-(level>state.compressionEnvelope?attack:release))*level;const double over=std::max(0.0,state.compressionEnvelope-0.20),dynamicGain=1.0/(1.0+1.10*character*over),compressed=transport*dynamicGain,shape=1.0+0.55*character;OversamplingEngine* osEngine=nullptr;int* osCurrentFactor=nullptr;const int osFactor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){osEngine=&mixFxTapeOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];osCurrentFactor=&mixFxTapeOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{osEngine=&tapeOversampling_[static_cast<std::size_t>(lane)];osCurrentFactor=&tapeOversamplingFactor_[static_cast<std::size_t>(lane)];}const double saturated=processTapeOversampledCore(*osEngine,*osCurrentFactor,osFactor,compressed,shape);state.highMemory+=highCoeff*(saturated-state.highMemory);state.lowMemory+=bumpCoeff*(state.highMemory-state.lowMemory);const double tape=state.highMemory+bumpAmount*character*state.lowMemory,wet=0.04+0.78*std::pow(a,0.90);LatencyAligner* dryAligner=mixFxEngaged_?&mixFxTapeDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&tapeDryAligner_[static_cast<std::size_t>(lane)];const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));double y=dry+(tape-dry)*wet;const double noiseAmount=std::clamp(mixFxEngaged_?mixFxTapeHiss_.load(std::memory_order_relaxed):params_[kParamTapeHiss],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0x7A9E51A5u);const double white=randomBipolar(state.noiseRng),hissCoeff=1.0-std::exp(-2.0*kPi*1200.0/sampleRate_);state.hissMemory+=hissCoeff*(white-state.hissMemory);const double hiss=white-0.78*state.hissMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration])),speedTone=speed==0?0.80:(speed==1?1.0:1.12);y+=hiss*0.0070*speedTone*n*sourceScale*calibrationNorm;}return y;}
+double Processor::processTapeSample(double x,
+                                    TapeChannelState& state,
+                                    int sourceIndex,
+                                    int lane,
+                                    int speed,
+                                    double amount,
+                                    double stability) {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    const double character = analogCharacterAmount(a);
+    speed = std::clamp(speed, 0, 2);
+    const double instability = 1.0 - std::clamp(stability, 0.0, 1.0);
+
+    // Speed is one coupled operating mode: slower tape saturates sooner,
+    // carries a stronger/lower head bump and loses more HF. High-level
+    // material increases the HF loss slightly, as expected from tape driven
+    // further into its magnetic operating region.
+    double cutoff = 18000.0;
+    double bumpFreq = 78.0;
+    double bumpAmount = 0.050;
+    double compressionStrength = 0.95;
+    switch (speed) {
+        case 0:
+            cutoff = 14500.0;
+            bumpFreq = 58.0;
+            bumpAmount = 0.078;
+            compressionStrength = 1.18;
+            break;
+        case 1:
+            break;
+        default:
+            cutoff = 21500.0;
+            bumpFreq = 108.0;
+            bumpAmount = 0.028;
+            compressionStrength = 0.72;
+            break;
+    }
+
+    // Deterministic transport movement. This remains intentionally subtle; the
+    // magnetic and loss model is the main colour mechanism.
+    const double wowHz = speed == 0 ? 0.38 : (speed == 1 ? 0.48 : 0.58);
+    const double flutterHz = speed == 0 ? 4.7 : (speed == 1 ? 5.8 : 7.0);
+    state.wowPhase += 2.0 * kPi * wowHz / sampleRate_;
+    state.flutterPhase += 2.0 * kPi * flutterHz / sampleRate_;
+    if (state.wowPhase >= 2.0 * kPi) state.wowPhase -= 2.0 * kPi;
+    if (state.flutterPhase >= 2.0 * kPi) state.flutterPhase -= 2.0 * kPi;
+
+    const double derivative = x - state.previousInput;
+    state.previousInput = x;
+    const double motion =
+        0.78 * std::sin(state.wowPhase) +
+        0.22 * std::sin(state.flutterPhase);
+    const double transport =
+        x + derivative * motion * (0.16 * instability * instability);
+
+    // Program-dependent tape compression. Attack and release themselves move
+    // slightly with Amount, rather than applying a static post-waveshaper gain.
+    const double attackMs = 1.8 + 2.0 * (1.0 - character);
+    const double releaseMs = 72.0 + 58.0 * (1.0 - character);
+    const double attack = std::exp(-1.0 / (0.001 * attackMs * sampleRate_));
+    const double release = std::exp(-1.0 / (0.001 * releaseMs * sampleRate_));
+    const double level = std::abs(transport);
+    const double envCoeff = level > state.compressionEnvelope ? attack : release;
+    state.compressionEnvelope =
+        envCoeff * state.compressionEnvelope +
+        (1.0 - envCoeff) * level;
+
+    const double threshold = 0.17 + 0.05 * (1.0 - character);
+    const double over = std::max(0.0, state.compressionEnvelope - threshold);
+    const double dynamicGain =
+        1.0 / (1.0 + compressionStrength * character * over);
+    const double compressed = transport * dynamicGain;
+
+    OversamplingEngine* osEngine = nullptr;
+    int* osCurrentFactor = nullptr;
+    const int osFactor = qualityFactor(
+        mixFxEngaged_
+            ? mixFxQuality_.load(std::memory_order_relaxed)
+            : params_[kParamQuality]);
+
+    if (mixFxEngaged_) {
+        osEngine = &mixFxTapeOversampling_[static_cast<std::size_t>(sourceIndex)]
+                                          [static_cast<std::size_t>(lane)];
+        osCurrentFactor =
+            &mixFxTapeOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
+                                         [static_cast<std::size_t>(lane)];
+    } else {
+        osEngine = &tapeOversampling_[static_cast<std::size_t>(lane)];
+        osCurrentFactor = &tapeOversamplingFactor_[static_cast<std::size_t>(lane)];
+    }
+
+    if (*osCurrentFactor != osFactor) {
+        osEngine->reset();
+        *osCurrentFactor = osFactor;
+        state.magnetic.reset();
+    }
+
+    const double magnetic = osEngine->process(
+        compressed, osFactor,
+        [&](double v) {
+            return processTapeMagneticV2(v, state.magnetic, speed, a);
+        });
+
+    // Level-dependent HF loss and a broad two-pole head-bump approximation.
+    const double hfStress =
+        std::clamp(over * (1.3 + 1.2 * character), 0.0, 1.0);
+    cutoff *= (1.0 - 0.20 * character * hfStress);
+    cutoff = std::clamp(cutoff, 7000.0, sampleRate_ * 0.45);
+    const double highCoeff =
+        1.0 - std::exp(-2.0 * kPi * cutoff / sampleRate_);
+    state.highMemory += highCoeff * (magnetic - state.highMemory);
+
+    const double fastCoeff =
+        1.0 - std::exp(-2.0 * kPi * (bumpFreq * 1.85) / sampleRate_);
+    const double slowCoeff =
+        1.0 - std::exp(-2.0 * kPi * (bumpFreq * 0.52) / sampleRate_);
+    state.bumpFast += fastCoeff * (state.highMemory - state.bumpFast);
+    state.bumpSlow += slowCoeff * (state.highMemory - state.bumpSlow);
+    const double bumpBand = state.bumpFast - state.bumpSlow;
+
+    const double tape =
+        state.highMemory + bumpAmount * character * bumpBand;
+
+    const double wet = 0.05 + 0.90 * std::pow(a, 0.86);
+    LatencyAligner* dryAligner =
+        mixFxEngaged_
+            ? &mixFxTapeDryAligner_[static_cast<std::size_t>(sourceIndex)]
+                                     [static_cast<std::size_t>(lane)]
+            : &tapeDryAligner_[static_cast<std::size_t>(lane)];
+    const double dry =
+        dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
+    double y = dry + (tape - dry) * wet;
+
+    const double noiseAmount = std::clamp(
+        mixFxEngaged_
+            ? mixFxTapeHiss_.load(std::memory_order_relaxed)
+            : params_[kParamTapeHiss],
+        0.0, 1.0);
+    if (noiseAmount > 0.0) {
+        if (state.noiseRng == 0u)
+            state.noiseRng = makeNoiseSeed(sourceIndex, lane, 0x7A9E51A5u);
+        const double white = randomBipolar(state.noiseRng);
+        const double hissCoeff =
+            1.0 - std::exp(-2.0 * kPi * 1200.0 / sampleRate_);
+        state.hissMemory += hissCoeff * (white - state.hissMemory);
+        const double hiss = white - 0.78 * state.hissMemory;
+        const double n = noiseAmount * noiseAmount;
+        const double sourceScale =
+            (mixFxEngaged_ && mixFxChannelCount_ > 1)
+                ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
+                : 1.0;
+        const double calibrationNorm = dbToGain(-calibrationReferenceDb(
+            mixFxEngaged_
+                ? mixFxCalibration_.load(std::memory_order_relaxed)
+                : params_[kParamCalibration]));
+        const double speedTone =
+            speed == 0 ? 0.82 : (speed == 1 ? 1.0 : 1.10);
+        y += hiss * 0.0065 * speedTone * n * sourceScale * calibrationNorm;
+    }
+
+    return std::clamp(y, -6.0, 6.0);
+}
 double Processor::processGlueGain(double detector,GlueChannelState& state,double amount,double character)const{const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0),attackMs=12.0-8.0*c,releaseMs=280.0-140.0*c,attackCoeff=std::exp(-1.0/(0.001*attackMs*sampleRate_)),releaseCoeff=std::exp(-1.0/(0.001*releaseMs*sampleRate_));detector=std::abs(detector);if(detector>state.envelope)state.envelope=attackCoeff*state.envelope+(1.0-attackCoeff)*detector;else state.envelope=releaseCoeff*state.envelope+(1.0-releaseCoeff)*detector;const double thresholdDb=-10.0-8.0*a,ratio=1.0+1.7*a+0.6*c*a,kneeDb=7.0,envDb=gainToDb(state.envelope),overDb=envDb-thresholdDb;double gr=0.0;if(overDb>kneeDb*0.5)gr=overDb-overDb/ratio;else if(overDb>-kneeDb*0.5){const double p=overDb+kneeDb*0.5;gr=(1.0-1.0/ratio)*p*p/(2.0*kneeDb);}const double compressedGain=dbToGain(-gr),wet=0.20+0.45*a;return 1.0+(compressedGain-1.0)*wet*a;}
 double Processor::processVinylSample(double x,VinylChannelState& state,int sourceIndex,int lane,double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);double y=x;if(c>0.0||w>0.0){double cutoff=19000.0-5500.0*c-7500.0*w;cutoff=std::clamp(cutoff,5500.0,sampleRate_*0.45);const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bodyCoeff=1.0-std::exp(-2.0*kPi*220.0/sampleRate_);state.highMemory+=highCoeff*(x-state.highMemory);state.lowMemory+=bodyCoeff*(state.highMemory-state.lowMemory);const double bodyBoost=0.030*c+0.020*w,colored=state.highMemory+bodyBoost*state.lowMemory,drive=1.0+0.35*c+0.25*w;OversamplingEngine* osEngine=nullptr;int* osCurrentFactor=nullptr;const int osFactor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){osEngine=&mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];osCurrentFactor=&mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{osEngine=&vinylOversampling_[static_cast<std::size_t>(lane)];osCurrentFactor=&vinylOversamplingFactor_[static_cast<std::size_t>(lane)];}const double shaped=processVinylOversampledCore(*osEngine,*osCurrentFactor,osFactor,colored,drive),wet=std::clamp(0.12+0.43*c+0.30*w,0.0,0.85);LatencyAligner* dryAligner=mixFxEngaged_?&mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&vinylDryAligner_[static_cast<std::size_t>(lane)];const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));y=dry+(shaped-dry)*wet;}const double noiseAmount=std::clamp(mixFxEngaged_?mixFxVinylNoise_.load(std::memory_order_relaxed):params_[kParamVinylNoise],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xB17E4A11u);const double white=randomBipolar(state.noiseRng),surfaceCoeff=1.0-std::exp(-2.0*kPi*7000.0/sampleRate_);state.surfaceMemory+=surfaceCoeff*(white-state.surfaceMemory);const double surface=0.52*white+0.48*state.surfaceMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration])),surfaceLevel=0.0070*(0.75+0.75*w);y+=surface*surfaceLevel*n*sourceScale*calibrationNorm;const double clickRateHz=(0.12+2.2*w*w)*noiseAmount,eventProbe=0.5*(randomBipolar(state.noiseRng)+1.0);if(eventProbe<clickRateHz/sampleRate_){const double randomLevel=0.5*(randomBipolar(state.noiseRng)+1.0);state.clickEnvelope=0.018+0.055*randomLevel*(0.35+0.65*w);state.clickPolarity=randomBipolar(state.noiseRng)>=0.0?1.0:-1.0;}const double clickDecayMs=0.7+1.8*w,clickDecay=std::exp(-1.0/(0.001*clickDecayMs*sampleRate_));y+=state.clickPolarity*state.clickEnvelope*n*sourceScale*calibrationNorm;state.clickEnvelope*=clickDecay;if(state.clickEnvelope<1.0e-10)state.clickEnvelope=0.0;}return y;}
 void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
