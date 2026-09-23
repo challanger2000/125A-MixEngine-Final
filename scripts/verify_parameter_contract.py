@@ -325,6 +325,22 @@ for needle in (
     if needle not in processor and needle not in processor_h:
         fail(f"sample-offset automation infrastructure missing: {needle}")
 
+# Every continuous control used by both Channel and Mix FX must have its
+# smoothing state explicitly initialized in both paths. This catches the subtle
+# case where a new smoothed parameter defaults to zero in only one variant.
+for param in (
+    "kParamInput", "kParamOutput", "kParamConsoleDrive", "kParamConsoleNoise",
+    "kParamTubeAmount", "kParamTapeAmount", "kParamTapeStability",
+    "kParamTapeHiss", "kParamGlueAmount", "kParamGlueCharacter",
+    "kParamVinylCharacter", "kParamVinylWear", "kParamVinylNoise",
+    "kParamDepth", "kParamWidth", "kParamLowMono",
+):
+    if processor.count(f"smooth.current[{param}]") < 2:
+        fail(f"Channel/MixFX smoothing initialization incomplete for {param}")
+
+if processor.count("smooth.current[kParamConsoleCrosstalk]") < 1:
+    fail("Mix FX Crosstalk smoothing initialization missing")
+
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
     fail("shared calibrated VU scale mapping missing")
