@@ -1553,8 +1553,12 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         smooth.current[kParamTubeAmount] = tubeTarget;
         smooth.current[kParamTapeAmount] = tapeTarget;
         smooth.current[kParamTapeStability] = stabilityTarget;
+        smooth.current[kParamTapeHiss] = tapeHissTarget;
         smooth.current[kParamGlueAmount] = glueTarget;
         smooth.current[kParamGlueCharacter] = glueCharacterTarget;
+        smooth.current[kParamVinylCharacter] = vinylCharacterTarget;
+        smooth.current[kParamVinylWear] = vinylWearTarget;
+        smooth.current[kParamVinylNoise] = vinylNoiseTarget;
         smooth.current[kParamDepth] = depthTarget;
         smooth.current[kParamWidth] = widthTarget;
         smooth.current[kParamLowMono] = lowMonoTarget;
