@@ -234,6 +234,25 @@ int main(){
             if(!std::isfinite(r.ratio)||r.maxAbs>8.0)ok=false;
         }
 
+        std::cout<<"=== Discrete transition characterization ===\n";
+        const std::vector<std::tuple<const char*,std::vector<Param>,ParamID,double,double>> discreteCases={
+            {"Bypass",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.65}},MixEngine::kParamBypass,0.0,1.0},
+            {"ConsoleOn",{{MixEngine::kParamConsoleDrive,0.65}},MixEngine::kParamConsoleOn,0.0,1.0},
+            {"ConsoleMode",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.65}},MixEngine::kParamConsoleMode,0.0,1.0},
+            {"TubeOn",{{MixEngine::kParamTubeAmount,0.65}},MixEngine::kParamTubeOn,0.0,1.0},
+            {"TubeType",{{MixEngine::kParamTubeOn,1.0},{MixEngine::kParamTubeAmount,0.65}},MixEngine::kParamTubeType,0.0,1.0},
+            {"TapeOn",{{MixEngine::kParamTapeAmount,0.65},{MixEngine::kParamTapeStability,1.0}},MixEngine::kParamTapeOn,0.0,1.0},
+            {"TapeSpeed",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeAmount,0.65},{MixEngine::kParamTapeStability,1.0}},MixEngine::kParamTapeSpeed,0.0,1.0},
+            {"GlueOn",{{MixEngine::kParamGlueAmount,0.65},{MixEngine::kParamGlueCharacter,0.5}},MixEngine::kParamGlueOn,0.0,1.0},
+            {"VinylOn",{{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.25}},MixEngine::kParamVinylOn,0.0,1.0}
+        };
+        for(const auto& item:discreteCases){
+            const auto r=measure(std::get<1>(item),std::get<2>(item),
+                                 std::get<3>(item),std::get<4>(item));
+            report(std::get<0>(item),r);
+            if(!std::isfinite(r.ratio)||r.maxAbs>8.0)ok=false;
+        }
+
         const auto offset=measureInBlockInputRamp();
         std::cout<<"InBlockInputRamp preGain="<<offset.preGain
                  <<" rampGain="<<offset.rampGain
