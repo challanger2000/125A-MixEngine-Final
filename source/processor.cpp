@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <xmmintrin.h>
 
 namespace MixEngine {
 
@@ -19,6 +20,20 @@ using namespace Steinberg;
 using namespace Steinberg::Vst;
 
 namespace {
+class ScopedNoDenormals {
+public:
+    ScopedNoDenormals() noexcept : previous_(_mm_getcsr()) {
+        // FTZ (bit 15) + DAZ (bit 6). Restore the host thread state when the
+        // audio callback returns; no persistent floating-point environment change.
+        _mm_setcsr(previous_ | 0x8040u);
+    }
+    ~ScopedNoDenormals() noexcept { _mm_setcsr(previous_); }
+    ScopedNoDenormals(const ScopedNoDenormals&) = delete;
+    ScopedNoDenormals& operator=(const ScopedNoDenormals&) = delete;
+private:
+    unsigned int previous_;
+};
+
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kDefaults[kParamCount] = {
     0.0, 0.5, 0.5, 1.0,
@@ -431,6 +446,7 @@ tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
 }
 
 tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
+ ScopedNoDenormals noDenormals;
  if(index<0||index>=kMaxMixFxChannels)return kInvalidArgument;
  if(mixFxChannelCount_>0&&index>=mixFxChannelCount_)return kInvalidArgument;
  if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;
@@ -646,6 +662,7 @@ tresult PLUGIN_API Processor::processMixChannel(int32 index,ProcessData* data){i
 
 
 tresult PLUGIN_API Processor::process(ProcessData& data){
+    ScopedNoDenormals noDenormals;
     // Mix FX control is handled by processMixControl/processMixChannel. Preserve
     // the existing control path here while the standard VST3 path below applies
     // automation at the exact sample offsets supplied by the host.
