@@ -25,10 +25,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package | Out-Null
-          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine V2.vst3" | Select-Object -First 1
-          $ch  = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine V2 Channel.vst3" | Select-Object -First 1
-          if(-not $mix){ throw "125A-MixEngine V2.vst3 not found" }
-          if(-not $ch){ throw "125A-MixEngine V2 Channel.vst3 not found" }
+          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V2.vst3" | Select-Object -First 1
+          $ch  = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V2-Channel.vst3" | Select-Object -First 1
+          if(-not $mix){ throw "125A-MixEngine-V2.vst3 not found" }
+          if(-not $ch){ throw "125A-MixEngine-V2-Channel.vst3 not found" }
           Copy-Item $mix.FullName package -Recurse
           Copy-Item $ch.FullName package -Recurse
           Compress-Archive -Path package\* -DestinationPath "125A-MixEngine-V2-Test-Windows-x64.zip"
