@@ -405,7 +405,7 @@ double Processor::processTapeSample(double x,
     const double magnetic = osEngine->process(
         compressed, osFactor,
         [&](double v) {
-            return processTapeMagneticV2(v, state.magnetic, speed, a);
+            return processTapeMagneticV2(v, state.magnetic, speed, a, sampleRate_ * static_cast<double>(osFactor));
         });
 
     // Level-dependent HF loss and a broad two-pole head-bump approximation.
