@@ -247,7 +247,7 @@ int main() {
         // Tape speed is a coupled operating mode. Report LF/body, mid and HF
         // signatures separately so 7.5/15/30 ips cannot collapse to one curve.
         for(int speed=0;speed<3;++speed) {
-            for(double frequency:{80.0,1000.0,8000.0}) {
+            for(double frequency:{40.0,55.0,80.0,125.0,1000.0,8000.0,12000.0}) {
                 const double a=dbToGain(-18.0);
                 const auto out=renderSine(frequency,a,{
                     {MixEngine::kParamTapeOn,1.0},
