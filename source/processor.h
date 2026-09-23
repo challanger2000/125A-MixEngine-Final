@@ -89,7 +89,7 @@ private:
     struct GlueChannelState { double fastEnvelope=0.0,slowEnvelope=0.0,gainDb=0.0,crestMemory=1.0; };
     struct VinylChannelState { double highMemory=0.0,bodyMemory=0.0,wearEnvelope=0.0,previousInput=0.0,dcX1=0.0,dcY1=0.0,surfaceMemory=0.0,rumbleMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
     using StereoChannelState = StereoFieldState;
-    void readParameterChanges(Steinberg::Vst::IParameterChanges* changes);
+    void readParameterChanges(Steinberg::Vst::IParameterChanges* changes, Steinberg::int32 numSamples);
     void syncMixFxTargets();
     void resetConsoleState();
     void publishMeterParameters(Steinberg::Vst::IParameterChanges* changes,
@@ -110,6 +110,9 @@ private:
     double mixFxCrosstalkSource(Steinberg::int32 targetIndex, Steinberg::int32 lane, Steinberg::int32 sampleIndex) const noexcept;
 #endif
     std::array<double,kParamCount> params_{};
+    std::array<std::vector<double>,kParamCount> blockAutomation_{};
+    Steinberg::int32 blockAutomationCapacity_ = 0;
+    Steinberg::int32 blockAutomationSamples_ = 0;
     ContinuousSmoothingState channelSmoothing_{};
     std::array<ContinuousSmoothingState,kMaxMixFxChannels> mixFxSmoothing_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
