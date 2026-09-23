@@ -3,6 +3,7 @@
 #include "nonlinear_cores.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace MixEngine {
@@ -89,6 +90,33 @@ inline TubeVoiceModel blendTubeVoiceModel(int fromType,
         analogLerp(a.releaseMs, b.releaseMs, t),
         analogLerp(a.cathodeMs, b.cathodeMs, t),
         analogLerp(a.secondStage, b.secondStage, t)
+    };
+}
+
+inline TubeVoiceModel weightedTubeVoiceModel(
+    const std::array<double,3>& weights) noexcept {
+    const TubeVoiceModel a = tubeVoiceModel(0);
+    const TubeVoiceModel b = tubeVoiceModel(1);
+    const TubeVoiceModel d = tubeVoiceModel(2);
+    const double w0 = std::clamp(weights[0], 0.0, 1.0);
+    const double w1 = std::clamp(weights[1], 0.0, 1.0);
+    const double w2 = std::clamp(weights[2], 0.0, 1.0);
+    const double sum = std::max(1.0e-12, w0 + w1 + w2);
+    const auto mix = [&](double x0, double x1, double x2) noexcept {
+        return (w0 * x0 + w1 * x1 + w2 * x2) / sum;
+    };
+    return {
+        mix(a.splitHz,b.splitHz,d.splitHz),
+        mix(a.baseDrive,b.baseDrive,d.baseDrive),
+        mix(a.highDrive,b.highDrive,d.highDrive),
+        mix(a.staticBias,b.staticBias,d.staticBias),
+        mix(a.dynamicBias,b.dynamicBias,d.dynamicBias),
+        mix(a.asymmetry,b.asymmetry,d.asymmetry),
+        mix(a.sag,b.sag,d.sag),
+        mix(a.attackMs,b.attackMs,d.attackMs),
+        mix(a.releaseMs,b.releaseMs,d.releaseMs),
+        mix(a.cathodeMs,b.cathodeMs,d.cathodeMs),
+        mix(a.secondStage,b.secondStage,d.secondStage)
     };
 }
 
@@ -249,6 +277,68 @@ inline TapeSpeedModel blendTapeSpeedModel(int fromSpeed,
         analogLerp(a.saturation, b.saturation, t),
         analogLerp(a.asymmetry, b.asymmetry, t)
     };
+}
+
+struct TapePathModel {
+    TapeSpeedModel magnetic{};
+    double cutoff = 17800.0;
+    double bumpFreq = 82.0;
+    double bumpAmount = 0.060;
+    double compressionStrength = 0.92;
+    double wowHz = 0.48;
+    double flutterHz = 5.8;
+    double hissCorner = 1200.0;
+    double hissTilt = 0.78;
+    double hissLevel = 1.0;
+};
+
+inline TapePathModel tapePathModel(int speed) noexcept {
+    switch (std::clamp(speed,0,2)) {
+        case 0:
+            return {tapeSpeedModel(0),12500.0,55.0,0.115,1.32,
+                    0.38,4.7,850.0,0.82,0.82};
+        case 1:
+            return {tapeSpeedModel(1),17800.0,82.0,0.060,0.92,
+                    0.48,5.8,1200.0,0.78,1.0};
+        default:
+            return {tapeSpeedModel(2),22500.0,125.0,0.020,0.58,
+                    0.58,7.0,1750.0,0.72,1.10};
+    }
+}
+
+inline TapePathModel weightedTapePathModel(
+    const std::array<double,3>& weights) noexcept {
+    const TapePathModel a = tapePathModel(0);
+    const TapePathModel b = tapePathModel(1);
+    const TapePathModel d = tapePathModel(2);
+    const double w0 = std::clamp(weights[0], 0.0, 1.0);
+    const double w1 = std::clamp(weights[1], 0.0, 1.0);
+    const double w2 = std::clamp(weights[2], 0.0, 1.0);
+    const double sum = std::max(1.0e-12, w0 + w1 + w2);
+    const auto mix = [&](double x0, double x1, double x2) noexcept {
+        return (w0 * x0 + w1 * x1 + w2 * x2) / sum;
+    };
+    TapePathModel out;
+    out.magnetic = {
+        mix(a.magnetic.driveBase,b.magnetic.driveBase,d.magnetic.driveBase),
+        mix(a.magnetic.driveRange,b.magnetic.driveRange,d.magnetic.driveRange),
+        mix(a.magnetic.coercivity,b.magnetic.coercivity,d.magnetic.coercivity),
+        mix(a.magnetic.feedback,b.magnetic.feedback,d.magnetic.feedback),
+        mix(a.magnetic.memoryMix,b.magnetic.memoryMix,d.magnetic.memoryMix),
+        mix(a.magnetic.saturation,b.magnetic.saturation,d.magnetic.saturation),
+        mix(a.magnetic.asymmetry,b.magnetic.asymmetry,d.magnetic.asymmetry)
+    };
+    out.cutoff = mix(a.cutoff,b.cutoff,d.cutoff);
+    out.bumpFreq = mix(a.bumpFreq,b.bumpFreq,d.bumpFreq);
+    out.bumpAmount = mix(a.bumpAmount,b.bumpAmount,d.bumpAmount);
+    out.compressionStrength =
+        mix(a.compressionStrength,b.compressionStrength,d.compressionStrength);
+    out.wowHz = mix(a.wowHz,b.wowHz,d.wowHz);
+    out.flutterHz = mix(a.flutterHz,b.flutterHz,d.flutterHz);
+    out.hissCorner = mix(a.hissCorner,b.hissCorner,d.hissCorner);
+    out.hissTilt = mix(a.hissTilt,b.hissTilt,d.hissTilt);
+    out.hissLevel = mix(a.hissLevel,b.hissLevel,d.hissLevel);
+    return out;
 }
 
 // Bounded hysteretic magnetic core. This is intentionally a stable gray-box
