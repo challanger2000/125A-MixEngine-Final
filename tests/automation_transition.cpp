@@ -217,10 +217,14 @@ int main(){
             {"Input",{},MixEngine::kParamInput,0.35,0.65},
             {"Output",{},MixEngine::kParamOutput,0.35,0.65},
             {"ConsoleDrive",{{MixEngine::kParamConsoleOn,1.0}},MixEngine::kParamConsoleDrive,0.10,0.90},
+            {"ConsoleNoise",{{MixEngine::kParamConsoleOn,1.0}},MixEngine::kParamConsoleNoise,0.0,1.0},
             {"TubeAmount",{{MixEngine::kParamTubeOn,1.0}},MixEngine::kParamTubeAmount,0.0,1.0},
             {"TapeAmount",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeSpeed,0.5},{MixEngine::kParamTapeStability,1.0}},MixEngine::kParamTapeAmount,0.0,1.0},
+            {"TapeHiss",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeSpeed,0.5}},MixEngine::kParamTapeHiss,0.0,1.0},
             {"GlueAmount",{{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueCharacter,0.5}},MixEngine::kParamGlueAmount,0.10,0.90},
-            {"VinylWear",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5}},MixEngine::kParamVinylWear,0.0,1.0}
+            {"VinylColor",{{MixEngine::kParamVinylOn,1.0}},MixEngine::kParamVinylCharacter,0.0,1.0},
+            {"VinylWear",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5}},MixEngine::kParamVinylWear,0.0,1.0},
+            {"VinylSurface",{{MixEngine::kParamVinylOn,1.0}},MixEngine::kParamVinylNoise,0.0,1.0}
         };
 
         for(const auto& item:cases){
