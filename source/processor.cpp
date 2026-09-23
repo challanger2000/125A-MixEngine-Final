@@ -1118,6 +1118,8 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
 
     auto& smooth =
         mixFxSmoothing_[static_cast<std::size_t>(index)];
+    auto& characterMorph =
+        mixFxCharacterMorph_[static_cast<std::size_t>(index)];
     if (!smooth.initialized) {
         smooth.current[kParamInput] = inputTarget;
         smooth.current[kParamOutput] = outputTarget;
@@ -1142,6 +1144,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
     const double gainStep = smoothingStep(3.0, sampleRate_);
     const double colourStep = smoothingStep(5.0, sampleRate_);
     const double slowStep = smoothingStep(8.0, sampleRate_);
+    const double selectorStep = smoothingStep(4.0, sampleRate_);
     const double lowMonoCoeff =
         stereoOnePoleCoefficient(120.0, sampleRate_);
     const double depthCoeff =
@@ -1232,6 +1235,19 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                 smooth, kParamLowMono,
                 targetAt(kParamLowMono, lowMonoTarget), slowStep);
 
+        advanceCharacterWeights(
+            characterMorph.tubeWeights,
+            characterMorph.tubeInitialized,
+            tubeType, selectorStep);
+        advanceCharacterWeights(
+            characterMorph.tapeWeights,
+            characterMorph.tapeInitialized,
+            tapeSpeed, selectorStep);
+        const TubeVoiceModel tubeModel =
+            weightedTubeVoiceModel(characterMorph.tubeWeights);
+        const TapePathModel tapeModel =
+            weightedTapePathModel(characterMorph.tapeWeights);
+
         const double inputGain =
             dbToGain((inputNorm - 0.5) * 24.0);
         const double outputGain =
@@ -1249,11 +1265,19 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                 : 1.0;
         const double tubeGain =
             tubeOn && autoGainOn
-                ? tubeAutoGain(tubeType, tubeAmount)
+                ? weightedGain(
+                      characterMorph.tubeWeights,
+                      tubeAutoGain(0, tubeAmount),
+                      tubeAutoGain(1, tubeAmount),
+                      tubeAutoGain(2, tubeAmount))
                 : 1.0;
         const double tapeGain =
             tapeOn && autoGainOn
-                ? tapeAutoGain(tapeSpeed, tapeAmount)
+                ? weightedGain(
+                      characterMorph.tapeWeights,
+                      tapeAutoGain(0, tapeAmount),
+                      tapeAutoGain(1, tapeAmount),
+                      tapeAutoGain(2, tapeAmount))
                 : 1.0;
         const double glueGain =
             glueOn && autoGainOn
@@ -1344,7 +1368,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                     l * calibrationGain, osFactor,
                     [&](double v) {
                         return processTubeSample(
-                            v, tubeStates[0], tubeType,
+                            v, tubeStates[0], tubeModel,
                             tubeAmount, tubeSampleRate);
                     }) *
                 calibrationReturn * tubeGain;
@@ -1359,7 +1383,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                         r * calibrationGain, osFactor,
                         [&](double v) {
                             return processTubeSample(
-                                v, tubeStates[1], tubeType,
+                                v, tubeStates[1], tubeModel,
                                 tubeAmount, tubeSampleRate);
                         }) *
                     calibrationReturn * tubeGain;
@@ -1373,13 +1397,13 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                 mixFxTapeState_[static_cast<std::size_t>(index)];
             l = processTapeSample(
                     l * calibrationGain, states[0],
-                    index, 0, tapeSpeed,
+                    index, 0, tapeModel,
                     tapeAmount, tapeStability, tapeHiss) *
                 calibrationReturn * tapeGain;
             r = stereo
                 ? processTapeSample(
                       r * calibrationGain, states[1],
-                      index, 1, tapeSpeed,
+                      index, 1, tapeModel,
                       tapeAmount, tapeStability, tapeHiss) *
                       calibrationReturn * tapeGain
                 : l;
@@ -1569,6 +1593,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
     const double lowMonoTarget = std::clamp(params_[kParamLowMono], 0.0, 1.0);
 
     auto& smooth = channelSmoothing_;
+    auto& characterMorph = channelCharacterMorph_;
     if (!smooth.initialized) {
         smooth.current[kParamInput] = inputTarget;
         smooth.current[kParamOutput] = outputTarget;
@@ -1592,6 +1617,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
     const double gainStep = smoothingStep(3.0, sampleRate_);
     const double colourStep = smoothingStep(5.0, sampleRate_);
     const double slowStep = smoothingStep(8.0, sampleRate_);
+    const double selectorStep = smoothingStep(4.0, sampleRate_);
     const double lowMonoCoeff =
         stereoOnePoleCoefficient(120.0, sampleRate_);
     const double depthCoeff =
@@ -1661,6 +1687,19 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
             advanceSmoothed(smooth, kParamLowMono,
                             targetAt(kParamLowMono, lowMonoTarget), slowStep);
 
+        advanceCharacterWeights(
+            characterMorph.tubeWeights,
+            characterMorph.tubeInitialized,
+            tubeType, selectorStep);
+        advanceCharacterWeights(
+            characterMorph.tapeWeights,
+            characterMorph.tapeInitialized,
+            tapeSpeed, selectorStep);
+        const TubeVoiceModel tubeModel =
+            weightedTubeVoiceModel(characterMorph.tubeWeights);
+        const TapePathModel tapeModel =
+            weightedTapePathModel(characterMorph.tapeWeights);
+
         const double inputGain =
             dbToGain((inputNorm - 0.5) * 24.0);
         const double outputGain =
@@ -1674,9 +1713,21 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         const double consoleGain =
             consoleOn && autoGainOn ? consoleAutoGain(mode, drive) : 1.0;
         const double tubeGain =
-            tubeOn && autoGainOn ? tubeAutoGain(tubeType, tubeAmount) : 1.0;
+            tubeOn && autoGainOn
+                ? weightedGain(
+                      characterMorph.tubeWeights,
+                      tubeAutoGain(0, tubeAmount),
+                      tubeAutoGain(1, tubeAmount),
+                      tubeAutoGain(2, tubeAmount))
+                : 1.0;
         const double tapeGain =
-            tapeOn && autoGainOn ? tapeAutoGain(tapeSpeed, tapeAmount) : 1.0;
+            tapeOn && autoGainOn
+                ? weightedGain(
+                      characterMorph.tapeWeights,
+                      tapeAutoGain(0, tapeAmount),
+                      tapeAutoGain(1, tapeAmount),
+                      tapeAutoGain(2, tapeAmount))
+                : 1.0;
         const double glueGain =
             glueOn && autoGainOn ? glueAutoGain(glueAmount, glueCharacter) : 1.0;
         const double vinylGain =
@@ -1722,7 +1773,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
                     l * calibrationGain, osFactor,
                     [&](double v) {
                         return processTubeSample(
-                            v, tubeState_[0], tubeType, tubeAmount, tubeSampleRate);
+                            v, tubeState_[0], tubeModel, tubeAmount, tubeSampleRate);
                     }) *
                 calibrationReturn * tubeGain;
             if (stereo) {
@@ -1735,7 +1786,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
                         r * calibrationGain, osFactor,
                         [&](double v) {
                             return processTubeSample(
-                                v, tubeState_[1], tubeType, tubeAmount, tubeSampleRate);
+                                v, tubeState_[1], tubeModel, tubeAmount, tubeSampleRate);
                         }) *
                     calibrationReturn * tubeGain;
             } else {
@@ -1746,12 +1797,12 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         if (tapeOn) {
             l = processTapeSample(
                     l * calibrationGain, tapeState_[0], 0, 0,
-                    tapeSpeed, tapeAmount, tapeStability, tapeHiss) *
+                    tapeModel, tapeAmount, tapeStability, tapeHiss) *
                 calibrationReturn * tapeGain;
             r = stereo
                 ? processTapeSample(
                       r * calibrationGain, tapeState_[1], 0, 1,
-                      tapeSpeed, tapeAmount, tapeStability, tapeHiss) *
+                      tapeModel, tapeAmount, tapeStability, tapeHiss) *
                       calibrationReturn * tapeGain
                 : l;
         }
