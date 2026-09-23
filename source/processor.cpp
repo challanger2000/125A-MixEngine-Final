@@ -288,7 +288,10 @@ double Processor::processConsoleSample(double x,
              sourceScale * calibrationNorm;
     }
 
-    return std::clamp(y, -6.0, 6.0);
+    // The mode-specific nonlinear core is already bounded when driven.
+    // Preserve exact/high-headroom dry behaviour instead of imposing a hidden
+    // post-console hard limiter.
+    return y;
 }
 double Processor::processTubeSample(double x,TubeChannelState& state,int type,double amount,double effectiveSampleRate)const{return processTubeModelV2(x,state,type,amount,effectiveSampleRate);}
 double Processor::processTapeSample(double x,
@@ -465,7 +468,9 @@ double Processor::processTapeSample(double x,
         y += hiss * 0.0065 * speedTone * n * sourceScale * calibrationNorm;
     }
 
-    return std::clamp(y, -6.0, 6.0);
+    // Keep the processed magnetic branch bounded, but never hard-clip the
+    // latency-aligned dry contribution after parallel mixing.
+    return y;
 }
 double Processor::processGlueGain(double detector,
                                   GlueChannelState& state,
@@ -741,7 +746,10 @@ double Processor::processVinylSample(double x,
             state.clickEnvelope = 0.0;
     }
 
-    return std::clamp(y, -6.0, 6.0);
+    // Groove nonlinearity is bounded before the wet/dry mix. Avoid a hidden
+    // limiter on the final Vinyl output so Color=0/Wear=0/Surface=0 is exactly
+    // transparent even for high peaks.
+    return y;
 }
 void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
 #ifndef MIXENGINE_CHANNEL_BUILD
