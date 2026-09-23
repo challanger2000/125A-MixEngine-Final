@@ -448,55 +448,36 @@ double Processor::processConsoleSample(double x,
     // post-console hard limiter.
     return y;
 }
-double Processor::processTubeSample(double x,TubeChannelState& state,int type,double amount,double effectiveSampleRate)const{return processTubeModelV2(x,state,type,amount,effectiveSampleRate);}
+double Processor::processTubeSample(double x,
+                                    TubeChannelState& state,
+                                    const TubeVoiceModel& model,
+                                    double amount,
+                                    double effectiveSampleRate) const {
+    return processTubeModelV2(
+        x, state, model, amount, effectiveSampleRate);
+}
+
 double Processor::processTapeSample(double x,
                                     TapeChannelState& state,
                                     int sourceIndex,
                                     int lane,
-                                    int speed,
+                                    const TapePathModel& speedModel,
                                     double amount,
                                     double stability,
                                     double hissAmount) {
     const double a = std::clamp(amount, 0.0, 1.0);
     const double character = analogCharacterAmount(a);
-    speed = std::clamp(speed, 0, 2);
     const double instability = 1.0 - std::clamp(stability, 0.0, 1.0);
 
-    // Speed is one coupled operating mode: slower tape saturates sooner,
-    // carries a stronger/lower head bump and loses more HF. High-level
-    // material increases the HF loss slightly, as expected from tape driven
-    // further into its magnetic operating region.
-    double cutoff = 17800.0;
-    double bumpFreq = 82.0;
-    double bumpAmount = 0.060;
-    double compressionStrength = 0.92;
-    switch (speed) {
-        case 0:
-            // 7.5 ips: more obvious head bump, earlier HF loss and denser
-            // programme compression.
-            cutoff = 12500.0;
-            bumpFreq = 55.0;
-            bumpAmount = 0.115;
-            compressionStrength = 1.32;
-            break;
-        case 1:
-            break;
-        default:
-            // 30 ips: highest headroom/open top, smallest head bump and least
-            // programme compression.
-            cutoff = 22500.0;
-            bumpFreq = 125.0;
-            bumpAmount = 0.020;
-            compressionStrength = 0.58;
-            break;
-    }
+    double cutoff = speedModel.cutoff;
+    const double bumpFreq = speedModel.bumpFreq;
+    const double bumpAmount = speedModel.bumpAmount;
+    const double compressionStrength = speedModel.compressionStrength;
 
-    // Deterministic transport movement. This remains intentionally subtle; the
-    // magnetic and loss model is the main colour mechanism.
-    const double wowHz = speed == 0 ? 0.38 : (speed == 1 ? 0.48 : 0.58);
-    const double flutterHz = speed == 0 ? 4.7 : (speed == 1 ? 5.8 : 7.0);
-    state.wowPhase += 2.0 * kPi * wowHz / sampleRate_;
-    state.flutterPhase += 2.0 * kPi * flutterHz / sampleRate_;
+    // Transport rates morph with Tape Speed instead of jumping between three
+    // unrelated oscillators.
+    state.wowPhase += 2.0 * kPi * speedModel.wowHz / sampleRate_;
+    state.flutterPhase += 2.0 * kPi * speedModel.flutterHz / sampleRate_;
     if (state.wowPhase >= 2.0 * kPi) state.wowPhase -= 2.0 * kPi;
     if (state.flutterPhase >= 2.0 * kPi) state.flutterPhase -= 2.0 * kPi;
 
@@ -505,9 +486,6 @@ double Processor::processTapeSample(double x,
         0.22 * std::sin(state.flutterPhase);
     double transport = x;
     if (instability > 0.0) {
-        // First-order time-varying allpass as a fractional-delay element.
-        // Varying the delay produces real phase/pitch motion without adding an
-        // extra whole-sample transport latency to the plugin contract.
         const double sampleScale =
             std::clamp(sampleRate_ / 48000.0, 0.75, 2.0);
         const double fractionalDelay = std::clamp(
@@ -523,20 +501,20 @@ double Processor::processTapeSample(double x,
         state.transportZ = 0.0;
     }
 
-    // Program-dependent tape compression. Attack and release themselves move
-    // slightly with Amount, rather than applying a static post-waveshaper gain.
     const double attackMs = 1.8 + 2.0 * (1.0 - character);
     const double releaseMs = 72.0 + 58.0 * (1.0 - character);
     const double attack = std::exp(-1.0 / (0.001 * attackMs * sampleRate_));
     const double release = std::exp(-1.0 / (0.001 * releaseMs * sampleRate_));
     const double level = std::abs(transport);
-    const double envCoeff = level > state.compressionEnvelope ? attack : release;
+    const double envCoeff =
+        level > state.compressionEnvelope ? attack : release;
     state.compressionEnvelope =
         envCoeff * state.compressionEnvelope +
         (1.0 - envCoeff) * level;
 
     const double threshold = 0.17 + 0.05 * (1.0 - character);
-    const double over = std::max(0.0, state.compressionEnvelope - threshold);
+    const double over =
+        std::max(0.0, state.compressionEnvelope - threshold);
     const double dynamicGain =
         1.0 / (1.0 + compressionStrength * character * over);
     const double compressed = transport * dynamicGain;
@@ -549,14 +527,16 @@ double Processor::processTapeSample(double x,
             : params_[kParamQuality]);
 
     if (mixFxEngaged_) {
-        osEngine = &mixFxTapeOversampling_[static_cast<std::size_t>(sourceIndex)]
-                                          [static_cast<std::size_t>(lane)];
+        osEngine =
+            &mixFxTapeOversampling_[static_cast<std::size_t>(sourceIndex)]
+                                   [static_cast<std::size_t>(lane)];
         osCurrentFactor =
             &mixFxTapeOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
-                                         [static_cast<std::size_t>(lane)];
+                                        [static_cast<std::size_t>(lane)];
     } else {
         osEngine = &tapeOversampling_[static_cast<std::size_t>(lane)];
-        osCurrentFactor = &tapeOversamplingFactor_[static_cast<std::size_t>(lane)];
+        osCurrentFactor =
+            &tapeOversamplingFactor_[static_cast<std::size_t>(lane)];
     }
 
     if (*osCurrentFactor != osFactor) {
@@ -568,32 +548,36 @@ double Processor::processTapeSample(double x,
     const double magnetic = osEngine->process(
         compressed, osFactor,
         [&](double v) {
-            return processTapeMagneticV2(v, state.magnetic, speed, a, sampleRate_ * static_cast<double>(osFactor));
+            return processTapeMagneticV2(
+                v, state.magnetic, speedModel.magnetic, a,
+                sampleRate_ * static_cast<double>(osFactor));
         });
 
-    // Level-dependent HF loss and a broad two-pole head-bump approximation.
     const double hfStress =
         std::clamp(over * (1.3 + 1.2 * character), 0.0, 1.0);
     cutoff *= (1.0 - 0.20 * character * hfStress);
     cutoff = std::clamp(cutoff, 7000.0, sampleRate_ * 0.45);
     const double highCoeff =
         1.0 - std::exp(-2.0 * kPi * cutoff / sampleRate_);
-    state.highMemory += highCoeff * (magnetic - state.highMemory);
+    state.highMemory +=
+        highCoeff * (magnetic - state.highMemory);
 
     const double fastCoeff =
-        1.0 - std::exp(-2.0 * kPi * (bumpFreq * 1.85) / sampleRate_);
+        1.0 - std::exp(
+            -2.0 * kPi * (bumpFreq * 1.85) / sampleRate_);
     const double slowCoeff =
-        1.0 - std::exp(-2.0 * kPi * (bumpFreq * 0.52) / sampleRate_);
-    state.bumpFast += fastCoeff * (state.highMemory - state.bumpFast);
-    state.bumpSlow += slowCoeff * (state.highMemory - state.bumpSlow);
-    const double bumpBand = state.bumpFast - state.bumpSlow;
+        1.0 - std::exp(
+            -2.0 * kPi * (bumpFreq * 0.52) / sampleRate_);
+    state.bumpFast +=
+        fastCoeff * (state.highMemory - state.bumpFast);
+    state.bumpSlow +=
+        slowCoeff * (state.highMemory - state.bumpSlow);
+    const double bumpBand =
+        state.bumpFast - state.bumpSlow;
 
     const double tapeRaw =
         state.highMemory + bumpAmount * character * bumpBand;
 
-    // Record/playback electronics reject remanent DC from the magnetic path.
-    // Keep the corner well below the audible bass range so head bump and LF
-    // weight are unaffected.
     const double tapeDcCoeff =
         std::exp(-2.0 * kPi * 5.0 / sampleRate_);
     const double tape =
@@ -601,45 +585,49 @@ double Processor::processTapeSample(double x,
     state.dcX1 = tapeRaw;
     state.dcY1 = tape;
 
-    const double wet = 0.05 + 0.90 * std::pow(a, 0.86);
+    const double wet =
+        0.05 + 0.90 * std::pow(a, 0.86);
     LatencyAligner* dryAligner =
         mixFxEngaged_
             ? &mixFxTapeDryAligner_[static_cast<std::size_t>(sourceIndex)]
-                                     [static_cast<std::size_t>(lane)]
+                                    [static_cast<std::size_t>(lane)]
             : &tapeDryAligner_[static_cast<std::size_t>(lane)];
     const double dry =
-        dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
+        dryAligner->process(
+            x, oversamplingBulkDelay(osFactor, 1));
     double y = dry + (tape - dry) * wet;
 
-    const double noiseAmount = std::clamp(hissAmount, 0.0, 1.0);
+    const double noiseAmount =
+        std::clamp(hissAmount, 0.0, 1.0);
     if (noiseAmount > 0.0) {
         if (state.noiseRng == 0u)
-            state.noiseRng = makeNoiseSeed(sourceIndex, lane, 0x7A9E51A5u);
-        const double white = randomBipolar(state.noiseRng);
-        const double hissCorner =
-            speed == 0 ? 850.0 : (speed == 1 ? 1200.0 : 1750.0);
+            state.noiseRng =
+                makeNoiseSeed(sourceIndex, lane, 0x7A9E51A5u);
+        const double white =
+            randomBipolar(state.noiseRng);
         const double hissCoeff =
-            1.0 - std::exp(-2.0 * kPi * hissCorner / sampleRate_);
-        state.hissMemory += hissCoeff * (white - state.hissMemory);
-        const double hissTilt =
-            speed == 0 ? 0.82 : (speed == 1 ? 0.78 : 0.72);
-        const double hiss = white - hissTilt * state.hissMemory;
-        const double n = noiseAmount * noiseAmount;
+            1.0 - std::exp(
+                -2.0 * kPi * speedModel.hissCorner / sampleRate_);
+        state.hissMemory +=
+            hissCoeff * (white - state.hissMemory);
+        const double hiss =
+            white - speedModel.hissTilt * state.hissMemory;
+        const double n =
+            noiseAmount * noiseAmount;
         const double sourceScale =
             (mixFxEngaged_ && mixFxChannelCount_ > 1)
-                ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
+                ? 1.0 /
+                      std::sqrt(static_cast<double>(mixFxChannelCount_))
                 : 1.0;
-        const double calibrationNorm = dbToGain(-calibrationReferenceDb(
-            mixFxEngaged_
-                ? mixFxCalibration_.load(std::memory_order_relaxed)
-                : params_[kParamCalibration]));
-        const double speedTone =
-            speed == 0 ? 0.82 : (speed == 1 ? 1.0 : 1.10);
-        y += hiss * 0.0065 * speedTone * n * sourceScale * calibrationNorm;
+        const double calibrationNorm =
+            dbToGain(-calibrationReferenceDb(
+                mixFxEngaged_
+                    ? mixFxCalibration_.load(std::memory_order_relaxed)
+                    : params_[kParamCalibration]));
+        y += hiss * 0.0065 * speedModel.hissLevel *
+             n * sourceScale * calibrationNorm;
     }
 
-    // Keep the processed magnetic branch bounded, but never hard-clip the
-    // latency-aligned dry contribution after parallel mixing.
     return y;
 }
 double Processor::processGlueGain(double detector,
