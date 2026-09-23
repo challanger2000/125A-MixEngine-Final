@@ -101,7 +101,7 @@ private:
     double processTubeSample(double x, TubeChannelState& state, int type, double amount, double effectiveSampleRate) const;
     double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability, double hissAmount);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
-    double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear, double noiseAmount);
+    double processVinylSample(double x, VinylChannelState& state, OversamplingEngine& osEngine, int& osCurrentFactor, LatencyAligner& dryAligner, int sourceIndex, int lane, int osFactor, double character, double wear, double noiseAmount, double calibrationNorm, double noiseSourceScale);
     double dcBlock(double x, ConsoleChannelState& state);
 #ifndef MIXENGINE_CHANNEL_BUILD
     Steinberg::tresult processMixFxChannelInternal(Steinberg::int32 index, Steinberg::Vst::ProcessData& data);
