@@ -502,8 +502,18 @@ double Processor::processTapeSample(double x,
     state.bumpSlow += slowCoeff * (state.highMemory - state.bumpSlow);
     const double bumpBand = state.bumpFast - state.bumpSlow;
 
-    const double tape =
+    const double tapeRaw =
         state.highMemory + bumpAmount * character * bumpBand;
+
+    // Record/playback electronics reject remanent DC from the magnetic path.
+    // Keep the corner well below the audible bass range so head bump and LF
+    // weight are unaffected.
+    const double tapeDcCoeff =
+        std::exp(-2.0 * kPi * 5.0 / sampleRate_);
+    const double tape =
+        tapeRaw - state.dcX1 + tapeDcCoeff * state.dcY1;
+    state.dcX1 = tapeRaw;
+    state.dcY1 = tape;
 
     const double wet = 0.05 + 0.90 * std::pow(a, 0.86);
     LatencyAligner* dryAligner =
