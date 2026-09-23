@@ -1,5 +1,5 @@
 #include "oversampling.h"
-#include "nonlinear_cores.h"
+#include "analog_models_v2.h"
 
 #include <algorithm>
 #include <array>
@@ -19,6 +19,7 @@ constexpr std::size_t kCount = 131072;
 
 double residualDbc(int factor, double frequency, int type) {
     MixEngine::OversamplingEngine os;
+    MixEngine::TubeModelState state;
     long double ss = 0.0, cc = 0.0, ys = 0.0, yc = 0.0;
 
     // 131072 doubles are about 1 MiB. Keeping this as std::array on the stack
@@ -28,7 +29,7 @@ double residualDbc(int factor, double frequency, int type) {
 
     for (std::size_t n = 0; n < kCount; ++n) {
         const double x = 0.72 * std::sin(2.0 * kPi * frequency * static_cast<double>(n) / kFs);
-        y[n] = os.process(x, factor, [=](double v) { return MixEngine::processTubeNonlinearCore(v, type, 1.0); });
+        y[n] = os.process(x, factor, [&](double v) { return MixEngine::processTubeModelV2(v, state, type, 1.0, kFs * static_cast<double>(factor)); });
         if (!std::isfinite(y[n]))
             return 999.0;
     }
