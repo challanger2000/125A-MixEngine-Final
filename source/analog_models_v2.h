@@ -20,6 +20,11 @@ inline double analogTimeCoeffMs(double ms, double sampleRate) noexcept {
     return std::exp(-1.0 / (0.001 * std::max(0.01, ms) * sr));
 }
 
+inline double analogLerp(double a, double b, double t) noexcept {
+    const double m = std::clamp(t, 0.0, 1.0);
+    return a + (b - a) * m;
+}
+
 struct TubeModelState {
     double lowMemory = 0.0;
     double envelope = 0.0;
@@ -66,6 +71,27 @@ inline TubeVoiceModel tubeVoiceModel(int type) noexcept {
     }
 }
 
+inline TubeVoiceModel blendTubeVoiceModel(int fromType,
+                                          int toType,
+                                          double mix) noexcept {
+    const TubeVoiceModel a = tubeVoiceModel(fromType);
+    const TubeVoiceModel b = tubeVoiceModel(toType);
+    const double t = std::clamp(mix, 0.0, 1.0);
+    return {
+        analogLerp(a.splitHz, b.splitHz, t),
+        analogLerp(a.baseDrive, b.baseDrive, t),
+        analogLerp(a.highDrive, b.highDrive, t),
+        analogLerp(a.staticBias, b.staticBias, t),
+        analogLerp(a.dynamicBias, b.dynamicBias, t),
+        analogLerp(a.asymmetry, b.asymmetry, t),
+        analogLerp(a.sag, b.sag, t),
+        analogLerp(a.attackMs, b.attackMs, t),
+        analogLerp(a.releaseMs, b.releaseMs, t),
+        analogLerp(a.cathodeMs, b.cathodeMs, t),
+        analogLerp(a.secondStage, b.secondStage, t)
+    };
+}
+
 // Stateful tube-colour model for the V2 MixEngine. It is a deliberately
 // bounded gray-box model rather than a claim of component-for-component tube
 // circuit emulation. The important analogue behaviours are represented:
@@ -74,12 +100,11 @@ inline TubeVoiceModel tubeVoiceModel(int type) noexcept {
 // oversampling island.
 inline double processTubeModelV2(double x,
                                  TubeModelState& state,
-                                 int type,
+                                 const TubeVoiceModel& p,
                                  double amount,
                                  double sampleRate) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
     const double c = analogCharacterAmount(a);
-    const TubeVoiceModel p = tubeVoiceModel(type);
 
     // Frequency-dependent excitation. High frequencies reach the nonlinear
     // transfer somewhat differently from the body of the signal, preventing
@@ -164,6 +189,15 @@ inline double processTubeModelV2(double x,
     return y;
 }
 
+inline double processTubeModelV2(double x,
+                                 TubeModelState& state,
+                                 int type,
+                                 double amount,
+                                 double sampleRate) noexcept {
+    return processTubeModelV2(
+        x, state, tubeVoiceModel(type), amount, sampleRate);
+}
+
 
 struct TapeMagneticState {
     double magnetisation = 0.0;
@@ -200,6 +234,23 @@ inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
     }
 }
 
+inline TapeSpeedModel blendTapeSpeedModel(int fromSpeed,
+                                          int toSpeed,
+                                          double mix) noexcept {
+    const TapeSpeedModel a = tapeSpeedModel(fromSpeed);
+    const TapeSpeedModel b = tapeSpeedModel(toSpeed);
+    const double t = std::clamp(mix, 0.0, 1.0);
+    return {
+        analogLerp(a.driveBase, b.driveBase, t),
+        analogLerp(a.driveRange, b.driveRange, t),
+        analogLerp(a.coercivity, b.coercivity, t),
+        analogLerp(a.feedback, b.feedback, t),
+        analogLerp(a.memoryMix, b.memoryMix, t),
+        analogLerp(a.saturation, b.saturation, t),
+        analogLerp(a.asymmetry, b.asymmetry, t)
+    };
+}
+
 // Bounded hysteretic magnetic core. This is intentionally a stable gray-box
 // approximation of the history dependence described by magnetic tape models,
 // not a claim of solving the full Jiles-Atherton ODE. The static saturation
@@ -207,12 +258,11 @@ inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
 // smaller path-dependent residual so the model remains usable at 1x/2x/4x.
 inline double processTapeMagneticV2(double x,
                                     TapeMagneticState& state,
-                                    int speed,
+                                    const TapeSpeedModel& p,
                                     double amount,
                                     double sampleRate) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
     const double c = analogCharacterAmount(a);
-    const TapeSpeedModel p = tapeSpeedModel(speed);
 
     const double drive = p.driveBase + p.driveRange * c;
     const double field = x * drive;
@@ -272,6 +322,15 @@ inline double processTapeMagneticV2(double x,
     // dry path can be latency-aligned exactly. Return the fully processed
     // magnetic branch here.
     return std::clamp(magnetic, -4.0, 4.0);
+}
+
+inline double processTapeMagneticV2(double x,
+                                    TapeMagneticState& state,
+                                    int speed,
+                                    double amount,
+                                    double sampleRate) noexcept {
+    return processTapeMagneticV2(
+        x, state, tapeSpeedModel(speed), amount, sampleRate);
 }
 
 
