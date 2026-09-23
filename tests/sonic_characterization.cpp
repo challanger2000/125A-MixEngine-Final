@@ -219,74 +219,131 @@ int main() {
         }
 
         std::cout<<"=== V2 parameter-family signatures at -18 dBFS ===\n";
+        bool familyOk=true;
 
         // Console modes: same Drive, same level, genuinely different transfer families.
+        std::array<double,4> consoleThd{};
         for(int mode=0;mode<4;++mode) {
-            const double a=dbToGain(-18.0);
-            const auto out=renderSine(1000.0,a,{
+            const double amp=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,amp,{
                 {MixEngine::kParamConsoleOn,1.0},
                 {MixEngine::kParamConsoleMode,static_cast<double>(mode)/3.0},
                 {MixEngine::kParamConsoleDrive,0.5}
             });
             const auto h=analyze(out,1000.0);
-            printRow((std::string("ConsoleM")+std::to_string(mode)).c_str(),-18.0,1000.0,h,a);
+            consoleThd[static_cast<std::size_t>(mode)]=h.thd;
+            printRow((std::string("ConsoleM")+std::to_string(mode)).c_str(),-18.0,1000.0,h,amp);
         }
+        const auto [consoleMinIt,consoleMaxIt]=
+            std::minmax_element(consoleThd.begin(),consoleThd.end());
+        const double consoleSpread=*consoleMaxIt-*consoleMinIt;
+        std::cout<<"Console family THD spread="<<100.0*consoleSpread<<" percentage-points\n";
+        familyOk=familyOk&&consoleSpread>0.015;
 
         // Tube voices: Soft/Balanced/Hot must expose their own harmonic/dynamic signatures.
+        std::array<double,3> tubeThd{};
+        std::array<double,3> tubeH2{};
         for(int type=0;type<3;++type) {
-            const double a=dbToGain(-18.0);
-            const auto out=renderSine(1000.0,a,{
+            const double amp=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,amp,{
                 {MixEngine::kParamTubeOn,1.0},
                 {MixEngine::kParamTubeType,static_cast<double>(type)/2.0},
                 {MixEngine::kParamTubeAmount,0.5}
             });
             const auto h=analyze(out,1000.0);
-            printRow((std::string("TubeV")+std::to_string(type)).c_str(),-18.0,1000.0,h,a);
+            tubeThd[static_cast<std::size_t>(type)]=h.thd;
+            tubeH2[static_cast<std::size_t>(type)]=
+                h.h[1]/std::max(h.fundamental,1.0e-15);
+            printRow((std::string("TubeV")+std::to_string(type)).c_str(),-18.0,1000.0,h,amp);
         }
+        const double tubeThdSpread=
+            *std::max_element(tubeThd.begin(),tubeThd.end())-
+            *std::min_element(tubeThd.begin(),tubeThd.end());
+        std::cout<<"Tube family THD spread="<<100.0*tubeThdSpread
+                 <<" percentage-points H2 ratios="
+                 <<tubeH2[0]<<","<<tubeH2[1]<<","<<tubeH2[2]<<"\n";
+        familyOk=familyOk&&tubeThdSpread>0.006
+                 &&tubeH2[0]<tubeH2[1]&&tubeH2[1]<tubeH2[2];
 
         // Tape speed is a coupled operating mode. Report LF/body, mid and HF
         // signatures separately so 7.5/15/30 ips cannot collapse to one curve.
+        std::array<double,3> tape1kGain{};
+        std::array<double,3> tape8kGain{};
+        std::array<double,3> tapeH2{};
         for(int speed=0;speed<3;++speed) {
             for(double frequency:{40.0,55.0,80.0,125.0,1000.0,8000.0,12000.0}) {
-                const double a=dbToGain(-18.0);
-                const auto out=renderSine(frequency,a,{
+                const double amp=dbToGain(-18.0);
+                const auto out=renderSine(frequency,amp,{
                     {MixEngine::kParamTapeOn,1.0},
                     {MixEngine::kParamTapeSpeed,static_cast<double>(speed)/2.0},
                     {MixEngine::kParamTapeAmount,0.5},
                     {MixEngine::kParamTapeStability,1.0}
                 });
                 const auto h=analyze(out,frequency);
-                printRow((std::string("TapeS")+std::to_string(speed)).c_str(),-18.0,frequency,h,a);
+                printRow((std::string("TapeS")+std::to_string(speed)).c_str(),-18.0,frequency,h,amp);
+                if(frequency==1000.0) {
+                    tape1kGain[static_cast<std::size_t>(speed)]=gainToDb(h.fundamental/amp);
+                    tapeH2[static_cast<std::size_t>(speed)]=
+                        h.h[1]/std::max(h.fundamental,1.0e-15);
+                }
+                if(frequency==8000.0)
+                    tape8kGain[static_cast<std::size_t>(speed)]=gainToDb(h.fundamental/amp);
             }
         }
+        std::cout<<"Tape family 1k gains="<<tape1kGain[0]<<","<<tape1kGain[1]<<","<<tape1kGain[2]
+                 <<" 8k gains="<<tape8kGain[0]<<","<<tape8kGain[1]<<","<<tape8kGain[2]
+                 <<" H2 ratios="<<tapeH2[0]<<","<<tapeH2[1]<<","<<tapeH2[2]<<"\n";
+        familyOk=familyOk
+                 &&tape1kGain[0]<tape1kGain[1]&&tape1kGain[1]<tape1kGain[2]
+                 &&tape8kGain[0]<tape8kGain[1]&&tape8kGain[1]<tape8kGain[2]
+                 &&(tape8kGain[2]-tape8kGain[0])>0.70
+                 &&tapeH2[0]>tapeH2[1]&&tapeH2[1]>tapeH2[2];
 
         // Glue RESPONSE is primarily dynamic, but its steady-state operating
         // point should still be visible at a common production level.
         for(double response:{0.0,0.5,1.0}) {
-            const double a=dbToGain(-18.0);
-            const auto out=renderSine(1000.0,a,{
+            const double amp=dbToGain(-18.0);
+            const auto out=renderSine(1000.0,amp,{
                 {MixEngine::kParamGlueOn,1.0},
                 {MixEngine::kParamGlueAmount,0.5},
                 {MixEngine::kParamGlueCharacter,response}
             });
             const auto h=analyze(out,1000.0);
-            printRow((std::string("GlueR")+std::to_string(static_cast<int>(response*2.0))).c_str(),-18.0,1000.0,h,a);
+            printRow((std::string("GlueR")+std::to_string(static_cast<int>(response*2.0))).c_str(),-18.0,1000.0,h,amp);
         }
 
         // Wear should progressively affect HF more strongly than the midband.
+        std::array<double,5> vinylThd{};
+        std::array<double,5> vinyl8kGain{};
+        int wearIndex=0;
         for(double wear:{0.0,0.25,0.50,0.75,1.0}) {
             for(double frequency:{1000.0,8000.0}) {
-                const double a=dbToGain(-18.0);
-                const auto out=renderSine(frequency,a,{
+                const double amp=dbToGain(-18.0);
+                const auto out=renderSine(frequency,amp,{
                     {MixEngine::kParamVinylOn,1.0},
                     {MixEngine::kParamVinylCharacter,0.5},
                     {MixEngine::kParamVinylWear,wear},
                     {MixEngine::kParamVinylNoise,0.0}
                 });
                 const auto h=analyze(out,frequency);
-                printRow((std::string("VinylW")+std::to_string(static_cast<int>(wear*100.0))).c_str(),-18.0,frequency,h,a);
+                printRow((std::string("VinylW")+std::to_string(static_cast<int>(wear*100.0))).c_str(),-18.0,frequency,h,amp);
+                if(frequency==1000.0)
+                    vinylThd[static_cast<std::size_t>(wearIndex)]=h.thd;
+                if(frequency==8000.0)
+                    vinyl8kGain[static_cast<std::size_t>(wearIndex)]=gainToDb(h.fundamental/amp);
             }
+            ++wearIndex;
         }
+        for(std::size_t i=1;i<vinylThd.size();++i) {
+            if(!(vinylThd[i]>vinylThd[i-1])) familyOk=false;
+            if(!(vinyl8kGain[i]<vinyl8kGain[i-1])) familyOk=false;
+        }
+
+        if(!familyOk) {
+            std::cerr<<"FAILED: V2 parameter-family sonic separation contract\n";
+            return 32;
+        }
+        std::cout<<"PASSED: V2 parameter-family sonic separation contract\n";
 
         std::cout<<"Sonic characterization completed with finite results\n";
         return 0;
