@@ -158,7 +158,10 @@ inline double processTubeModelV2(double x,
     // fingerprint, while the top end is allowed to become deliberately strong.
     const double wet = 0.04 + 0.91 * std::pow(a, 0.88);
     const double y = x + (dense - x) * wet;
-    return std::clamp(y, -4.0, 4.0);
+    // Do not hard-limit the final parallel result: the nonlinear branch is
+    // already bounded, and clamping here would also clip the retained dry
+    // transient at low Amount settings.
+    return y;
 }
 
 
