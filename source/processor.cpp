@@ -337,13 +337,28 @@ double Processor::processTapeSample(double x,
     if (state.wowPhase >= 2.0 * kPi) state.wowPhase -= 2.0 * kPi;
     if (state.flutterPhase >= 2.0 * kPi) state.flutterPhase -= 2.0 * kPi;
 
-    const double derivative = x - state.previousInput;
-    state.previousInput = x;
     const double motion =
         0.78 * std::sin(state.wowPhase) +
         0.22 * std::sin(state.flutterPhase);
-    const double transport =
-        x + derivative * motion * (0.16 * instability * instability);
+    double transport = x;
+    if (instability > 0.0) {
+        // First-order time-varying allpass as a fractional-delay element.
+        // Varying the delay produces real phase/pitch motion without adding an
+        // extra whole-sample transport latency to the plugin contract.
+        const double sampleScale =
+            std::clamp(sampleRate_ / 48000.0, 0.75, 2.0);
+        const double fractionalDelay = std::clamp(
+            (0.055 + 0.31 * (0.5 + 0.5 * motion)) *
+                instability * instability * sampleScale,
+            0.0, 0.92);
+        const double ap =
+            (1.0 - fractionalDelay) /
+            (1.0 + fractionalDelay);
+        transport = ap * x + state.transportZ;
+        state.transportZ = x - ap * transport;
+    } else {
+        state.transportZ = 0.0;
+    }
 
     // Program-dependent tape compression. Attack and release themselves move
     // slightly with Amount, rather than applying a static post-waveshaper gain.
