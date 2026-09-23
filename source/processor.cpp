@@ -435,7 +435,181 @@ double Processor::processGlueGain(double detector,
     const double wet = 0.12 + 0.78 * std::pow(a, 0.82);
     return 1.0 + (compressedGain - 1.0) * wet;
 }
-double Processor::processVinylSample(double x,VinylChannelState& state,int sourceIndex,int lane,double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);double y=x;if(c>0.0||w>0.0){double cutoff=19000.0-5500.0*c-7500.0*w;cutoff=std::clamp(cutoff,5500.0,sampleRate_*0.45);const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bodyCoeff=1.0-std::exp(-2.0*kPi*220.0/sampleRate_);state.highMemory+=highCoeff*(x-state.highMemory);state.lowMemory+=bodyCoeff*(state.highMemory-state.lowMemory);const double bodyBoost=0.030*c+0.020*w,colored=state.highMemory+bodyBoost*state.lowMemory,drive=1.0+0.35*c+0.25*w;OversamplingEngine* osEngine=nullptr;int* osCurrentFactor=nullptr;const int osFactor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){osEngine=&mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];osCurrentFactor=&mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{osEngine=&vinylOversampling_[static_cast<std::size_t>(lane)];osCurrentFactor=&vinylOversamplingFactor_[static_cast<std::size_t>(lane)];}const double shaped=processVinylOversampledCore(*osEngine,*osCurrentFactor,osFactor,colored,drive),wet=std::clamp(0.12+0.43*c+0.30*w,0.0,0.85);LatencyAligner* dryAligner=mixFxEngaged_?&mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&vinylDryAligner_[static_cast<std::size_t>(lane)];const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));y=dry+(shaped-dry)*wet;}const double noiseAmount=std::clamp(mixFxEngaged_?mixFxVinylNoise_.load(std::memory_order_relaxed):params_[kParamVinylNoise],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xB17E4A11u);const double white=randomBipolar(state.noiseRng),surfaceCoeff=1.0-std::exp(-2.0*kPi*7000.0/sampleRate_);state.surfaceMemory+=surfaceCoeff*(white-state.surfaceMemory);const double surface=0.52*white+0.48*state.surfaceMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration])),surfaceLevel=0.0070*(0.75+0.75*w);y+=surface*surfaceLevel*n*sourceScale*calibrationNorm;const double clickRateHz=(0.12+2.2*w*w)*noiseAmount,eventProbe=0.5*(randomBipolar(state.noiseRng)+1.0);if(eventProbe<clickRateHz/sampleRate_){const double randomLevel=0.5*(randomBipolar(state.noiseRng)+1.0);state.clickEnvelope=0.018+0.055*randomLevel*(0.35+0.65*w);state.clickPolarity=randomBipolar(state.noiseRng)>=0.0?1.0:-1.0;}const double clickDecayMs=0.7+1.8*w,clickDecay=std::exp(-1.0/(0.001*clickDecayMs*sampleRate_));y+=state.clickPolarity*state.clickEnvelope*n*sourceScale*calibrationNorm;state.clickEnvelope*=clickDecay;if(state.clickEnvelope<1.0e-10)state.clickEnvelope=0.0;}return y;}
+double Processor::processVinylSample(double x,
+                                    VinylChannelState& state,
+                                    int sourceIndex,
+                                    int lane,
+                                    double character,
+                                    double wear) {
+    const double c = std::clamp(character, 0.0, 1.0);
+    const double w = std::clamp(wear, 0.0, 1.0);
+    double y = x;
+
+    if (c > 0.0 || w > 0.0) {
+        // Wear reacts to fast/high-frequency movement rather than acting as a
+        // fixed low-pass amount. Strong HF/transient content therefore loses a
+        // little more edge on a worn record while quiet/body information is
+        // preserved.
+        const double derivative = x - state.previousInput;
+        state.previousInput = x;
+        const double hfActivity = std::abs(derivative);
+        const double wearAttack =
+            std::exp(-1.0 / (0.001 * 2.2 * sampleRate_));
+        const double wearRelease =
+            std::exp(-1.0 / (0.001 * 95.0 * sampleRate_));
+        const double wearCoeff =
+            hfActivity > state.wearEnvelope ? wearAttack : wearRelease;
+        state.wearEnvelope =
+            wearCoeff * state.wearEnvelope +
+            (1.0 - wearCoeff) * hfActivity;
+
+        const double activity =
+            std::clamp(state.wearEnvelope * 8.0, 0.0, 1.0);
+
+        double cutoff =
+            20500.0 - 2600.0 * c - 7200.0 * w;
+        cutoff *= (1.0 - 0.30 * w * activity);
+        cutoff = std::clamp(cutoff, 5200.0, sampleRate_ * 0.45);
+
+        const double highCoeff =
+            1.0 - std::exp(-2.0 * kPi * cutoff / sampleRate_);
+        state.highMemory +=
+            highCoeff * (x - state.highMemory);
+
+        const double bodyCoeff =
+            1.0 - std::exp(-2.0 * kPi * 240.0 / sampleRate_);
+        state.bodyMemory +=
+            bodyCoeff * (state.highMemory - state.bodyMemory);
+
+        const double bodyBoost =
+            0.018 * c + 0.014 * w;
+        double colored =
+            state.highMemory + bodyBoost * state.bodyMemory;
+
+        // Worn groove walls soften the fastest excursions before the nonlinear
+        // tracing stage. This is level dependent through the wear envelope.
+        const double transientSoft =
+            std::clamp(0.055 * w * activity, 0.0, 0.055);
+        colored -= transientSoft * derivative;
+
+        OversamplingEngine* osEngine = nullptr;
+        int* osCurrentFactor = nullptr;
+        const int osFactor = qualityFactor(
+            mixFxEngaged_
+                ? mixFxQuality_.load(std::memory_order_relaxed)
+                : params_[kParamQuality]);
+
+        if (mixFxEngaged_) {
+            osEngine =
+                &mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)]
+                                        [static_cast<std::size_t>(lane)];
+            osCurrentFactor =
+                &mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
+                                             [static_cast<std::size_t>(lane)];
+        } else {
+            osEngine = &vinylOversampling_[static_cast<std::size_t>(lane)];
+            osCurrentFactor =
+                &vinylOversamplingFactor_[static_cast<std::size_t>(lane)];
+        }
+
+        if (*osCurrentFactor != osFactor) {
+            osEngine->reset();
+            *osCurrentFactor = osFactor;
+        }
+
+        const double shaped = osEngine->process(
+            colored, osFactor,
+            [&](double v) {
+                return processVinylGrooveV2(v, c, w);
+            });
+
+        const double wet =
+            std::clamp(0.10 + 0.48 * c + 0.32 * w, 0.0, 0.90);
+        LatencyAligner* dryAligner =
+            mixFxEngaged_
+                ? &mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)]
+                                          [static_cast<std::size_t>(lane)]
+                : &vinylDryAligner_[static_cast<std::size_t>(lane)];
+        const double dry =
+            dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
+        y = dry + (shaped - dry) * wet;
+    }
+
+    // SURFACE remains independent from Color/Wear. Wear changes the statistical
+    // severity of a noisy surface, but Surface=0 is still mathematically silent.
+    const double noiseAmount = std::clamp(
+        mixFxEngaged_
+            ? mixFxVinylNoise_.load(std::memory_order_relaxed)
+            : params_[kParamVinylNoise],
+        0.0, 1.0);
+
+    if (noiseAmount > 0.0) {
+        if (state.noiseRng == 0u)
+            state.noiseRng =
+                makeNoiseSeed(sourceIndex, lane, 0xB17E4A11u);
+
+        const double white = randomBipolar(state.noiseRng);
+        const double surfaceCoeff =
+            1.0 - std::exp(-2.0 * kPi * 7600.0 / sampleRate_);
+        state.surfaceMemory +=
+            surfaceCoeff * (white - state.surfaceMemory);
+
+        const double rumbleCoeff =
+            1.0 - std::exp(-2.0 * kPi * 42.0 / sampleRate_);
+        state.rumbleMemory +=
+            rumbleCoeff * (white - state.rumbleMemory);
+
+        const double surface =
+            0.48 * white +
+            0.47 * state.surfaceMemory +
+            0.05 * state.rumbleMemory;
+        const double n = noiseAmount * noiseAmount;
+        const double sourceScale =
+            (mixFxEngaged_ && mixFxChannelCount_ > 1)
+                ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
+                : 1.0;
+        const double calibrationNorm = dbToGain(-calibrationReferenceDb(
+            mixFxEngaged_
+                ? mixFxCalibration_.load(std::memory_order_relaxed)
+                : params_[kParamCalibration]));
+
+        const double surfaceLevel =
+            0.0062 * (0.78 + 0.72 * w);
+        y += surface * surfaceLevel * n *
+             sourceScale * calibrationNorm;
+
+        const double clickRateHz =
+            (0.08 + 2.8 * w * w) *
+            (0.35 + 0.65 * noiseAmount);
+        const double eventProbe =
+            0.5 * (randomBipolar(state.noiseRng) + 1.0);
+        if (eventProbe < clickRateHz / sampleRate_) {
+            const double randomLevel =
+                0.5 * (randomBipolar(state.noiseRng) + 1.0);
+            const double heavy =
+                randomLevel * randomLevel;
+            state.clickEnvelope =
+                0.010 +
+                (0.028 + 0.060 * w) * heavy;
+            state.clickPolarity =
+                randomBipolar(state.noiseRng) >= 0.0 ? 1.0 : -1.0;
+        }
+
+        const double clickDecayMs =
+            0.45 + 2.3 * w;
+        const double clickDecay =
+            std::exp(-1.0 /
+                     (0.001 * clickDecayMs * sampleRate_));
+        y += state.clickPolarity *
+             state.clickEnvelope *
+             n * sourceScale * calibrationNorm;
+        state.clickEnvelope *= clickDecay;
+        if (state.clickEnvelope < 1.0e-10)
+            state.clickEnvelope = 0.0;
+    }
+
+    return std::clamp(y, -6.0, 6.0);
+}
 void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
 #ifndef MIXENGINE_CHANNEL_BUILD
 void Processor::prepareMixFxSnapshotBuffers(){
