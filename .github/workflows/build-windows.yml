@@ -107,7 +107,7 @@ jobs:
             & $test.FullName
             $code = $LASTEXITCODE
             if ($code -ne 0) {
-              Write-Error "$name failed with exit code $code"
+              Write-Host "::error::$name failed with exit code $code"
               $failures += "$name ($code)"
             }
           }
