@@ -110,13 +110,13 @@ jobs:
             $exe = Get-ChildItem build -Recurse -File -Filter "$name.exe" | Select-Object -First 1
             Write-Host "===== $name ====="
             if (-not $exe) {
-              Write-Error "$name.exe not found"
+              Write-Host "FAIL: $name.exe not found"
               $failures += "$name (missing)"
               continue
             }
             & $exe.FullName
             if ($LASTEXITCODE -ne 0) {
-              Write-Error "$name failed with exit code $LASTEXITCODE"
+              Write-Host "FAIL: $name failed with exit code $LASTEXITCODE"
               $failures += "$name ($LASTEXITCODE)"
             }
           }
