@@ -282,8 +282,8 @@ if processor.count("processStereoFieldSample(") != 2:
     fail("normal and Mix FX paths are not both using the shared stereo stage")
 if "2500.0/sampleRate_" in processor or "0.25*depthBipolar" in processor:
     fail("legacy weak DEPTH equation returned")
-if "return processTubeModelV2(x,state,type,amount,effectiveSampleRate);" not in processor:
-    fail("live V2 Tube path is no longer routed through the tested stateful core")
+if "return processTubeModelV2(" not in processor or "x, state, model, amount, effectiveSampleRate" not in processor:
+    fail("live V2 Tube path is no longer routed through the tested stateful morphable core")
 if "TubeChannelState& state" not in processor_h or "TubeModelState" not in processor_h:
     fail("V2 Tube state is not part of the shared processor architecture")
 if processor.count("outBus.silenceFlags = 0;") < 2:
@@ -340,6 +340,17 @@ for param in (
 
 if processor.count("smooth.current[kParamConsoleCrosstalk]") < 1:
     fail("Mix FX Crosstalk smoothing initialization missing")
+
+for needle in (
+    "channelCharacterMorph_",
+    "mixFxCharacterMorph_",
+    "advanceCharacterWeights",
+    "weightedTubeVoiceModel",
+    "weightedTapePathModel",
+    "weightedGain(",
+):
+    if needle not in processor and needle not in processor_h:
+        fail(f"character morph infrastructure missing: {needle}")
 
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
