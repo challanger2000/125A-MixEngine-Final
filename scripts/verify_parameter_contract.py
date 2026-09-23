@@ -309,6 +309,18 @@ for param in (
     if f"advanceSmoothed(smooth, {param}" in processor:
         fail(f"discrete parameter was incorrectly smoothed: {param}")
 
+for needle in (
+    "blockAutomationCapacity_",
+    "blockAutomationSamples_",
+    "isContinuousSmoothedParam",
+    "q->getPoint(point, offset, value)",
+    "targetAt(kParamInput",
+    "targetAt(kParamTubeAmount",
+    "targetAt(kParamTapeAmount",
+):
+    if needle not in processor and needle not in processor_h:
+        fail(f"sample-offset automation infrastructure missing: {needle}")
+
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
     fail("shared calibrated VU scale mapping missing")
