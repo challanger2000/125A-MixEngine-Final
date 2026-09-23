@@ -90,7 +90,62 @@ int main() {
         if (std::abs(side) > 1.0e-6) return 8;
     }
 
+    // V2 correlation guard: normal positively correlated stereo should retain
+    // almost all requested widening, while a sustained anti-phase/side-heavy
+    // signal should have only the *excess* width reduced.
+    double normalRatio = 0.0;
+    double riskyRatio = 0.0;
+    {
+        constexpr double sr = 48000.0;
+        constexpr double pi = 3.14159265358979323846;
+        const double lowCoeff = MixEngine::stereoOnePoleCoefficient(120.0, sr);
+        const double depthCoeff = MixEngine::stereoOnePoleCoefficient(2000.0, sr);
+        const double corrCoeff = MixEngine::stereoOnePoleCoefficient(4.0, sr);
+
+        MixEngine::StereoFieldState normalState;
+        long double inSideE=0.0,outSideE=0.0;
+        int count=0;
+        for(int n=0;n<48000;++n){
+            const double a=std::sin(2.0*pi*997.0*n/sr);
+            const double b=0.22*std::sin(2.0*pi*3137.0*n/sr);
+            double l=a+b;
+            double r=a-b*0.65; // correlated stereo, not pure mono
+            const double inSide=0.5*(l-r);
+            MixEngine::processStereoFieldSample(
+                l,r,normalState,1.8,0.0,lowCoeff,1.0,depthCoeff,corrCoeff);
+            if(n>12000){
+                const double outSide=0.5*(l-r);
+                inSideE+=inSide*inSide;
+                outSideE+=outSide*outSide;
+                ++count;
+            }
+        }
+        normalRatio=std::sqrt(static_cast<double>(outSideE/inSideE));
+
+        MixEngine::StereoFieldState riskyState;
+        inSideE=0.0;outSideE=0.0;count=0;
+        for(int n=0;n<48000;++n){
+            const double x=std::sin(2.0*pi*997.0*n/sr);
+            double l=x,r=-x; // correlation -1, pure Side
+            const double inSide=0.5*(l-r);
+            MixEngine::processStereoFieldSample(
+                l,r,riskyState,1.8,0.0,lowCoeff,1.0,depthCoeff,corrCoeff);
+            if(n>12000){
+                const double outSide=0.5*(l-r);
+                inSideE+=inSide*inSide;
+                outSideE+=outSide*outSide;
+                ++count;
+            }
+        }
+        riskyRatio=std::sqrt(static_cast<double>(outSideE/inSideE));
+    }
+    if (!(normalRatio > 1.65 && normalRatio <= 1.82)) return 9;
+    if (!(riskyRatio > 1.15 && riskyRatio < 1.45)) return 10;
+    if (!(normalRatio > riskyRatio + 0.25)) return 11;
+
     std::cout << "Stereo field PASS: DEPTH back=" << backDb
-              << " dB, forward=" << forwardDb << " dB\n";
+              << " dB, forward=" << forwardDb
+              << " dB, normal width ratio=" << normalRatio
+              << ", risky width ratio=" << riskyRatio << " dB\n";
     return 0;
 }
