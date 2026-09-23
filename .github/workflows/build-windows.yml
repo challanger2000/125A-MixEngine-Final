@@ -70,6 +70,7 @@ jobs:
           dynamic-characterization
           noise-characterization
           automation-stress-diagnostic
+          automation-transition-characterization
           mixfx-crosstalk-diagnostic
 
       - name: Run all DSP diagnostics
@@ -97,6 +98,7 @@ jobs:
             "dynamic-characterization",
             "noise-characterization",
             "automation-stress-diagnostic",
+            "automation-transition-characterization",
             "mixfx-crosstalk-diagnostic"
           )
           $failures = @()
