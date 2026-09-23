@@ -148,4 +148,91 @@ inline double processTubeModelV2(double x,
     return std::clamp(y, -4.0, 4.0);
 }
 
+
+struct TapeMagneticState {
+    double magnetisation = 0.0;
+    double previousField = 0.0;
+    double previousDirection = 1.0;
+
+    void reset() noexcept {
+        magnetisation = 0.0;
+        previousField = 0.0;
+        previousDirection = 1.0;
+    }
+};
+
+struct TapeSpeedModel {
+    double driveBase;
+    double driveRange;
+    double coercivity;
+    double feedback;
+    double memoryMix;
+    double saturation;
+};
+
+inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
+    switch (speed) {
+        case 0: // 7.5 ips: earlier saturation, strongest hysteretic colour
+            return {1.20, 1.55, 0.055, 0.16, 0.105, 1.28};
+        case 1: // 15 ips: balanced studio operating point
+            return {1.12, 1.35, 0.045, 0.13, 0.082, 1.18};
+        default: // 30 ips: cleaner, more open magnetic path
+            return {1.06, 1.10, 0.034, 0.10, 0.060, 1.10};
+    }
+}
+
+// Bounded hysteretic magnetic core. This is intentionally a stable gray-box
+// approximation of the history dependence described by magnetic tape models,
+// not a claim of solving the full Jiles-Atherton ODE. The static saturation
+// path carries the main signal; the stateful magnetisation contributes a
+// smaller path-dependent residual so the model remains usable at 1x/2x/4x.
+inline double processTapeMagneticV2(double x,
+                                    TapeMagneticState& state,
+                                    int speed,
+                                    double amount) noexcept {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    const double c = analogCharacterAmount(a);
+    const TapeSpeedModel p = tapeSpeedModel(speed);
+
+    const double drive = p.driveBase + p.driveRange * c;
+    const double field = x * drive;
+    const double delta = field - state.previousField;
+    if (std::abs(delta) > 1.0e-12)
+        state.previousDirection = delta > 0.0 ? 1.0 : -1.0;
+
+    // Coercive shift plus mean-field feedback forms a compact hysteresis loop.
+    // Updating more strongly on larger field movement avoids turning the
+    // magnetisation state into an ordinary audio low-pass filter.
+    const double shifted =
+        field + p.feedback * c * state.magnetisation -
+        p.coercivity * c * state.previousDirection;
+    const double target = std::tanh(shifted / p.saturation);
+    const double movement =
+        std::clamp(0.10 + 1.75 * std::abs(delta), 0.10, 0.92);
+    state.magnetisation +=
+        movement * (target - state.magnetisation);
+
+    // Main bounded saturation law plus a modest path-dependent residual.
+    const double k = 0.42 + 1.18 * c;
+    const double staticMag =
+        field / std::sqrt(1.0 + k * field * field);
+    const double reference =
+        std::tanh(field / p.saturation);
+    const double hysteresisResidual =
+        state.magnetisation - reference;
+
+    const double normalized =
+        staticMag / std::max(1.0, p.driveBase + 0.35 * p.driveRange * c);
+    const double magnetic =
+        normalized + p.memoryMix * c * hysteresisResidual;
+
+    state.previousField = field;
+
+    // Parallel architecture preserves transient definition at low settings and
+    // still allows deliberately strong magnetic colour at the top of the knob.
+    const double wet = 0.05 + 0.90 * std::pow(a, 0.86);
+    const double y = x + (magnetic - x) * wet;
+    return std::clamp(y, -4.0, 4.0);
+}
+
 } // namespace MixEngine
