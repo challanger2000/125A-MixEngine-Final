@@ -57,6 +57,26 @@ inline double advanceSmoothed(ContinuousSmoothingState& state,
         current = target;
     return current;
 }
+inline bool isContinuousSmoothedParam(ParamID id) noexcept {
+    switch (id) {
+        case kParamInput:
+        case kParamOutput:
+        case kParamConsoleDrive:
+        case kParamConsoleCrosstalk:
+        case kParamTubeAmount:
+        case kParamTapeAmount:
+        case kParamTapeStability:
+        case kParamGlueAmount:
+        case kParamGlueCharacter:
+        case kParamDepth:
+        case kParamWidth:
+        case kParamLowMono:
+            return true;
+        default:
+            return false;
+    }
+}
+
 inline double calibrationReferenceDb(double normalized) {
     if (normalized < 0.25) return -18.0;
     if (normalized < 0.75) return -14.0;
@@ -211,6 +231,9 @@ tresult PLUGIN_API Processor::disconnect(IConnectionPoint* other){meterExchange_
 tresult PLUGIN_API Processor::setBusArrangements(SpeakerArrangement* inputs,int32 numIns,SpeakerArrangement* outputs,int32 numOuts){if(numIns!=1||numOuts!=1||!inputs||!outputs)return kResultFalse;if(inputs[0]!=SpeakerArr::kMono&&inputs[0]!=SpeakerArr::kStereo)return kResultFalse;if(outputs[0]!=inputs[0])return kResultFalse;return AudioEffect::setBusArrangements(inputs,numIns,outputs,numOuts);}
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 s){return s==kSample32||s==kSample64?kResultTrue:kResultFalse;}
 tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){sampleRate_=setup.sampleRate>0.0?setup.sampleRate:44100.0;dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
+ blockAutomationCapacity_=std::max<int32>(1,setup.maxSamplesPerBlock);
+ for(auto&curve:blockAutomation_)curve.assign(static_cast<std::size_t>(blockAutomationCapacity_),0.0);
+ blockAutomationSamples_=0;
 #ifndef MIXENGINE_CHANNEL_BUILD
  mixFxSnapshotCapacity_=std::max<int32>(1,setup.maxSamplesPerBlock);prepareMixFxSnapshotBuffers();
 #endif
@@ -224,6 +247,7 @@ tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;i
 
 void Processor::resetConsoleState(){
  channelSmoothing_.reset();for(auto&state:mixFxSmoothing_)state.reset();
+ blockAutomationSamples_=0;
  for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s.reset();for(auto&source:mixFxTubeState_)for(auto&s:source)s.reset();for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
  for(auto&s:consoleOversampling_)s.reset();for(auto&source:mixFxConsoleOversampling_)for(auto&s:source)s.reset();
  consoleOversamplingFactor_.fill(1);for(auto&source:mixFxConsoleOversamplingFactor_)source.fill(1);
