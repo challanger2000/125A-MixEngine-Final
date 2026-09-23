@@ -346,7 +346,95 @@ double Processor::processTapeSample(double x,
 
     return std::clamp(y, -6.0, 6.0);
 }
-double Processor::processGlueGain(double detector,GlueChannelState& state,double amount,double character)const{const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0),attackMs=12.0-8.0*c,releaseMs=280.0-140.0*c,attackCoeff=std::exp(-1.0/(0.001*attackMs*sampleRate_)),releaseCoeff=std::exp(-1.0/(0.001*releaseMs*sampleRate_));detector=std::abs(detector);if(detector>state.envelope)state.envelope=attackCoeff*state.envelope+(1.0-attackCoeff)*detector;else state.envelope=releaseCoeff*state.envelope+(1.0-releaseCoeff)*detector;const double thresholdDb=-10.0-8.0*a,ratio=1.0+1.7*a+0.6*c*a,kneeDb=7.0,envDb=gainToDb(state.envelope),overDb=envDb-thresholdDb;double gr=0.0;if(overDb>kneeDb*0.5)gr=overDb-overDb/ratio;else if(overDb>-kneeDb*0.5){const double p=overDb+kneeDb*0.5;gr=(1.0-1.0/ratio)*p*p/(2.0*kneeDb);}const double compressedGain=dbToGain(-gr),wet=0.20+0.45*a;return 1.0+(compressedGain-1.0)*wet*a;}
+double Processor::processGlueGain(double detector,
+                                  GlueChannelState& state,
+                                  double amount,
+                                  double character) const {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    if (a <= 0.0) return 1.0;
+    const double c = std::clamp(character, 0.0, 1.0);
+    const double level = std::abs(detector);
+
+    // Dual detector: the fast path sees transient crest while the slow path
+    // represents programme body. RESPONSE morphs how strongly the transient
+    // path influences gain control.
+    const double fastAttackMs = 0.55 + 1.65 * (1.0 - c);
+    const double fastReleaseMs = 32.0 + 38.0 * (1.0 - c);
+    const double slowAttackMs = 7.0 + 11.0 * (1.0 - c);
+    const double slowReleaseMs = 230.0 + 190.0 * (1.0 - c);
+
+    const auto follow = [&](double input, double& env,
+                            double attackMs, double releaseMs) {
+        const double attack =
+            std::exp(-1.0 / (0.001 * attackMs * sampleRate_));
+        const double release =
+            std::exp(-1.0 / (0.001 * releaseMs * sampleRate_));
+        const double coeff = input > env ? attack : release;
+        env = coeff * env + (1.0 - coeff) * input;
+    };
+
+    follow(level, state.fastEnvelope, fastAttackMs, fastReleaseMs);
+    follow(level, state.slowEnvelope, slowAttackMs, slowReleaseMs);
+
+    const double crest =
+        state.fastEnvelope / std::max(1.0e-8, state.slowEnvelope);
+    const double crestCoeff =
+        std::exp(-1.0 / (0.001 * 45.0 * sampleRate_));
+    state.crestMemory =
+        crestCoeff * state.crestMemory +
+        (1.0 - crestCoeff) * std::clamp(crest, 0.5, 5.0);
+
+    const double transientWeight =
+        std::clamp(0.14 + 0.38 * c +
+                   0.08 * (state.crestMemory - 1.0),
+                   0.10, 0.68);
+    const double controlLevel =
+        state.slowEnvelope +
+        transientWeight * (state.fastEnvelope - state.slowEnvelope);
+
+    const double thresholdDb = -8.0 - 13.0 * a;
+    const double ratio = 1.0 + (2.2 + 1.6 * c) * a;
+    const double kneeDb = 10.0 - 4.0 * c;
+    const double envDb = gainToDb(controlLevel);
+    const double overDb = envDb - thresholdDb;
+
+    double grDb = 0.0;
+    if (overDb > kneeDb * 0.5) {
+        grDb = overDb - overDb / ratio;
+    } else if (overDb > -kneeDb * 0.5) {
+        const double p = overDb + kneeDb * 0.5;
+        grDb = (1.0 - 1.0 / ratio) * p * p / (2.0 * kneeDb);
+    }
+
+    // Gain-control smoothing is separate from the level detector. Release gets
+    // longer after deeper gain reduction and shorter for high-crest material,
+    // yielding a musical programme-dependent recovery instead of one fixed RC.
+    const double desiredGainDb = -grDb;
+    const double gainAttackMs = 5.0 + 13.0 * (1.0 - c);
+    const double depth = std::clamp(grDb / 10.0, 0.0, 1.0);
+    const double crestRelease =
+        std::clamp((state.crestMemory - 1.0) / 2.5, 0.0, 1.0);
+    const double releaseFastMs = 85.0 + 55.0 * (1.0 - c);
+    const double releaseSlowMs = 360.0 + 180.0 * (1.0 - c);
+    const double gainReleaseMs =
+        releaseFastMs +
+        (releaseSlowMs - releaseFastMs) *
+            depth * (1.0 - 0.45 * crestRelease);
+
+    const double gainAttack =
+        std::exp(-1.0 / (0.001 * gainAttackMs * sampleRate_));
+    const double gainRelease =
+        std::exp(-1.0 / (0.001 * gainReleaseMs * sampleRate_));
+    const double gainCoeff =
+        desiredGainDb < state.gainDb ? gainAttack : gainRelease;
+    state.gainDb =
+        gainCoeff * state.gainDb +
+        (1.0 - gainCoeff) * desiredGainDb;
+
+    const double compressedGain = dbToGain(state.gainDb);
+    const double wet = 0.12 + 0.78 * std::pow(a, 0.82);
+    return 1.0 + (compressedGain - 1.0) * wet;
+}
 double Processor::processVinylSample(double x,VinylChannelState& state,int sourceIndex,int lane,double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);double y=x;if(c>0.0||w>0.0){double cutoff=19000.0-5500.0*c-7500.0*w;cutoff=std::clamp(cutoff,5500.0,sampleRate_*0.45);const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bodyCoeff=1.0-std::exp(-2.0*kPi*220.0/sampleRate_);state.highMemory+=highCoeff*(x-state.highMemory);state.lowMemory+=bodyCoeff*(state.highMemory-state.lowMemory);const double bodyBoost=0.030*c+0.020*w,colored=state.highMemory+bodyBoost*state.lowMemory,drive=1.0+0.35*c+0.25*w;OversamplingEngine* osEngine=nullptr;int* osCurrentFactor=nullptr;const int osFactor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){osEngine=&mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];osCurrentFactor=&mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{osEngine=&vinylOversampling_[static_cast<std::size_t>(lane)];osCurrentFactor=&vinylOversamplingFactor_[static_cast<std::size_t>(lane)];}const double shaped=processVinylOversampledCore(*osEngine,*osCurrentFactor,osFactor,colored,drive),wet=std::clamp(0.12+0.43*c+0.30*w,0.0,0.85);LatencyAligner* dryAligner=mixFxEngaged_?&mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&vinylDryAligner_[static_cast<std::size_t>(lane)];const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));y=dry+(shaped-dry)*wet;}const double noiseAmount=std::clamp(mixFxEngaged_?mixFxVinylNoise_.load(std::memory_order_relaxed):params_[kParamVinylNoise],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xB17E4A11u);const double white=randomBipolar(state.noiseRng),surfaceCoeff=1.0-std::exp(-2.0*kPi*7000.0/sampleRate_);state.surfaceMemory+=surfaceCoeff*(white-state.surfaceMemory);const double surface=0.52*white+0.48*state.surfaceMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration])),surfaceLevel=0.0070*(0.75+0.75*w);y+=surface*surfaceLevel*n*sourceScale*calibrationNorm;const double clickRateHz=(0.12+2.2*w*w)*noiseAmount,eventProbe=0.5*(randomBipolar(state.noiseRng)+1.0);if(eventProbe<clickRateHz/sampleRate_){const double randomLevel=0.5*(randomBipolar(state.noiseRng)+1.0);state.clickEnvelope=0.018+0.055*randomLevel*(0.35+0.65*w);state.clickPolarity=randomBipolar(state.noiseRng)>=0.0?1.0:-1.0;}const double clickDecayMs=0.7+1.8*w,clickDecay=std::exp(-1.0/(0.001*clickDecayMs*sampleRate_));y+=state.clickPolarity*state.clickEnvelope*n*sourceScale*calibrationNorm;state.clickEnvelope*=clickDecay;if(state.clickEnvelope<1.0e-10)state.clickEnvelope=0.0;}return y;}
 void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
 #ifndef MIXENGINE_CHANNEL_BUILD
