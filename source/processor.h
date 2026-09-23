@@ -77,7 +77,7 @@ private:
     using TubeChannelState = TubeModelState;
     struct TapeChannelState { TapeMagneticState magnetic{}; double highMemory=0.0,bumpFast=0.0,bumpSlow=0.0,wowPhase=0.0,flutterPhase=0.0,transportZ=0.0,hissMemory=0.0,compressionEnvelope=0.0; std::uint32_t noiseRng=0; };
     struct GlueChannelState { double fastEnvelope=0.0,slowEnvelope=0.0,gainDb=0.0,crestMemory=1.0; };
-    struct VinylChannelState { double highMemory=0.0,bodyMemory=0.0,wearEnvelope=0.0,previousInput=0.0,surfaceMemory=0.0,rumbleMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
+    struct VinylChannelState { double highMemory=0.0,bodyMemory=0.0,wearEnvelope=0.0,previousInput=0.0,dcX1=0.0,dcY1=0.0,surfaceMemory=0.0,rumbleMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
     using StereoChannelState = StereoFieldState;
     void readParameterChanges(Steinberg::Vst::IParameterChanges* changes);
     void syncMixFxTargets();
@@ -146,7 +146,7 @@ private:
 #endif
     Steinberg::Vst::DataExchangeHandler meterExchange_;
     int meterExchangeCountdown_=0;
-    std::atomic<double> mixFxBypass_{0.0},mixFxInput_{0.5},mixFxCalibration_{0.5},mixFxAutoGain_{1.0},mixFxConsoleOn_{1.0},mixFxConsoleMode_{1.0/3.0},mixFxConsoleDrive_{0.25},mixFxCrosstalk_{0.10},mixFxConsoleNoise_{0.0},mixFxTubeOn_{0.0},mixFxTubeAmount_{0.20},mixFxTubeType_{0.5},mixFxTapeOn_{0.0},mixFxTapeAmount_{0.20},mixFxTapeSpeed_{0.5},mixFxTapeStability_{0.90},mixFxTapeHiss_{0.0},mixFxGlueOn_{0.0},mixFxGlueAmount_{0.15},mixFxGlueCharacter_{0.50},mixFxVinylOn_{0.0},mixFxVinylCharacter_{0.25},mixFxVinylWear_{0.0},mixFxVinylNoise_{0.0},mixFxDepth_{0.5},mixFxWidth_{0.5},mixFxLowMono_{0.0},mixFxQuality_{0.5},mixFxOutput_{0.5},mixFxMeterSource_{1.0};
+    std::atomic<double> mixFxBypass_{0.0},mixFxInput_{0.5},mixFxCalibration_{0.0},mixFxAutoGain_{1.0},mixFxConsoleOn_{1.0},mixFxConsoleMode_{1.0/3.0},mixFxConsoleDrive_{0.25},mixFxCrosstalk_{0.10},mixFxConsoleNoise_{0.0},mixFxTubeOn_{0.0},mixFxTubeAmount_{0.20},mixFxTubeType_{0.5},mixFxTapeOn_{0.0},mixFxTapeAmount_{0.20},mixFxTapeSpeed_{0.5},mixFxTapeStability_{0.90},mixFxTapeHiss_{0.0},mixFxGlueOn_{0.0},mixFxGlueAmount_{0.15},mixFxGlueCharacter_{0.50},mixFxVinylOn_{0.0},mixFxVinylCharacter_{0.25},mixFxVinylWear_{0.0},mixFxVinylNoise_{0.0},mixFxDepth_{0.5},mixFxWidth_{0.5},mixFxLowMono_{0.0},mixFxQuality_{0.5},mixFxOutput_{0.5},mixFxMeterSource_{1.0};
     double sampleRate_=44100.0,dcCoeff_=0.995,lowCoeff_=0.0;
     int clipHoldSamplesL_=0,clipHoldSamplesR_=0;
     bool lastMeterOutput_=true;
