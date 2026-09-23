@@ -20,7 +20,7 @@ using namespace Steinberg::Vst;
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 constexpr double kDefaults[kParamCount] = {
-    0.0, 0.5, 0.5, 1.0,
+    0.0, 0.5, 0.0, 1.0,
     1.0, 1.0 / 3.0, 0.25, 0.10,
     0.0, 0.20,
     0.0, 0.20, 0.5, 0.9,
