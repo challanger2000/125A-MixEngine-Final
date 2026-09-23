@@ -99,12 +99,13 @@ inline double tapeAutoGain(int speed, double amount) {
     double p3 = 2.18081067;
     switch (std::clamp(speed, 0, 2)) {
         case 0:
-            base = 0.11247080; p1 = 4.72967333; p2 = 1.82382400; p3 = 2.75741867;
+            base = 0.12188543; p1 = 5.30378857; p2 = 1.60257143; p3 = 3.38016000;
             break;
         case 1:
+            base = 0.10390183; p1 = 4.26175524; p2 = 2.18540343; p3 = 2.22670933;
             break;
         default:
-            base = 0.09658058; p1 = 3.71617512; p2 = 2.37957131; p3 = 1.58044747;
+            base = 0.09203758; p1 = 3.32922274; p2 = 2.37650343; p3 = 1.12658933;
             break;
     }
     const double compensationDb =
