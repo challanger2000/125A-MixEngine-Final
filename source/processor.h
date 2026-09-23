@@ -97,11 +97,11 @@ private:
                                 bool outputSource, Steinberg::int32 numSamples);
     void sendMeterExchange(double vuL, double vuR, double clipL, double clipR,
                            Steinberg::int32 numSamples);
-    double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive);
+    double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive, double noiseAmount);
     double processTubeSample(double x, TubeChannelState& state, int type, double amount, double effectiveSampleRate) const;
-    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability);
+    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability, double hissAmount);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
-    double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear);
+    double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear, double noiseAmount);
     double dcBlock(double x, ConsoleChannelState& state);
 #ifndef MIXENGINE_CHANNEL_BUILD
     Steinberg::tresult processMixFxChannelInternal(Steinberg::int32 index, Steinberg::Vst::ProcessData& data);
