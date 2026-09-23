@@ -1,0 +1,88 @@
+125A MixEngine V2
+Bedienungsanleitung - Windows x64 VST3
+Version 2.0.0
+
+ÜBERBLICK
+125A MixEngine V2 ist ein Coloration-, Summing- und Mix-Finishing-Prozessor mit zwei Editionen aus demselben DSP-Kern:
+- 125A MixEngine V2: PreSonus Studio One Mix FX Edition mit echtem benachbartem Kanal-Crosstalk.
+- 125A MixEngine V2 Channel: normale VST3 Insert Edition für Spuren, Busse und Hosts ohne PreSonus Mix FX API.
+
+SIGNALFLUSS
+INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT
+Die Reihenfolge ist fest. Die Module können gleichzeitig verwendet werden.
+
+V2 - WAS IST NEU?
+- Sample-offset-genaue Automation für Standard-VST3 und Mix FX.
+- 0 Prozent ist bei den Intensitätsreglern ein echter neutraler Punkt.
+- Kontinuierliche, monotone Kennlinien ohne harte Sprünge; 20-50 Prozent ist der typische musikalische Arbeitsbereich, 75-100 Prozent ist bewusst stark/kreativ.
+- Tube Voice und Tape Speed morphen intern kontinuierlich zwischen den drei Charakteren.
+- Tape kombiniert die v1.1-Kompressionshüllkurve mit zusätzlicher Magnetisierungs-/Hysterese-Memory.
+- Glue besitzt ein programmabhängiges Release und eine musikalischere Transientenbehandlung.
+- Vinyl Color und Wear sind als unterschiedliche Achsen ausgelegt: Material/Körper vs. HF-/Stylus-Abnutzung.
+- Console Classic/Vintage/Modern sind deutlicher getrennt; Vintage besitzt eine begrenzte ausklingende Transformer-Memory.
+- FTZ/DAZ-Denormalschutz läuft nur innerhalb der Audio-Callbacks und stellt den Host-Floating-Point-Zustand danach wieder her.
+- 32-/64-Bit Audio sowie 44.1, 48, 96 und 192 kHz wurden geprüft.
+
+INPUT / LEVEL MATCH
+INPUT GAIN regelt den Pegel vor der Klangbearbeitung. LEVEL MATCH kompensiert parameterabhängige Pegeländerungen und ist kein adaptiver Loudness-Normalizer. Bei aktivem Level Match wird der lineare Anteil des Input Gain am Ausgang kompensiert, während der veränderte Drive in die nichtlinearen Stufen erhalten bleibt.
+
+REFERENCE LEVEL
+0 VU kann auf -18, -14 oder -10 dBFS bezogen werden. 0 VU ist ein Arbeitsreferenzpunkt und kein Ziel, das Musik permanent treffen muss.
+
+CONSOLE
+MODE: Clean, Classic, Vintage, Modern.
+DRIVE: bestimmt Stärke/Dichte der Konsolenfärbung. 0 Prozent ist neutral.
+CROSSTALK: nur in der Mix FX Edition; koppelt echte benachbarte Mix-FX-Kanäle und ist kein Stereo-L/R-Blend.
+NOISE: unabhängiges Konsolenrauschen.
+
+TUBE
+VOICE: Soft, Balanced, Hot.
+AMOUNT: Intensität der Röhrenfärbung. 0 Prozent neutral.
+Die Voice-Auswahl wird intern weich gemorpht, damit Umschaltungen/Automation nicht als harte DSP-Sprünge auftreten.
+
+TAPE
+AMOUNT: Bandcharakter und Sättigung.
+SPEED: 7.5 / 15 / 30 ips mit kontinuierlichem internem Morph.
+STABILITY: Transportstabilität; niedrigere Werte erzeugen stärkere Bewegung.
+HISS: unabhängiges Bandrauschen.
+V2 behält die programmabhängige Tape-Kompression der Final-v1.1-Basis und ergänzt zustandsabhängige Magnetisierung/Hysterese.
+
+GLUE
+AMOUNT: Stärke der verklebenden Dynamikbearbeitung.
+RESPONSE: verschiebt Attack/Release-Charakter und Verhalten zwischen glatter und direkter Reaktion.
+Das V2-Modell arbeitet programmabhängig und ist für Bus-/Mix-Anwendungen ausgelegt.
+
+VINYL
+COLOR: Materialkörper, asymmetrische harmonische Färbung.
+WEAR: HF-Verlust und Stylus-/Compliance-Charakter.
+SURFACE: unabhängiges Oberflächenrauschen/Klickanteil.
+Color und Wear sind in V2 bewusst getrennte Klangachsen.
+
+STEREO
+DEPTH: verändert die wahrgenommene Tiefenwirkung.
+WIDTH: 0-200 Prozent Stereobreite.
+LOW MONO: monoisiert den Tieftonanteil um den fest definierten Bereich bei 120 Hz zunehmend.
+
+QUALITY
+Eco = 1x, Normal = 2x, High = 4x. Höhere Qualität reduziert Aliasing in den nichtlinearen Stufen auf Kosten von CPU. Die gemeldete Host-Latenz bleibt fest bei 21 Samples.
+
+AUTOMATION
+V2 verarbeitet VST3-Automationspunkte an ihren Sample-Offsets innerhalb des Audioblocks. Das gilt für die Standard-Channel-Edition und den Mix-FX-Pfad. Charakterparameter werden zusätzlich geglättet, um harte Sprünge zu vermeiden.
+
+INSTALLATION
+1. DAW schließen.
+2. Die gewünschte .vst3-Struktur nach C:\Program Files\Common Files\VST3 kopieren.
+3. DAW starten und bei Bedarf VST3-Scan ausführen.
+
+WELCHE EDITION?
+Studio One Mix FX Slot: 125A MixEngine V2.
+Normale Spur/Bus/anderer VST3 Host: 125A MixEngine V2 Channel.
+Beide Editionen können parallel installiert werden.
+
+PRAXIS
+Beginne bei 20-50 Prozent Amount/Drive. 50-75 Prozent ist deutlich stärker. 75-100 Prozent ist absichtlich kreativ und kann übertrieben sein. Entscheidend ist der Kontext im Mix.
+
+VALIDIERUNG
+Der V2-Stand wurde unter anderem gegen Zero-Neutrality, Range-Kontinuität, Oversampling/Aliasing, feste Latenz, Phase/Mono, Level Match, Channel/Mix-FX-Parität, samplegenaue Automation, Quality-Switching, Tape-/Console-Memory, Glue-Transienten, Vinyl-Achsentrennung, Denormalschutz und mehrere Sample-Rates/Sample-Formate geprüft. Die Channel-Edition besteht den Steinberg VST3 Validator.
+
+125A Audio Software - Copyright 2026. Alle Rechte vorbehalten.
