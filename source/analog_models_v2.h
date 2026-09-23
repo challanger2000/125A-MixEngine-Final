@@ -188,12 +188,12 @@ struct TapeSpeedModel {
 
 inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
     switch (speed) {
-        case 0: // 7.5 ips: earlier saturation, strongest hysteretic colour
-            return {1.20, 1.55, 0.055, 0.16, 0.105, 1.28};
+        case 0: // 7.5 ips: earlier saturation, broader loop, strongest memory
+            return {1.28, 2.15, 0.070, 0.22, 0.145, 1.08};
         case 1: // 15 ips: balanced studio operating point
-            return {1.12, 1.35, 0.045, 0.13, 0.082, 1.18};
-        default: // 30 ips: cleaner, more open magnetic path
-            return {1.06, 1.10, 0.034, 0.10, 0.060, 1.10};
+            return {1.12, 1.45, 0.045, 0.13, 0.082, 1.20};
+        default: // 30 ips: higher headroom, tighter and more open
+            return {1.03, 0.85, 0.025, 0.075, 0.042, 1.35};
     }
 }
 
