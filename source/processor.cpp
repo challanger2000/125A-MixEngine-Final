@@ -63,11 +63,16 @@ inline bool isContinuousSmoothedParam(ParamID id) noexcept {
         case kParamOutput:
         case kParamConsoleDrive:
         case kParamConsoleCrosstalk:
+        case kParamConsoleNoise:
         case kParamTubeAmount:
         case kParamTapeAmount:
         case kParamTapeStability:
+        case kParamTapeHiss:
         case kParamGlueAmount:
         case kParamGlueCharacter:
+        case kParamVinylCharacter:
+        case kParamVinylWear:
+        case kParamVinylNoise:
         case kParamDepth:
         case kParamWidth:
         case kParamLowMono:
