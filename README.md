@@ -56,7 +56,7 @@ Both editions use separate VST3 identities and can be installed side by side.
 
 ## Gain staging
 
-0 VU is a reference point, not a level every musical signal must constantly hit. With the default reference, **0 VU = -14 dBFS**. Dynamic music can show a lower VU reading while short DAW peaks are substantially higher.
+0 VU is a reference point, not a level every musical signal must constantly hit. With the default reference, **0 VU = -18 dBFS**. Dynamic music can show a lower VU reading while short DAW peaks are substantially higher.
 
 Level Match is a fixed parameter-dependent compensation system. It is not an adaptive loudness normalizer.
 
