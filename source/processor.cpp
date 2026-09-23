@@ -707,111 +707,110 @@ double Processor::processVinylSample(double x,
                                     double noiseAmount) {
     const double c = std::clamp(character, 0.0, 1.0);
     const double w = std::clamp(wear, 0.0, 1.0);
-    double y = x;
 
-    if (c > 0.0 || w > 0.0) {
-        // Wear reacts to fast/high-frequency movement rather than acting as a
-        // fixed low-pass amount. Strong HF/transient content therefore loses a
-        // little more edge on a worn record while quiet/body information is
-        // preserved.
-        const double derivative = x - state.previousInput;
-        state.previousInput = x;
-        const double hfActivity = std::abs(derivative);
-        const double wearAttack =
-            std::exp(-1.0 / (0.001 * 2.2 * sampleRate_));
-        const double wearRelease =
-            std::exp(-1.0 / (0.001 * 95.0 * sampleRate_));
-        const double wearCoeff =
-            hfActivity > state.wearEnvelope ? wearAttack : wearRelease;
-        state.wearEnvelope =
-            wearCoeff * state.wearEnvelope +
-            (1.0 - wearCoeff) * hfActivity;
+    // Keep Vinyl's internal latency topology constant whenever the module is
+    // enabled. This lets Color/Wear move smoothly through zero without adding
+    // or removing an oversampling island in the middle of an automation block.
+    OversamplingEngine* osEngine = nullptr;
+    int* osCurrentFactor = nullptr;
+    const int osFactor = qualityFactor(
+        mixFxEngaged_
+            ? mixFxQuality_.load(std::memory_order_relaxed)
+            : params_[kParamQuality]);
 
-        const double activity =
-            std::clamp(state.wearEnvelope * 8.0, 0.0, 1.0);
-
-        double cutoff =
-            20500.0 - 2600.0 * c - 7200.0 * w;
-        cutoff *= (1.0 - 0.30 * w * activity);
-        cutoff = std::clamp(cutoff, 5200.0, sampleRate_ * 0.45);
-
-        const double highCoeff =
-            1.0 - std::exp(-2.0 * kPi * cutoff / sampleRate_);
-        state.highMemory +=
-            highCoeff * (x - state.highMemory);
-
-        const double bodyCoeff =
-            1.0 - std::exp(-2.0 * kPi * 240.0 / sampleRate_);
-        state.bodyMemory +=
-            bodyCoeff * (state.highMemory - state.bodyMemory);
-
-        const double bodyBoost =
-            0.018 * c + 0.014 * w;
-        double colored =
-            state.highMemory + bodyBoost * state.bodyMemory;
-
-        // Worn groove walls soften the fastest excursions before the nonlinear
-        // tracing stage. This is level dependent through the wear envelope.
-        const double transientSoft =
-            std::clamp(0.055 * w * activity, 0.0, 0.055);
-        colored -= transientSoft * derivative;
-
-        OversamplingEngine* osEngine = nullptr;
-        int* osCurrentFactor = nullptr;
-        const int osFactor = qualityFactor(
-            mixFxEngaged_
-                ? mixFxQuality_.load(std::memory_order_relaxed)
-                : params_[kParamQuality]);
-
-        if (mixFxEngaged_) {
-            osEngine =
-                &mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)]
-                                        [static_cast<std::size_t>(lane)];
-            osCurrentFactor =
-                &mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
-                                             [static_cast<std::size_t>(lane)];
-        } else {
-            osEngine = &vinylOversampling_[static_cast<std::size_t>(lane)];
-            osCurrentFactor =
-                &vinylOversamplingFactor_[static_cast<std::size_t>(lane)];
-        }
-
-        if (*osCurrentFactor != osFactor) {
-            osEngine->reset();
-            *osCurrentFactor = osFactor;
-        }
-
-        const double shapedRaw = osEngine->process(
-            colored, osFactor,
-            [&](double v) {
-                return processVinylGrooveV2(v, c, w);
-            });
-
-        // AC-couple the asymmetric groove stage so H2/tracing colour is
-        // preserved while the generated DC component is rejected.
-        const double vinylDcCoeff =
-            std::exp(-2.0 * kPi * 8.0 / sampleRate_);
-        const double shaped =
-            shapedRaw - state.dcX1 + vinylDcCoeff * state.dcY1;
-        state.dcX1 = shapedRaw;
-        state.dcY1 = shaped;
-
-        const double wet =
-            std::clamp(0.10 + 0.48 * c + 0.32 * w, 0.0, 0.90);
-        LatencyAligner* dryAligner =
-            mixFxEngaged_
-                ? &mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)]
-                                          [static_cast<std::size_t>(lane)]
-                : &vinylDryAligner_[static_cast<std::size_t>(lane)];
-        const double dry =
-            dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
-        y = dry + (shaped - dry) * wet;
+    if (mixFxEngaged_) {
+        osEngine =
+            &mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)]
+                                    [static_cast<std::size_t>(lane)];
+        osCurrentFactor =
+            &mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
+                                         [static_cast<std::size_t>(lane)];
+    } else {
+        osEngine = &vinylOversampling_[static_cast<std::size_t>(lane)];
+        osCurrentFactor =
+            &vinylOversamplingFactor_[static_cast<std::size_t>(lane)];
     }
+
+    if (*osCurrentFactor != osFactor) {
+        osEngine->reset();
+        *osCurrentFactor = osFactor;
+    }
+
+    LatencyAligner* dryAligner =
+        mixFxEngaged_
+            ? &mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)]
+                                      [static_cast<std::size_t>(lane)]
+            : &vinylDryAligner_[static_cast<std::size_t>(lane)];
+    const double dry =
+        dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
+
+    // Maintain the dynamic states even at the neutral point so automation from
+    // zero into a coloured setting does not wake up stale filter/envelope state.
+    const double derivative = x - state.previousInput;
+    state.previousInput = x;
+    const double hfActivity = std::abs(derivative);
+    const double wearAttack =
+        std::exp(-1.0 / (0.001 * 2.2 * sampleRate_));
+    const double wearRelease =
+        std::exp(-1.0 / (0.001 * 95.0 * sampleRate_));
+    const double wearCoeff =
+        hfActivity > state.wearEnvelope ? wearAttack : wearRelease;
+    state.wearEnvelope =
+        wearCoeff * state.wearEnvelope +
+        (1.0 - wearCoeff) * hfActivity;
+
+    const double activity =
+        std::clamp(state.wearEnvelope * 8.0, 0.0, 1.0);
+    double cutoff =
+        20500.0 - 2600.0 * c - 7200.0 * w;
+    cutoff *= (1.0 - 0.30 * w * activity);
+    cutoff = std::clamp(cutoff, 5200.0, sampleRate_ * 0.45);
+
+    const double highCoeff =
+        1.0 - std::exp(-2.0 * kPi * cutoff / sampleRate_);
+    state.highMemory +=
+        highCoeff * (x - state.highMemory);
+
+    const double bodyCoeff =
+        1.0 - std::exp(-2.0 * kPi * 240.0 / sampleRate_);
+    state.bodyMemory +=
+        bodyCoeff * (state.highMemory - state.bodyMemory);
+
+    const double bodyBoost =
+        0.018 * c + 0.014 * w;
+    double colored =
+        state.highMemory + bodyBoost * state.bodyMemory;
+    const double transientSoft =
+        std::clamp(0.055 * w * activity, 0.0, 0.055);
+    colored -= transientSoft * derivative;
+
+    // Smoothly fade the nonlinear groove model out at the true neutral point.
+    // At normal Color/Wear settings activation is effectively 1, preserving the
+    // calibrated V2 character while avoiding a discontinuity at zero.
+    const double activation =
+        1.0 - std::exp(-20.0 * (c + w));
+    const double shapedRaw = osEngine->process(
+        colored, osFactor,
+        [&](double v) {
+            const double groove = processVinylGrooveV2(v, c, w);
+            return v + activation * (groove - v);
+        });
+
+    const double vinylDcCoeff =
+        std::exp(-2.0 * kPi * 8.0 / sampleRate_);
+    const double shaped =
+        shapedRaw - state.dcX1 + vinylDcCoeff * state.dcY1;
+    state.dcX1 = shapedRaw;
+    state.dcY1 = shaped;
+
+    const double wet =
+        activation *
+        std::clamp(0.10 + 0.48 * c + 0.32 * w, 0.0, 0.90);
+    double y = dry + (shaped - dry) * wet;
 
     // SURFACE remains independent from Color/Wear. Wear changes the statistical
     // severity of a noisy surface, but Surface=0 is still mathematically silent.
     noiseAmount = std::clamp(noiseAmount, 0.0, 1.0);
-
     if (noiseAmount > 0.0) {
         if (state.noiseRng == 0u)
             state.noiseRng =
@@ -877,9 +876,6 @@ double Processor::processVinylSample(double x,
             state.clickEnvelope = 0.0;
     }
 
-    // Groove nonlinearity is bounded before the wet/dry mix. Avoid a hidden
-    // limiter on the final Vinyl output so Color=0/Wear=0/Surface=0 is exactly
-    // transparent even for high peaks.
     return y;
 }
 void Processor::readParameterChanges(IParameterChanges* changes, int32 numSamples) {
