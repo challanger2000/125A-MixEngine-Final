@@ -513,8 +513,11 @@ double Processor::processGlueGain(double detector,
         state.slowEnvelope +
         transientWeight * (state.fastEnvelope - state.slowEnvelope);
 
-    const double thresholdDb = -8.0 - 13.0 * a;
-    const double ratio = 1.0 + (2.2 + 1.6 * c) * a;
+    // Keep low-level programme material largely untouched; compression
+    // begins around the calibrated operating region and moves downward as
+    // AMOUNT rises. This avoids compressing signals far below 0 VU.
+    const double thresholdDb = -4.0 - 8.0 * a;
+    const double ratio = 1.0 + (1.8 + 1.4 * c) * a;
     const double kneeDb = 10.0 - 4.0 * c;
     const double envDb = gainToDb(controlLevel);
     const double overDb = envDb - thresholdDb;
@@ -638,11 +641,20 @@ double Processor::processVinylSample(double x,
             *osCurrentFactor = osFactor;
         }
 
-        const double shaped = osEngine->process(
+        const double shapedRaw = osEngine->process(
             colored, osFactor,
             [&](double v) {
                 return processVinylGrooveV2(v, c, w);
             });
+
+        // AC-couple the asymmetric groove stage so H2/tracing colour is
+        // preserved while the generated DC component is rejected.
+        const double vinylDcCoeff =
+            std::exp(-2.0 * kPi * 8.0 / sampleRate_);
+        const double shaped =
+            shapedRaw - state.dcX1 + vinylDcCoeff * state.dcY1;
+        state.dcX1 = shapedRaw;
+        state.dcY1 = shaped;
 
         const double wet =
             std::clamp(0.10 + 0.48 * c + 0.32 * w, 0.0, 0.90);
