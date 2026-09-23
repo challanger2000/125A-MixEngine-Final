@@ -120,8 +120,14 @@ Harmonics analyze(const std::vector<float>& x,double frequency) {
     const int start=kWarmup+MixEngine::kFixedLatencySamples;
     Harmonics result{};
     for(int harmonic=1;harmonic<=5;++harmonic) {
+        const double harmonicHz =
+            frequency * static_cast<double>(harmonic);
+        if (harmonicHz >= 0.5 * kSampleRate) {
+            result.h[static_cast<std::size_t>(harmonic-1)] = 0.0;
+            continue;
+        }
         long double re=0.0,im=0.0;
-        const double omega=2.0*kPi*frequency*static_cast<double>(harmonic)/kSampleRate;
+        const double omega=2.0*kPi*harmonicHz/kSampleRate;
         for(int i=0;i<kAnalysis;++i) {
             const double y=x[static_cast<std::size_t>(start+i)];
             const double phase=omega*static_cast<double>(i);
