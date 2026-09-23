@@ -189,7 +189,8 @@ inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
 inline double processTapeMagneticV2(double x,
                                     TapeMagneticState& state,
                                     int speed,
-                                    double amount) noexcept {
+                                    double amount,
+                                    double sampleRate) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
     const double c = analogCharacterAmount(a);
     const TapeSpeedModel p = tapeSpeedModel(speed);
@@ -207,8 +208,15 @@ inline double processTapeMagneticV2(double x,
         field + p.feedback * c * state.magnetisation -
         p.coercivity * c * state.previousDirection;
     const double target = std::tanh(shifted / p.saturation);
-    const double movement =
+    // Normalise state evolution to real time so changing oversampling quality
+    // does not change the tape's magnetic personality. At 48 kHz this retains
+    // the intended response; at 2x/4x each substep advances proportionally less.
+    const double srScale =
+        std::clamp(48000.0 / std::max(1.0, sampleRate), 0.125, 2.0);
+    const double movement48 =
         std::clamp(0.10 + 1.75 * std::abs(delta), 0.10, 0.92);
+    const double movement =
+        1.0 - std::pow(1.0 - movement48, srScale);
     state.magnetisation +=
         movement * (target - state.magnetisation);
 
