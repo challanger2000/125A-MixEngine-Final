@@ -88,13 +88,14 @@ struct Harness {
 };
 
 
-double runFocusedParity(const std::vector<Param>& params,const char* name){
+double runFocusedParity(const std::vector<Param>& params,const char* name,
+                        double quality=1.0,bool fixed64=false){
     Harness h;
     long long samplePos=0;
     double maxDiff=0.0;
     const std::array<int,5> sizes{{1,7,31,64,127}};
     for(int block=0;block<80;++block){
-        const int n=sizes[static_cast<std::size_t>(block%sizes.size())];
+        const int n=fixed64?64:sizes[static_cast<std::size_t>(block%sizes.size())];
         std::array<double,kMaxBlock> inL{},inR{},chL{},chR{},mxL{},mxR{};
         for(int i=0;i<n;++i,++samplePos){
             const double t=static_cast<double>(samplePos)/kSr;
@@ -110,7 +111,7 @@ double runFocusedParity(const std::vector<Param>& params,const char* name){
                 {MixEngine::kParamTubeOn,0.0},{MixEngine::kParamTapeOn,0.0},{MixEngine::kParamTapeHiss,0.0},
                 {MixEngine::kParamGlueOn,0.0},{MixEngine::kParamVinylOn,0.0},{MixEngine::kParamVinylNoise,0.0},
                 {MixEngine::kParamDepth,0.5},{MixEngine::kParamWidth,0.5},{MixEngine::kParamLowMono,0.0},
-                {MixEngine::kParamQuality,1.0}}){
+                {MixEngine::kParamQuality,quality}}){
                 setParam(chChanges,q.first,q.second);setParam(mxChanges,q.first,q.second);
             }
             for(const auto&q:params){setParam(chChanges,q.first,q.second);setParam(mxChanges,q.first,q.second);}
@@ -251,6 +252,19 @@ int main(){
         }){
             runFocusedParity(focused.second,focused.first);
         }
+
+
+        const std::vector<Param> vinylOnly{
+            {MixEngine::kParamVinylOn,1.0},
+            {MixEngine::kParamVinylCharacter,0.5},
+            {MixEngine::kParamVinylWear,0.25}
+        };
+        runFocusedParity(vinylOnly,"Vinyl-Eco-variable",0.0,false);
+        runFocusedParity(vinylOnly,"Vinyl-2x-variable",0.5,false);
+        runFocusedParity(vinylOnly,"Vinyl-4x-variable",1.0,false);
+        runFocusedParity(vinylOnly,"Vinyl-Eco-fixed64",0.0,true);
+        runFocusedParity(vinylOnly,"Vinyl-2x-fixed64",0.5,true);
+        runFocusedParity(vinylOnly,"Vinyl-4x-fixed64",1.0,true);
 
         std::cout<<"Automation stress maxAbs="<<maxAbs
                  <<" Channel/MixFX maxDiff="<<maxDiff<<"\n";
