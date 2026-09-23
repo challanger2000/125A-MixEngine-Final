@@ -291,9 +291,11 @@ if processor.count("outBus.silenceFlags = 0;") < 2:
 
 # Continuous V2 controls must be smoothed in both Channel and Mix FX paths.
 for param in (
-    "kParamInput", "kParamOutput", "kParamConsoleDrive", "kParamTubeAmount",
-    "kParamTapeAmount", "kParamTapeStability", "kParamGlueAmount",
-    "kParamGlueCharacter", "kParamDepth", "kParamWidth", "kParamLowMono",
+    "kParamInput", "kParamOutput", "kParamConsoleDrive", "kParamConsoleCrosstalk",
+    "kParamConsoleNoise", "kParamTubeAmount", "kParamTapeAmount",
+    "kParamTapeStability", "kParamTapeHiss", "kParamGlueAmount",
+    "kParamGlueCharacter", "kParamVinylCharacter", "kParamVinylWear",
+    "kParamVinylNoise", "kParamDepth", "kParamWidth", "kParamLowMono",
 ):
     if processor.count(f"advanceSmoothed(smooth, {param}") < 1:
         fail(f"continuous smoothing missing for {param}")
