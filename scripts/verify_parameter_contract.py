@@ -237,9 +237,8 @@ if "for(ParamID id=0;id<kParamCount;++id)" not in controller:
 
 # 8) Critical DSP routing checks.
 critical = [
-    "outputSource?outputMeter_:inputMeter_",
+    "const Metering& selected = outputSource ? outputMeter_ : inputMeter_;",
     "mixFxMeterSource_.load(std::memory_order_relaxed)>=0.5",
-    "widthGain=2.0*std::clamp",
     "mixFxWidth_.load",
     "params_[kParamWidth]",
     "mixFxDepth_.load",
@@ -248,7 +247,12 @@ critical = [
     "params_[kParamLowMono]",
     "processStereoFieldSample",
     "stereoDepthGain(depthBipolar)",
-    "stereoOnePoleCoefficient(2000.0,sampleRate_)",
+    "stereoOnePoleCoefficient(2000.0, sampleRate_)",
+    "advanceSmoothed(smooth, kParamInput",
+    "advanceSmoothed(smooth, kParamOutput",
+    "advanceSmoothed(",
+    "channelSmoothing_",
+    "mixFxSmoothing_",
 ]
 for needle in critical:
     if needle not in processor:
@@ -260,7 +264,7 @@ for needle in (
     "captureMixFxInputSnapshot",
     "mixFxCrosstalkSource",
     "targetIndex-1,targetIndex+1",
-    "crosstalk>0.0",
+    "crosstalk > 0.0",
 ):
     if needle not in processor:
         fail(f"true Mix FX Crosstalk routing missing: {needle}")
@@ -282,8 +286,28 @@ if "return processTubeModelV2(x,state,type,amount,effectiveSampleRate);" not in 
     fail("live V2 Tube path is no longer routed through the tested stateful core")
 if "TubeChannelState& state" not in processor_h or "TubeModelState" not in processor_h:
     fail("V2 Tube state is not part of the shared processor architecture")
-if processor.count("outBus.silenceFlags=0;") < 2:
+if processor.count("outBus.silenceFlags = 0;") < 2:
     fail("normal and Mix FX paths are not both conservative about output silence metadata")
+
+# Continuous V2 controls must be smoothed in both Channel and Mix FX paths.
+for param in (
+    "kParamInput", "kParamOutput", "kParamConsoleDrive", "kParamTubeAmount",
+    "kParamTapeAmount", "kParamTapeStability", "kParamGlueAmount",
+    "kParamGlueCharacter", "kParamDepth", "kParamWidth", "kParamLowMono",
+):
+    if processor.count(f"advanceSmoothed(smooth, {param}") < 1:
+        fail(f"continuous smoothing missing for {param}")
+
+# Discrete switches/selectors must remain immediate and must never be passed
+# through the continuous smoother.
+for param in (
+    "kParamBypass", "kParamCalibration", "kParamAutoGain", "kParamConsoleOn",
+    "kParamConsoleMode", "kParamTubeOn", "kParamTubeType", "kParamTapeOn",
+    "kParamTapeSpeed", "kParamGlueOn", "kParamVinylOn", "kParamQuality",
+    "kParamMeterSource",
+):
+    if f"advanceSmoothed(smooth, {param}" in processor:
+        fail(f"discrete parameter was incorrectly smoothed: {param}")
 
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
