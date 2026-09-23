@@ -31,6 +31,16 @@ struct IAudioMixChannelProcessor : Steinberg::FUnknown {
 }
 #endif
 
+struct ContinuousSmoothingState {
+    std::array<double,kParamCount> current{};
+    bool initialized = false;
+
+    void reset() noexcept {
+        current.fill(0.0);
+        initialized = false;
+    }
+};
+
 class Processor final : public Steinberg::Vst::AudioEffect
 #ifndef MIXENGINE_CHANNEL_BUILD
                         , public PresonusMixFx::IAudioMixProcessor
@@ -100,6 +110,8 @@ private:
     double mixFxCrosstalkSource(Steinberg::int32 targetIndex, Steinberg::int32 lane, Steinberg::int32 sampleIndex) const noexcept;
 #endif
     std::array<double,kParamCount> params_{};
+    ContinuousSmoothingState channelSmoothing_{};
+    std::array<ContinuousSmoothingState,kMaxMixFxChannels> mixFxSmoothing_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
     std::array<std::array<ConsoleChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleState_{};
     std::array<TubeChannelState,kMaxAudioChannels> tubeState_{};
