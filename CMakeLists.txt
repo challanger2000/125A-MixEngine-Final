@@ -157,3 +157,6 @@ target_link_libraries(sonic-impact-diagnostic PRIVATE sdk)
 add_executable(sample-rate-matrix-diagnostic tests/sample_rate_matrix.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(sample-rate-matrix-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(sample-rate-matrix-diagnostic PRIVATE sdk)
+
+add_executable(character-morph-diagnostic tests/character_morph.cpp)
+target_include_directories(character-morph-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
