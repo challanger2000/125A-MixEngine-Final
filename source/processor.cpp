@@ -1129,8 +1129,12 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         smooth.current[kParamTubeAmount] = tubeTarget;
         smooth.current[kParamTapeAmount] = tapeTarget;
         smooth.current[kParamTapeStability] = stabilityTarget;
+        smooth.current[kParamTapeHiss] = tapeHissTarget;
         smooth.current[kParamGlueAmount] = glueTarget;
         smooth.current[kParamGlueCharacter] = glueCharacterTarget;
+        smooth.current[kParamVinylCharacter] = vinylCharacterTarget;
+        smooth.current[kParamVinylWear] = vinylWearTarget;
+        smooth.current[kParamVinylNoise] = vinylNoiseTarget;
         smooth.current[kParamDepth] = depthTarget;
         smooth.current[kParamWidth] = widthTarget;
         smooth.current[kParamLowMono] = lowMonoTarget;
@@ -1387,7 +1391,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                 mixFxVinylState_[static_cast<std::size_t>(index)];
             l = processVinylSample(
                     l * calibrationGain, states[0],
-                    index, 0, vinylCharacter, vinylWear) *
+                    index, 0, vinylCharacter, vinylWear, vinylNoise) *
                 calibrationReturn * vinylGain;
             r = stereo
                 ? processVinylSample(
@@ -1497,28 +1501,33 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         calibrationReferenceDb(params_[kParamCalibration]);
     const double calibrationGain = dbToGain(-calibrationDb);
     const double calibrationReturn = 1.0 / calibrationGain;
-    const double vinylCharacter =
-        std::clamp(params_[kParamVinylCharacter], 0.0, 1.0);
-    const double vinylWear =
-        std::clamp(params_[kParamVinylWear], 0.0, 1.0);
-
     const int osIslands = bypass ? 0 :
         (static_cast<int>(consoleOn) +
          static_cast<int>(tubeOn) +
          static_cast<int>(tapeOn) +
-         static_cast<int>(vinylOn && (vinylCharacter > 0.0 || vinylWear > 0.0)));
+         static_cast<int>(vinylOn));
     const int latencyDelay = latencyCompensation(osFactor, osIslands);
 
     const double inputTarget = params_[kParamInput];
     const double outputTarget = params_[kParamOutput];
     const double driveTarget = params_[kParamConsoleDrive];
+    const double consoleNoiseTarget =
+        std::clamp(params_[kParamConsoleNoise], 0.0, 1.0);
     const double tubeTarget = std::clamp(params_[kParamTubeAmount], 0.0, 1.0);
     const double tapeTarget = std::clamp(params_[kParamTapeAmount], 0.0, 1.0);
     const double stabilityTarget =
         std::clamp(params_[kParamTapeStability], 0.0, 1.0);
+    const double tapeHissTarget =
+        std::clamp(params_[kParamTapeHiss], 0.0, 1.0);
     const double glueTarget = std::clamp(params_[kParamGlueAmount], 0.0, 1.0);
     const double glueCharacterTarget =
         std::clamp(params_[kParamGlueCharacter], 0.0, 1.0);
+    const double vinylCharacterTarget =
+        std::clamp(params_[kParamVinylCharacter], 0.0, 1.0);
+    const double vinylWearTarget =
+        std::clamp(params_[kParamVinylWear], 0.0, 1.0);
+    const double vinylNoiseTarget =
+        std::clamp(params_[kParamVinylNoise], 0.0, 1.0);
     const double depthTarget = std::clamp(params_[kParamDepth], 0.0, 1.0);
     const double widthTarget = std::clamp(params_[kParamWidth], 0.0, 1.0);
     const double lowMonoTarget = std::clamp(params_[kParamLowMono], 0.0, 1.0);
@@ -1528,6 +1537,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         smooth.current[kParamInput] = inputTarget;
         smooth.current[kParamOutput] = outputTarget;
         smooth.current[kParamConsoleDrive] = driveTarget;
+        smooth.current[kParamConsoleNoise] = consoleNoiseTarget;
         smooth.current[kParamTubeAmount] = tubeTarget;
         smooth.current[kParamTapeAmount] = tapeTarget;
         smooth.current[kParamTapeStability] = stabilityTarget;
@@ -1571,6 +1581,9 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         const double drive =
             advanceSmoothed(smooth, kParamConsoleDrive,
                             targetAt(kParamConsoleDrive, driveTarget), colourStep);
+        const double consoleNoise =
+            advanceSmoothed(smooth, kParamConsoleNoise,
+                            targetAt(kParamConsoleNoise, consoleNoiseTarget), slowStep);
         const double tubeAmount =
             advanceSmoothed(smooth, kParamTubeAmount,
                             targetAt(kParamTubeAmount, tubeTarget), colourStep);
@@ -1580,12 +1593,24 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         const double tapeStability =
             advanceSmoothed(smooth, kParamTapeStability,
                             targetAt(kParamTapeStability, stabilityTarget), slowStep);
+        const double tapeHiss =
+            advanceSmoothed(smooth, kParamTapeHiss,
+                            targetAt(kParamTapeHiss, tapeHissTarget), slowStep);
         const double glueAmount =
             advanceSmoothed(smooth, kParamGlueAmount,
                             targetAt(kParamGlueAmount, glueTarget), colourStep);
         const double glueCharacter =
             advanceSmoothed(smooth, kParamGlueCharacter,
                             targetAt(kParamGlueCharacter, glueCharacterTarget), slowStep);
+        const double vinylCharacter =
+            advanceSmoothed(smooth, kParamVinylCharacter,
+                            targetAt(kParamVinylCharacter, vinylCharacterTarget), colourStep);
+        const double vinylWear =
+            advanceSmoothed(smooth, kParamVinylWear,
+                            targetAt(kParamVinylWear, vinylWearTarget), colourStep);
+        const double vinylNoise =
+            advanceSmoothed(smooth, kParamVinylNoise,
+                            targetAt(kParamVinylNoise, vinylNoiseTarget), slowStep);
         const double depthNorm =
             advanceSmoothed(smooth, kParamDepth,
                             targetAt(kParamDepth, depthTarget), slowStep);
@@ -1637,9 +1662,9 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         if (consoleOn) {
             l *= calibrationGain;
             r *= calibrationGain;
-            l = processConsoleSample(l, consoleState_[0], 0, 0, mode, drive);
+            l = processConsoleSample(l, consoleState_[0], 0, 0, mode, drive, consoleNoise);
             r = stereo
-                ? processConsoleSample(r, consoleState_[1], 0, 1, mode, drive)
+                ? processConsoleSample(r, consoleState_[1], 0, 1, mode, drive, consoleNoise)
                 : l;
             l *= calibrationReturn * consoleGain;
             r *= calibrationReturn * consoleGain;
@@ -1681,7 +1706,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         if (tapeOn) {
             l = processTapeSample(
                     l * calibrationGain, tapeState_[0], 0, 0,
-                    tapeSpeed, tapeAmount, tapeStability) *
+                    tapeSpeed, tapeAmount, tapeStability, tapeHiss) *
                 calibrationReturn * tapeGain;
             r = stereo
                 ? processTapeSample(
