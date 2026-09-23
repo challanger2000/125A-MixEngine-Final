@@ -599,7 +599,7 @@ double Processor::processTapeSample(double x,
                 : params_[kParamCalibration]));
         const double speedTone =
             speed == 0 ? 0.82 : (speed == 1 ? 1.0 : 1.10);
-        y += hiss * 0.0065 * speedTone * n * sourceScale * calibrationNorm;
+        y += hiss * 0.0065 * speedTone * n * noiseSourceScale * calibrationNorm;
     }
 
     // Keep the processed magnetic branch bounded, but never hard-clip the
@@ -700,49 +700,30 @@ double Processor::processGlueGain(double detector,
 }
 double Processor::processVinylSample(double x,
                                     VinylChannelState& state,
+                                    OversamplingEngine& osEngine,
+                                    int& osCurrentFactor,
+                                    LatencyAligner& dryAligner,
                                     int sourceIndex,
                                     int lane,
+                                    int osFactor,
                                     double character,
                                     double wear,
-                                    double noiseAmount) {
+                                    double noiseAmount,
+                                    double calibrationNorm,
+                                    double noiseSourceScale) {
     const double c = std::clamp(character, 0.0, 1.0);
     const double w = std::clamp(wear, 0.0, 1.0);
 
     // Keep Vinyl's internal latency topology constant whenever the module is
-    // enabled. This lets Color/Wear move smoothly through zero without adding
-    // or removing an oversampling island in the middle of an automation block.
-    OversamplingEngine* osEngine = nullptr;
-    int* osCurrentFactor = nullptr;
-    const int osFactor = qualityFactor(
-        mixFxEngaged_
-            ? mixFxQuality_.load(std::memory_order_relaxed)
-            : params_[kParamQuality]);
-
-    if (mixFxEngaged_) {
-        osEngine =
-            &mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)]
-                                    [static_cast<std::size_t>(lane)];
-        osCurrentFactor =
-            &mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
-                                         [static_cast<std::size_t>(lane)];
-    } else {
-        osEngine = &vinylOversampling_[static_cast<std::size_t>(lane)];
-        osCurrentFactor =
-            &vinylOversamplingFactor_[static_cast<std::size_t>(lane)];
+    // enabled. Dependencies are supplied explicitly by the caller so Channel
+    // and Mix FX execute the same algorithm without hidden path conditionals.
+    if (osCurrentFactor != osFactor) {
+        osEngine.reset();
+        osCurrentFactor = osFactor;
     }
 
-    if (*osCurrentFactor != osFactor) {
-        osEngine->reset();
-        *osCurrentFactor = osFactor;
-    }
-
-    LatencyAligner* dryAligner =
-        mixFxEngaged_
-            ? &mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)]
-                                      [static_cast<std::size_t>(lane)]
-            : &vinylDryAligner_[static_cast<std::size_t>(lane)];
     const double dry =
-        dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
+        dryAligner.process(x, oversamplingBulkDelay(osFactor, 1));
 
     // Maintain the dynamic states even at the neutral point so automation from
     // zero into a coloured setting does not wake up stale filter/envelope state.
@@ -789,7 +770,7 @@ double Processor::processVinylSample(double x,
     // calibrated V2 character while avoiding a discontinuity at zero.
     const double activation =
         1.0 - std::exp(-20.0 * (c + w));
-    const double shapedRaw = osEngine->process(
+    const double shapedRaw = osEngine.process(
         colored, osFactor,
         [&](double v) {
             const double groove = processVinylGrooveV2(v, c, w);
@@ -832,19 +813,10 @@ double Processor::processVinylSample(double x,
             0.47 * state.surfaceMemory +
             0.05 * state.rumbleMemory;
         const double n = noiseAmount * noiseAmount;
-        const double sourceScale =
-            (mixFxEngaged_ && mixFxChannelCount_ > 1)
-                ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
-                : 1.0;
-        const double calibrationNorm = dbToGain(-calibrationReferenceDb(
-            mixFxEngaged_
-                ? mixFxCalibration_.load(std::memory_order_relaxed)
-                : params_[kParamCalibration]));
-
         const double surfaceLevel =
             0.0062 * (0.78 + 0.72 * w);
         y += surface * surfaceLevel * n *
-             sourceScale * calibrationNorm;
+             noiseSourceScale * calibrationNorm;
 
         const double clickRateHz =
             (0.08 + 2.8 * w * w) *
@@ -870,7 +842,7 @@ double Processor::processVinylSample(double x,
                      (0.001 * clickDecayMs * sampleRate_));
         y += state.clickPolarity *
              state.clickEnvelope *
-             n * sourceScale * calibrationNorm;
+             n * noiseSourceScale * calibrationNorm;
         state.clickEnvelope *= clickDecay;
         if (state.clickEnvelope < 1.0e-10)
             state.clickEnvelope = 0.0;
@@ -1411,14 +1383,32 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         if (vinylOn) {
             auto& states =
                 mixFxVinylState_[static_cast<std::size_t>(index)];
+            auto& vinylEngines =
+                mixFxVinylOversampling_[static_cast<std::size_t>(index)];
+            auto& vinylFactors =
+                mixFxVinylOversamplingFactor_[static_cast<std::size_t>(index)];
+            auto& vinylAligners =
+                mixFxVinylDryAligner_[static_cast<std::size_t>(index)];
+            const double vinylNoiseScale =
+                mixFxChannelCount_ > 1
+                    ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
+                    : 1.0;
+            const double vinylCalibrationNorm = dbToGain(-calibrationDb);
+
             l = processVinylSample(
                     l * calibrationGain, states[0],
-                    index, 0, vinylCharacter, vinylWear, vinylNoise) *
+                    vinylEngines[0], vinylFactors[0], vinylAligners[0],
+                    index, 0, osFactor,
+                    vinylCharacter, vinylWear, vinylNoise,
+                    vinylCalibrationNorm, vinylNoiseScale) *
                 calibrationReturn * vinylGain;
             r = stereo
                 ? processVinylSample(
                       r * calibrationGain, states[1],
-                      index, 1, vinylCharacter, vinylWear, vinylNoise) *
+                      vinylEngines[1], vinylFactors[1], vinylAligners[1],
+                      index, 1, osFactor,
+                      vinylCharacter, vinylWear, vinylNoise,
+                      vinylCalibrationNorm, vinylNoiseScale) *
                       calibrationReturn * vinylGain
                 : l;
         }
@@ -1753,14 +1743,21 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         }
 
         if (vinylOn) {
+            const double vinylCalibrationNorm = dbToGain(-calibrationDb);
             l = processVinylSample(
-                    l * calibrationGain, vinylState_[0], 0, 0,
-                    vinylCharacter, vinylWear, vinylNoise) *
+                    l * calibrationGain, vinylState_[0],
+                    vinylOversampling_[0], vinylOversamplingFactor_[0],
+                    vinylDryAligner_[0], 0, 0, osFactor,
+                    vinylCharacter, vinylWear, vinylNoise,
+                    vinylCalibrationNorm, 1.0) *
                 calibrationReturn * vinylGain;
             r = stereo
                 ? processVinylSample(
-                      r * calibrationGain, vinylState_[1], 0, 1,
-                      vinylCharacter, vinylWear, vinylNoise) *
+                      r * calibrationGain, vinylState_[1],
+                      vinylOversampling_[1], vinylOversamplingFactor_[1],
+                      vinylDryAligner_[1], 0, 1, osFactor,
+                      vinylCharacter, vinylWear, vinylNoise,
+                      vinylCalibrationNorm, 1.0) *
                       calibrationReturn * vinylGain
                 : l;
         }
