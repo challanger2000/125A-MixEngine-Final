@@ -379,24 +379,28 @@ double Processor::processTapeSample(double x,
     // carries a stronger/lower head bump and loses more HF. High-level
     // material increases the HF loss slightly, as expected from tape driven
     // further into its magnetic operating region.
-    double cutoff = 18000.0;
-    double bumpFreq = 78.0;
-    double bumpAmount = 0.050;
-    double compressionStrength = 0.95;
+    double cutoff = 17800.0;
+    double bumpFreq = 82.0;
+    double bumpAmount = 0.060;
+    double compressionStrength = 0.92;
     switch (speed) {
         case 0:
-            cutoff = 14500.0;
-            bumpFreq = 58.0;
-            bumpAmount = 0.078;
-            compressionStrength = 1.18;
+            // 7.5 ips: more obvious head bump, earlier HF loss and denser
+            // programme compression.
+            cutoff = 12500.0;
+            bumpFreq = 55.0;
+            bumpAmount = 0.115;
+            compressionStrength = 1.32;
             break;
         case 1:
             break;
         default:
-            cutoff = 21500.0;
-            bumpFreq = 108.0;
-            bumpAmount = 0.028;
-            compressionStrength = 0.72;
+            // 30 ips: highest headroom/open top, smallest head bump and least
+            // programme compression.
+            cutoff = 22500.0;
+            bumpFreq = 125.0;
+            bumpAmount = 0.020;
+            compressionStrength = 0.58;
             break;
     }
 
