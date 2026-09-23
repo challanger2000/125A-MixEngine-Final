@@ -75,4 +75,11 @@ inline double processTubeNonlinearCore(double x,double typeMorph,double amount) 
     return x+(dense-x)*wet;
 }
 
+// Compatibility overload for FINAL v1.1.0 diagnostics and any internal code
+// that still uses the historical 0/1/2 Tube type convention.
+inline double processTubeNonlinearCore(double x,int type,double amount) noexcept {
+    const int t=std::clamp(type,0,2);
+    return processTubeNonlinearCore(x,0.5*static_cast<double>(t),amount);
+}
+
 } // namespace MixEngine
