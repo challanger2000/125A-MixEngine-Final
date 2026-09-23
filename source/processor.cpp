@@ -886,7 +886,90 @@ double Processor::processVinylSample(double x,
     // transparent even for high peaks.
     return y;
 }
-void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
+void Processor::readParameterChanges(IParameterChanges* changes, int32 numSamples) {
+    const int32 samples =
+        std::clamp<int32>(numSamples, 0, blockAutomationCapacity_);
+
+    // Start every continuous target curve at the current stored value. This is
+    // preallocated in setupProcessing(), so no allocation occurs on the audio
+    // thread.
+    for (ParamID id = 0; id < kParamCount; ++id) {
+        if (!isContinuousSmoothedParam(id))
+            continue;
+        auto& curve = blockAutomation_[static_cast<std::size_t>(id)];
+        if (samples > 0)
+            std::fill_n(curve.begin(), samples, params_[id]);
+    }
+    blockAutomationSamples_ = samples;
+
+    if (!changes)
+        return;
+
+    const int32 count = changes->getParameterCount();
+    for (int32 i = 0; i < count; ++i) {
+        auto* q = changes->getParameterData(i);
+        if (!q)
+            continue;
+
+        const ParamID id = q->getParameterId();
+        if (id >= kParamCount)
+            continue;
+
+        const int32 points = q->getPointCount();
+        if (points <= 0)
+            continue;
+
+        if (isContinuousSmoothedParam(id) && samples > 0) {
+            auto& curve = blockAutomation_[static_cast<std::size_t>(id)];
+            double previousValue = params_[id];
+            int32 previousOffset = 0;
+            bool havePreviousPoint = false;
+
+            for (int32 point = 0; point < points; ++point) {
+                int32 offset = 0;
+                ParamValue value = 0.0;
+                if (q->getPoint(point, offset, value) != kResultTrue)
+                    continue;
+
+                const double nextValue =
+                    std::clamp(static_cast<double>(value), 0.0, 1.0);
+                offset = std::clamp<int32>(offset, 0, std::max<int32>(0, samples - 1));
+
+                const int32 start = havePreviousPoint ? previousOffset : 0;
+                const double startValue = previousValue;
+                const int32 span = std::max<int32>(1, offset - start);
+
+                for (int32 s = start; s <= offset && s < samples; ++s) {
+                    const double t =
+                        offset == start
+                            ? 1.0
+                            : static_cast<double>(s - start) /
+                                  static_cast<double>(span);
+                    curve[static_cast<std::size_t>(s)] =
+                        startValue + (nextValue - startValue) * t;
+                }
+
+                previousValue = nextValue;
+                previousOffset = offset;
+                havePreviousPoint = true;
+            }
+
+            if (havePreviousPoint) {
+                for (int32 s = previousOffset; s < samples; ++s)
+                    curve[static_cast<std::size_t>(s)] = previousValue;
+                params_[id] = previousValue;
+            }
+        } else {
+            for (int32 point = 0; point < points; ++point) {
+                int32 offset = 0;
+                ParamValue value = 0.0;
+                if (q->getPoint(point, offset, value) == kResultTrue)
+                    params_[id] =
+                        std::clamp(static_cast<double>(value), 0.0, 1.0);
+            }
+        }
+    }
+}
 #ifndef MIXENGINE_CHANNEL_BUILD
 void Processor::prepareMixFxSnapshotBuffers(){
  const auto count=std::clamp<int32>(mixFxChannelCount_,0,kMaxMixFxChannels);
@@ -935,7 +1018,7 @@ double Processor::mixFxCrosstalkSource(int32 targetIndex,int32 lane,int32 sample
 }
 tresult PLUGIN_API Processor::setMixChannelArrangements(SpeakerArrangement* arrangements,int32 count){if(count<0||count>kMaxMixFxChannels)return kInvalidArgument;if(count>0&&!arrangements)return kInvalidArgument;for(int32 i=0;i<count;++i){if(arrangements[i]!=SpeakerArr::kMono&&arrangements[i]!=SpeakerArr::kStereo)return kResultFalse;}mixFxEngaged_=true;mixFxChannelCount_=count;prepareMixFxSnapshotBuffers();resetConsoleState();syncMixFxTargets();return kResultOk;}
 tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
- if(data)readParameterChanges(data->inputParameterChanges);syncMixFxTargets();if(data)captureMixFxInputSnapshot(*data);
+ if(data)readParameterChanges(data->inputParameterChanges,data->numSamples);syncMixFxTargets();if(data)captureMixFxInputSnapshot(*data);
  if(data){
   double inSqL=0.0,inSqR=0.0,outSqL=0.0,outSqR=0.0,inPeakL=0.0,inPeakR=0.0,outPeakL=0.0,outPeakR=0.0;
   const int32 count=std::clamp<int32>(mixFxChannelCount_,0,kMaxMixFxChannels);
@@ -1362,7 +1445,7 @@ tresult PLUGIN_API Processor::processMixChannel(int32 index,ProcessData* data){i
 
 
 tresult PLUGIN_API Processor::process(ProcessData& data) {
-    readParameterChanges(data.inputParameterChanges);
+    readParameterChanges(data.inputParameterChanges, data.numSamples);
     if (mixFxEngaged_) {
         syncMixFxTargets();
         return kResultOk;
