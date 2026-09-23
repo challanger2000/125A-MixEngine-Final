@@ -34,9 +34,9 @@ inline TubeCharacterCoefficients tubeCharacter(double normalized) noexcept {
 }
 
 inline TapeCharacterCoefficients tapeCharacter(double normalized) noexcept {
-    static constexpr TapeCharacterCoefficients a{11000.0,65.0,0.045,0.42,5.2,0.80};
+    static constexpr TapeCharacterCoefficients a{10500.0,64.0,0.050,0.42,5.2,0.80};
     static constexpr TapeCharacterCoefficients b{15000.0,80.0,0.025,0.50,6.0,1.00};
-    static constexpr TapeCharacterCoefficients c{19000.0,100.0,0.010,0.58,6.8,1.12};
+    static constexpr TapeCharacterCoefficients c{19500.0,102.0,0.008,0.58,6.8,1.12};
     const double p=2.0*std::clamp(normalized,0.0,1.0);
     const bool upper=p>=1.0;
     const double t=upper?p-1.0:p;
