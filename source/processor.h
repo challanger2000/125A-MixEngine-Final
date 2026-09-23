@@ -42,22 +42,15 @@ struct ContinuousSmoothingState {
 };
 
 struct CharacterMorphState {
-    int tubeFrom = 0;
-    int tubeTo = 0;
-    double tubeMix = 1.0;
+    std::array<double,3> tubeWeights{{1.0,0.0,0.0}};
+    std::array<double,3> tapeWeights{{0.0,1.0,0.0}};
     bool tubeInitialized = false;
-
-    int tapeFrom = 1;
-    int tapeTo = 1;
-    double tapeMix = 1.0;
     bool tapeInitialized = false;
 
     void reset() noexcept {
-        tubeFrom = tubeTo = 0;
-        tubeMix = 1.0;
+        tubeWeights = {{1.0,0.0,0.0}};
+        tapeWeights = {{0.0,1.0,0.0}};
         tubeInitialized = false;
-        tapeFrom = tapeTo = 1;
-        tapeMix = 1.0;
         tapeInitialized = false;
     }
 };
@@ -119,8 +112,8 @@ private:
     void sendMeterExchange(double vuL, double vuR, double clipL, double clipR,
                            Steinberg::int32 numSamples);
     double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive, double noiseAmount);
-    double processTubeSample(double x, TubeChannelState& state, int type, double amount, double effectiveSampleRate) const;
-    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability, double hissAmount);
+    double processTubeSample(double x, TubeChannelState& state, const TubeVoiceModel& model, double amount, double effectiveSampleRate) const;
+    double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, const TapePathModel& speedModel, double amount, double stability, double hissAmount);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
     double processVinylSample(double x, VinylChannelState& state, OversamplingEngine& osEngine, int& osCurrentFactor, LatencyAligner& dryAligner, int sourceIndex, int lane, int osFactor, double character, double wear, double noiseAmount, double calibrationNorm, double noiseSourceScale);
     double dcBlock(double x, ConsoleChannelState& state);
