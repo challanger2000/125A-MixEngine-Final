@@ -1762,7 +1762,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
             for (int32 i = 0; i < data.numSamples; ++i) {
                 double l = 0.0, r = 0.0;
                 processFrame(
-                    inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
+                    i, inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
                 outL[i] = l;
                 if (channels > 1 && outR)
                     outR[i] = r;
