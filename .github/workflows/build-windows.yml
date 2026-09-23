@@ -67,6 +67,7 @@ jobs:
           latency-matrix-diagnostic
           level-match-diagnostic
           sonic-characterization
+          dynamic-characterization
           automation-stress-diagnostic
           mixfx-crosstalk-diagnostic
 
@@ -92,6 +93,7 @@ jobs:
             "latency-matrix-diagnostic",
             "level-match-diagnostic",
             "sonic-characterization",
+            "dynamic-characterization",
             "automation-stress-diagnostic",
             "mixfx-crosstalk-diagnostic"
           )
