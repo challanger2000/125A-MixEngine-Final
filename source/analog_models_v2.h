@@ -55,13 +55,13 @@ struct TubeVoiceModel {
 inline TubeVoiceModel tubeVoiceModel(int type) noexcept {
     switch (type) {
         case 0: // 12AU7-inspired: broad, relatively clean, slower and softer
-            return {620.0, 1.48, 1.10, 0.020, 0.020, 0.018,
+            return {620.0, 1.48, 1.10, 0.024, 0.022, 0.035,
                     0.14, 4.5, 145.0, 72.0, 0.10};
         case 1: // 12AT7-inspired: balanced density and dynamic movement
-            return {820.0, 1.88, 1.22, 0.036, 0.032, 0.032,
+            return {820.0, 1.88, 1.22, 0.044, 0.036, 0.065,
                     0.22, 3.2, 118.0, 56.0, 0.17};
         default: // 12AX7-inspired: earlier curvature and stronger bias/sag
-            return {1080.0, 2.38, 1.38, 0.060, 0.046, 0.050,
+            return {1080.0, 2.38, 1.38, 0.072, 0.052, 0.105,
                     0.32, 2.2, 92.0, 42.0, 0.26};
     }
 }
