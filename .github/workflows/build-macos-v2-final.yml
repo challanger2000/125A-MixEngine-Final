@@ -6,6 +6,7 @@ on:
       - v2-rebuild-from-final
     paths:
       - ".github/workflows/build-macos-v2-final.yml"
+      - "source/processor.cpp"
 
 jobs:
   build-macos-universal:
