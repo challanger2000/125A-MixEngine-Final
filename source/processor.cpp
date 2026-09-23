@@ -922,13 +922,416 @@ tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
  return kResultOk;
 }
 
-tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
- if(index<0||index>=kMaxMixFxChannels)return kInvalidArgument;if(mixFxChannelCount_>0&&index>=mixFxChannelCount_)return kInvalidArgument;if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;auto&inBus=data.inputs[0];auto&outBus=data.outputs[0];const int32 channels=std::min<int32>(std::min(inBus.numChannels,outBus.numChannels),kMaxAudioChannels);if(channels<=0)return kResultOk;
- auto& inputMeter=mixFxInputMeters_[static_cast<std::size_t>(index)];auto& outputMeter=mixFxOutputMeters_[static_cast<std::size_t>(index)];inputMeter.beginBlock();outputMeter.beginBlock();
- const bool bypass=mixFxBypass_.load(std::memory_order_relaxed)>=0.5,consoleOn=mixFxConsoleOn_.load(std::memory_order_relaxed)>=0.5,tubeOn=mixFxTubeOn_.load(std::memory_order_relaxed)>=0.5,tapeOn=mixFxTapeOn_.load(std::memory_order_relaxed)>=0.5,glueOn=mixFxGlueOn_.load(std::memory_order_relaxed)>=0.5,vinylOn=mixFxVinylOn_.load(std::memory_order_relaxed)>=0.5,autoGainOn=mixFxAutoGain_.load(std::memory_order_relaxed)>=0.5;
- const double inputGain=dbToGain((mixFxInput_.load(std::memory_order_relaxed)-0.5)*24.0),outputGain=dbToGain((mixFxOutput_.load(std::memory_order_relaxed)-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(mixFxCalibration_.load(std::memory_order_relaxed)),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=mixFxConsoleDrive_.load(std::memory_order_relaxed);const double crosstalk=std::clamp(mixFxCrosstalk_.load(std::memory_order_relaxed),0.0,1.0)*0.018;const int mode=std::clamp(static_cast<int>(std::lround(mixFxConsoleMode_.load(std::memory_order_relaxed)*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(mixFxTubeType_.load(std::memory_order_relaxed)*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(mixFxTapeSpeed_.load(std::memory_order_relaxed)*2.0)),0,2);const double tubeAmount=std::clamp(mixFxTubeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeAmount=std::clamp(mixFxTapeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeStability=std::clamp(mixFxTapeStability_.load(std::memory_order_relaxed),0.0,1.0),glueAmount=std::clamp(mixFxGlueAmount_.load(std::memory_order_relaxed),0.0,1.0),glueCharacter=std::clamp(mixFxGlueCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylCharacter=std::clamp(mixFxVinylCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylWear=std::clamp(mixFxVinylWear_.load(std::memory_order_relaxed),0.0,1.0),widthGain=2.0*std::clamp(mixFxWidth_.load(std::memory_order_relaxed),0.0,1.0),depthBipolar=(std::clamp(mixFxDepth_.load(std::memory_order_relaxed),0.0,1.0)-0.5)*2.0,lowMono=std::clamp(mixFxLowMono_.load(std::memory_order_relaxed),0.0,1.0);const int osFactor=qualityFactor(mixFxQuality_.load(std::memory_order_relaxed));const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);const double autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeSpeed,tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);
- auto processFrame=[&](int32 sampleIndex,double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){const double meterL=bypass?leftIn:leftIn*inputGain,meterR=bypass?rightIn:rightIn*inputGain;inputMeter.push(meterL,stereo?meterR:meterL);if(bypass){auto&align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];leftOut=align[0].process(leftIn,kFixedLatencySamples);rightOut=stereo?align[1].process(rightIn,kFixedLatencySamples):leftOut;outputMeter.push(leftOut,stereo?rightOut:leftOut);return;}double l=meterL,r=meterR;if(consoleOn){auto&states=mixFxConsoleState_[static_cast<std::size_t>(index)];if(crosstalk>0.0&&mixFxSnapshotSamples_.load(std::memory_order_acquire)==data.numSamples){const double xtCoeff=1.0-std::exp(-2.0*kPi*720.0/sampleRate_);auto shapeCrosstalk=[&](double source,ConsoleChannelState&st){st.crosstalkLowMemory+=xtCoeff*(source-st.crosstalkLowMemory);const double high=source-st.crosstalkLowMemory;return 0.52*st.crosstalkLowMemory+1.08*high;};const double xtL=shapeCrosstalk(mixFxCrosstalkSource(index,0,sampleIndex),states[0]);const double xtR=shapeCrosstalk(mixFxCrosstalkSource(index,1,sampleIndex),states[1]);l+=xtL*inputGain*crosstalk;r+=xtR*inputGain*crosstalk;}l*=calibrationGain;r*=calibrationGain;l=processConsoleSample(l,states[0],index,0,mode,drive);r=stereo?processConsoleSample(r,states[1],index,1,mode,drive):l;l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;}if(tubeOn){auto&engines=mixFxNonlinearOversampling_[static_cast<std::size_t>(index)];auto&factors=mixFxNonlinearOversamplingFactor_[static_cast<std::size_t>(index)];auto&tubeStates=mixFxTubeState_[static_cast<std::size_t>(index)];const double tubeSampleRate=sampleRate_*static_cast<double>(osFactor);if(factors[0]!=osFactor){engines[0].reset();factors[0]=osFactor;tubeStates[0].reset();}l=engines[0].process(l*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeStates[0],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;if(stereo){if(factors[1]!=osFactor){engines[1].reset();factors[1]=osFactor;tubeStates[1].reset();}r=engines[1].process(r*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeStates[1],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;}else r=l;}if(tapeOn){auto&states=mixFxTapeState_[static_cast<std::size_t>(index)];l=processTapeSample(l*calibrationGain,states[0],index,0,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain;r=stereo?processTapeSample(r*calibrationGain,states[1],index,1,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain:l;}if(glueOn){auto&states=mixFxGlueState_[static_cast<std::size_t>(index)];const double glueL=l*calibrationGain,glueR=r*calibrationGain,detector=stereo?std::max(std::abs(glueL),std::abs(glueR)):std::abs(glueL),linkedGain=processGlueGain(detector,states[0],glueAmount,glueCharacter)*glueGain;l=glueL*linkedGain*calibrationReturn;r=stereo?glueR*linkedGain*calibrationReturn:l;}if(vinylOn){auto&states=mixFxVinylState_[static_cast<std::size_t>(index)];l=processVinylSample(l*calibrationGain,states[0],index,0,vinylCharacter,vinylWear)*calibrationReturn*vinylGain;r=stereo?processVinylSample(r*calibrationGain,states[1],index,1,vinylCharacter,vinylWear)*calibrationReturn*vinylGain:l;}if(stereo){auto&st=mixFxStereoState_[static_cast<std::size_t>(index)][0];processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff,correlationCoeff);}auto&align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];leftOut=align[0].process(l*outputGain*inputMatchGain,latencyDelay);rightOut=stereo?align[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;outputMeter.push(leftOut,stereo?rightOut:leftOut);};
- if(data.symbolicSampleSize==kSample32){auto*inL=inBus.channelBuffers32[0];auto*outL=outBus.channelBuffers32[0];auto*inR=channels>1?inBus.channelBuffers32[1]:inL;auto*outR=channels>1?outBus.channelBuffers32[1]:outL;if(!inL||!outL)return kResultOk;for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(i,inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=static_cast<float>(l);if(channels>1&&outR)outR[i]=static_cast<float>(r);}}else if(data.symbolicSampleSize==kSample64){auto*inL=inBus.channelBuffers64[0];auto*outL=outBus.channelBuffers64[0];auto*inR=channels>1?inBus.channelBuffers64[1]:inL;auto*outR=channels>1?outBus.channelBuffers64[1]:outL;if(!inL||!outL)return kResultOk;for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(i,inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=l;if(channels>1&&outR)outR[i]=r;}}else return kResultFalse;inputMeter.publish();outputMeter.publish();outBus.silenceFlags=0;return kResultOk;
+tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
+    if (index < 0 || index >= kMaxMixFxChannels)
+        return kInvalidArgument;
+    if (mixFxChannelCount_ > 0 && index >= mixFxChannelCount_)
+        return kInvalidArgument;
+    if (data.numInputs < 1 || data.numOutputs < 1 || data.numSamples <= 0)
+        return kResultOk;
+
+    auto& inBus = data.inputs[0];
+    auto& outBus = data.outputs[0];
+    const int32 channels = std::min<int32>(
+        std::min(inBus.numChannels, outBus.numChannels), kMaxAudioChannels);
+    if (channels <= 0)
+        return kResultOk;
+
+    auto& inputMeter =
+        mixFxInputMeters_[static_cast<std::size_t>(index)];
+    auto& outputMeter =
+        mixFxOutputMeters_[static_cast<std::size_t>(index)];
+    inputMeter.beginBlock();
+    outputMeter.beginBlock();
+
+    const bool bypass =
+        mixFxBypass_.load(std::memory_order_relaxed) >= 0.5;
+    const bool consoleOn =
+        mixFxConsoleOn_.load(std::memory_order_relaxed) >= 0.5;
+    const bool tubeOn =
+        mixFxTubeOn_.load(std::memory_order_relaxed) >= 0.5;
+    const bool tapeOn =
+        mixFxTapeOn_.load(std::memory_order_relaxed) >= 0.5;
+    const bool glueOn =
+        mixFxGlueOn_.load(std::memory_order_relaxed) >= 0.5;
+    const bool vinylOn =
+        mixFxVinylOn_.load(std::memory_order_relaxed) >= 0.5;
+    const bool autoGainOn =
+        mixFxAutoGain_.load(std::memory_order_relaxed) >= 0.5;
+
+    const int mode = std::clamp(
+        static_cast<int>(std::lround(
+            mixFxConsoleMode_.load(std::memory_order_relaxed) * 3.0)),
+        0, 3);
+    const int tubeType = std::clamp(
+        static_cast<int>(std::lround(
+            mixFxTubeType_.load(std::memory_order_relaxed) * 2.0)),
+        0, 2);
+    const int tapeSpeed = std::clamp(
+        static_cast<int>(std::lround(
+            mixFxTapeSpeed_.load(std::memory_order_relaxed) * 2.0)),
+        0, 2);
+    const int osFactor =
+        qualityFactor(mixFxQuality_.load(std::memory_order_relaxed));
+
+    const double calibrationDb = calibrationReferenceDb(
+        mixFxCalibration_.load(std::memory_order_relaxed));
+    const double calibrationGain = dbToGain(-calibrationDb);
+    const double calibrationReturn = 1.0 / calibrationGain;
+    const double vinylCharacter = std::clamp(
+        mixFxVinylCharacter_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double vinylWear = std::clamp(
+        mixFxVinylWear_.load(std::memory_order_relaxed), 0.0, 1.0);
+
+    const int osIslands = bypass ? 0 :
+        (static_cast<int>(consoleOn) +
+         static_cast<int>(tubeOn) +
+         static_cast<int>(tapeOn) +
+         static_cast<int>(vinylOn && (vinylCharacter > 0.0 || vinylWear > 0.0)));
+    const int latencyDelay =
+        latencyCompensation(osFactor, osIslands);
+
+    const double inputTarget =
+        mixFxInput_.load(std::memory_order_relaxed);
+    const double outputTarget =
+        mixFxOutput_.load(std::memory_order_relaxed);
+    const double driveTarget =
+        mixFxConsoleDrive_.load(std::memory_order_relaxed);
+    const double crosstalkTarget = std::clamp(
+        mixFxCrosstalk_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double tubeTarget = std::clamp(
+        mixFxTubeAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double tapeTarget = std::clamp(
+        mixFxTapeAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double stabilityTarget = std::clamp(
+        mixFxTapeStability_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double glueTarget = std::clamp(
+        mixFxGlueAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double glueCharacterTarget = std::clamp(
+        mixFxGlueCharacter_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double depthTarget = std::clamp(
+        mixFxDepth_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double widthTarget = std::clamp(
+        mixFxWidth_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double lowMonoTarget = std::clamp(
+        mixFxLowMono_.load(std::memory_order_relaxed), 0.0, 1.0);
+
+    auto& smooth =
+        mixFxSmoothing_[static_cast<std::size_t>(index)];
+    if (!smooth.initialized) {
+        smooth.current[kParamInput] = inputTarget;
+        smooth.current[kParamOutput] = outputTarget;
+        smooth.current[kParamConsoleDrive] = driveTarget;
+        smooth.current[kParamConsoleCrosstalk] = crosstalkTarget;
+        smooth.current[kParamTubeAmount] = tubeTarget;
+        smooth.current[kParamTapeAmount] = tapeTarget;
+        smooth.current[kParamTapeStability] = stabilityTarget;
+        smooth.current[kParamGlueAmount] = glueTarget;
+        smooth.current[kParamGlueCharacter] = glueCharacterTarget;
+        smooth.current[kParamDepth] = depthTarget;
+        smooth.current[kParamWidth] = widthTarget;
+        smooth.current[kParamLowMono] = lowMonoTarget;
+        smooth.initialized = true;
+    }
+
+    const double gainStep = smoothingStep(3.0, sampleRate_);
+    const double colourStep = smoothingStep(5.0, sampleRate_);
+    const double slowStep = smoothingStep(8.0, sampleRate_);
+    const double lowMonoCoeff =
+        stereoOnePoleCoefficient(120.0, sampleRate_);
+    const double depthCoeff =
+        stereoOnePoleCoefficient(2000.0, sampleRate_);
+    const double correlationCoeff =
+        stereoOnePoleCoefficient(4.0, sampleRate_);
+
+    auto processFrame =
+        [&](int32 sampleIndex,
+            double leftIn, double rightIn, bool stereo,
+            double& leftOut, double& rightOut) {
+        const double inputNorm =
+            advanceSmoothed(smooth, kParamInput, inputTarget, gainStep);
+        const double outputNorm =
+            advanceSmoothed(smooth, kParamOutput, outputTarget, gainStep);
+        const double drive =
+            advanceSmoothed(
+                smooth, kParamConsoleDrive, driveTarget, colourStep);
+        const double crosstalkNorm =
+            advanceSmoothed(
+                smooth, kParamConsoleCrosstalk, crosstalkTarget, slowStep);
+        const double crosstalk =
+            std::clamp(crosstalkNorm, 0.0, 1.0) * 0.018;
+        const double tubeAmount =
+            advanceSmoothed(
+                smooth, kParamTubeAmount, tubeTarget, colourStep);
+        const double tapeAmount =
+            advanceSmoothed(
+                smooth, kParamTapeAmount, tapeTarget, colourStep);
+        const double tapeStability =
+            advanceSmoothed(
+                smooth, kParamTapeStability, stabilityTarget, slowStep);
+        const double glueAmount =
+            advanceSmoothed(
+                smooth, kParamGlueAmount, glueTarget, colourStep);
+        const double glueCharacter =
+            advanceSmoothed(
+                smooth, kParamGlueCharacter, glueCharacterTarget, slowStep);
+        const double depthNorm =
+            advanceSmoothed(
+                smooth, kParamDepth, depthTarget, slowStep);
+        const double widthNorm =
+            advanceSmoothed(
+                smooth, kParamWidth, widthTarget, slowStep);
+        const double lowMono =
+            advanceSmoothed(
+                smooth, kParamLowMono, lowMonoTarget, slowStep);
+
+        const double inputGain =
+            dbToGain((inputNorm - 0.5) * 24.0);
+        const double outputGain =
+            dbToGain((outputNorm - 0.5) * 24.0);
+        const double inputMatchGain =
+            autoGainOn ? 1.0 / inputGain : 1.0;
+        const double widthGain = 2.0 * widthNorm;
+        const double depthBipolar = (depthNorm - 0.5) * 2.0;
+        const double depthGain =
+            stereoDepthGain(depthBipolar);
+
+        const double consoleGain =
+            consoleOn && autoGainOn
+                ? consoleAutoGain(mode, drive)
+                : 1.0;
+        const double tubeGain =
+            tubeOn && autoGainOn
+                ? tubeAutoGain(tubeType, tubeAmount)
+                : 1.0;
+        const double tapeGain =
+            tapeOn && autoGainOn
+                ? tapeAutoGain(tapeSpeed, tapeAmount)
+                : 1.0;
+        const double glueGain =
+            glueOn && autoGainOn
+                ? glueAutoGain(glueAmount, glueCharacter)
+                : 1.0;
+        const double vinylGain =
+            vinylOn && autoGainOn
+                ? vinylAutoGain(vinylCharacter, vinylWear)
+                : 1.0;
+
+        const double meterL =
+            bypass ? leftIn : leftIn * inputGain;
+        const double meterR =
+            bypass ? rightIn : rightIn * inputGain;
+        inputMeter.push(meterL, stereo ? meterR : meterL);
+
+        if (bypass) {
+            auto& align =
+                mixFxLatencyAligner_[static_cast<std::size_t>(index)];
+            leftOut =
+                align[0].process(leftIn, kFixedLatencySamples);
+            rightOut = stereo
+                ? align[1].process(rightIn, kFixedLatencySamples)
+                : leftOut;
+            outputMeter.push(leftOut, stereo ? rightOut : leftOut);
+            return;
+        }
+
+        double l = meterL;
+        double r = meterR;
+
+        if (consoleOn) {
+            auto& states =
+                mixFxConsoleState_[static_cast<std::size_t>(index)];
+            if (crosstalk > 0.0 &&
+                mixFxSnapshotSamples_.load(std::memory_order_acquire) ==
+                    data.numSamples) {
+                const double xtCoeff =
+                    1.0 - std::exp(-2.0 * kPi * 720.0 / sampleRate_);
+                auto shapeCrosstalk =
+                    [&](double source, ConsoleChannelState& st) {
+                        st.crosstalkLowMemory +=
+                            xtCoeff *
+                            (source - st.crosstalkLowMemory);
+                        const double high =
+                            source - st.crosstalkLowMemory;
+                        return 0.52 * st.crosstalkLowMemory +
+                               1.08 * high;
+                    };
+                const double xtL = shapeCrosstalk(
+                    mixFxCrosstalkSource(index, 0, sampleIndex),
+                    states[0]);
+                const double xtR = shapeCrosstalk(
+                    mixFxCrosstalkSource(index, 1, sampleIndex),
+                    states[1]);
+                l += xtL * inputGain * crosstalk;
+                r += xtR * inputGain * crosstalk;
+            }
+            l *= calibrationGain;
+            r *= calibrationGain;
+            l = processConsoleSample(
+                l, states[0], index, 0, mode, drive);
+            r = stereo
+                ? processConsoleSample(
+                      r, states[1], index, 1, mode, drive)
+                : l;
+            l *= calibrationReturn * consoleGain;
+            r *= calibrationReturn * consoleGain;
+        }
+
+        if (tubeOn) {
+            auto& engines =
+                mixFxNonlinearOversampling_[static_cast<std::size_t>(index)];
+            auto& factors =
+                mixFxNonlinearOversamplingFactor_[
+                    static_cast<std::size_t>(index)];
+            auto& tubeStates =
+                mixFxTubeState_[static_cast<std::size_t>(index)];
+            const double tubeSampleRate =
+                sampleRate_ * static_cast<double>(osFactor);
+
+            if (factors[0] != osFactor) {
+                engines[0].reset();
+                factors[0] = osFactor;
+                tubeStates[0].reset();
+            }
+            l = engines[0].process(
+                    l * calibrationGain, osFactor,
+                    [&](double v) {
+                        return processTubeSample(
+                            v, tubeStates[0], tubeType,
+                            tubeAmount, tubeSampleRate);
+                    }) *
+                calibrationReturn * tubeGain;
+
+            if (stereo) {
+                if (factors[1] != osFactor) {
+                    engines[1].reset();
+                    factors[1] = osFactor;
+                    tubeStates[1].reset();
+                }
+                r = engines[1].process(
+                        r * calibrationGain, osFactor,
+                        [&](double v) {
+                            return processTubeSample(
+                                v, tubeStates[1], tubeType,
+                                tubeAmount, tubeSampleRate);
+                        }) *
+                    calibrationReturn * tubeGain;
+            } else {
+                r = l;
+            }
+        }
+
+        if (tapeOn) {
+            auto& states =
+                mixFxTapeState_[static_cast<std::size_t>(index)];
+            l = processTapeSample(
+                    l * calibrationGain, states[0],
+                    index, 0, tapeSpeed,
+                    tapeAmount, tapeStability) *
+                calibrationReturn * tapeGain;
+            r = stereo
+                ? processTapeSample(
+                      r * calibrationGain, states[1],
+                      index, 1, tapeSpeed,
+                      tapeAmount, tapeStability) *
+                      calibrationReturn * tapeGain
+                : l;
+        }
+
+        if (glueOn) {
+            auto& states =
+                mixFxGlueState_[static_cast<std::size_t>(index)];
+            const double glueL = l * calibrationGain;
+            const double glueR = r * calibrationGain;
+            const double detector = stereo
+                ? std::max(std::abs(glueL), std::abs(glueR))
+                : std::abs(glueL);
+            const double linkedGain =
+                processGlueGain(
+                    detector, states[0],
+                    glueAmount, glueCharacter) *
+                glueGain;
+            l = glueL * linkedGain * calibrationReturn;
+            r = stereo
+                ? glueR * linkedGain * calibrationReturn
+                : l;
+        }
+
+        if (vinylOn) {
+            auto& states =
+                mixFxVinylState_[static_cast<std::size_t>(index)];
+            l = processVinylSample(
+                    l * calibrationGain, states[0],
+                    index, 0, vinylCharacter, vinylWear) *
+                calibrationReturn * vinylGain;
+            r = stereo
+                ? processVinylSample(
+                      r * calibrationGain, states[1],
+                      index, 1, vinylCharacter, vinylWear) *
+                      calibrationReturn * vinylGain
+                : l;
+        }
+
+        if (stereo) {
+            auto& st =
+                mixFxStereoState_[static_cast<std::size_t>(index)][0];
+            processStereoFieldSample(
+                l, r, st,
+                widthGain, lowMono, lowMonoCoeff,
+                depthGain, depthCoeff, correlationCoeff);
+        }
+
+        auto& align =
+            mixFxLatencyAligner_[static_cast<std::size_t>(index)];
+        leftOut = align[0].process(
+            l * outputGain * inputMatchGain, latencyDelay);
+        rightOut = stereo
+            ? align[1].process(
+                  r * outputGain * inputMatchGain, latencyDelay)
+            : leftOut;
+        outputMeter.push(leftOut, stereo ? rightOut : leftOut);
+    };
+
+    if (data.symbolicSampleSize == kSample32) {
+        auto* inL = inBus.channelBuffers32[0];
+        auto* outL = outBus.channelBuffers32[0];
+        auto* inR = channels > 1 ? inBus.channelBuffers32[1] : inL;
+        auto* outR = channels > 1 ? outBus.channelBuffers32[1] : outL;
+        if (!inL || !outL)
+            return kResultOk;
+        for (int32 i = 0; i < data.numSamples; ++i) {
+            double l = 0.0, r = 0.0;
+            processFrame(
+                i, inL[i], inR ? inR[i] : inL[i],
+                channels > 1, l, r);
+            outL[i] = static_cast<float>(l);
+            if (channels > 1 && outR)
+                outR[i] = static_cast<float>(r);
+        }
+    } else if (data.symbolicSampleSize == kSample64) {
+        auto* inL = inBus.channelBuffers64[0];
+        auto* outL = outBus.channelBuffers64[0];
+        auto* inR = channels > 1 ? inBus.channelBuffers64[1] : inL;
+        auto* outR = channels > 1 ? outBus.channelBuffers64[1] : outL;
+        if (!inL || !outL)
+            return kResultOk;
+        for (int32 i = 0; i < data.numSamples; ++i) {
+            double l = 0.0, r = 0.0;
+            processFrame(
+                i, inL[i], inR ? inR[i] : inL[i],
+                channels > 1, l, r);
+            outL[i] = l;
+            if (channels > 1 && outR)
+                outR[i] = r;
+        }
+    } else {
+        return kResultFalse;
+    }
+
+    inputMeter.publish();
+    outputMeter.publish();
+    outBus.silenceFlags = 0;
+    return kResultOk;
 }
 tresult PLUGIN_API Processor::processMixChannel(int32 index,ProcessData* data){if(!data)return kInvalidArgument;return processMixFxChannelInternal(index,*data);}
 #endif
