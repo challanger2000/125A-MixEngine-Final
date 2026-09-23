@@ -183,7 +183,113 @@ void Processor::publishMeterParameters(IParameterChanges* changes,double vuL,dou
  sendMeterExchange(normL,normR,clipL,clipR,numSamples);
 }
 double Processor::dcBlock(double x,ConsoleChannelState& state){const double y=x-state.dcX1+dcCoeff_*state.dcY1;state.dcX1=x;state.dcY1=y;return y;}
-double Processor::processConsoleSample(double x,ConsoleChannelState& state,int sourceIndex,int lane,int mode,double drive){const double variation=stableVariation(sourceIndex,lane),tolerance=1.0+0.008*variation,bias=0.0015*variation;x=x*tolerance+bias*drive;state.lowMemory+=lowCoeff_*(x-state.lowMemory);const double low=state.lowMemory,high=x-state.lowMemory;OversamplingEngine* engine=nullptr;int* currentFactor=nullptr;const int factor=qualityFactor(mixFxEngaged_?mixFxQuality_.load(std::memory_order_relaxed):params_[kParamQuality]);if(mixFxEngaged_){engine=&mixFxConsoleOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];currentFactor=&mixFxConsoleOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{engine=&consoleOversampling_[static_cast<std::size_t>(lane)];currentFactor=&consoleOversamplingFactor_[static_cast<std::size_t>(lane)];}double y=processConsoleOversampledCore(*engine,*currentFactor,factor,x,low,high,mode,drive);y=dcBlock(y,state);const double noiseAmount=std::clamp(mixFxEngaged_?mixFxConsoleNoise_.load(std::memory_order_relaxed):params_[kParamConsoleNoise],0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xC01150E1u);const double white=randomBipolar(state.noiseRng),coeff=1.0-std::exp(-2.0*kPi*6500.0/sampleRate_);state.noiseMemory+=coeff*(white-state.noiseMemory);const double colored=0.72*white+0.28*state.noiseMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,calibrationNorm=dbToGain(-calibrationReferenceDb(mixFxEngaged_?mixFxCalibration_.load(std::memory_order_relaxed):params_[kParamCalibration]));y+=colored*0.00025*n*sourceScale*calibrationNorm;}return y;}
+double Processor::processConsoleSample(double x,
+                                      ConsoleChannelState& state,
+                                      int sourceIndex,
+                                      int lane,
+                                      int mode,
+                                      double drive) {
+    const double d = std::clamp(drive, 0.0, 1.0);
+    const double variation = stableVariation(sourceIndex, lane);
+    const double tolerance = 1.0 + 0.006 * variation;
+    x *= tolerance;
+
+    state.lowMemory += lowCoeff_ * (x - state.lowMemory);
+    const double low = state.lowMemory;
+    const double high = x - low;
+
+    // Slow level and signed-energy memories model a moving analogue operating
+    // point. Each mode gets a different amount of this behaviour, while DRIVE
+    // 0 remains neutral.
+    const double level = std::abs(x);
+    const double envAttack =
+        std::exp(-1.0 / (0.001 * 3.0 * sampleRate_));
+    const double envRelease =
+        std::exp(-1.0 / (0.001 * 130.0 * sampleRate_));
+    const double envCoeff =
+        level > state.envelope ? envAttack : envRelease;
+    state.envelope =
+        envCoeff * state.envelope +
+        (1.0 - envCoeff) * level;
+
+    const double signedEnergy =
+        x * std::abs(x) / (1.0 + 0.85 * x * x);
+    const double biasCoeff =
+        std::exp(-1.0 / (0.001 * 48.0 * sampleRate_));
+    state.biasMemory =
+        biasCoeff * state.biasMemory +
+        (1.0 - biasCoeff) * signedEnergy;
+
+    double modeMemory = 0.0;
+    switch (std::clamp(mode, 0, 3)) {
+        case 0: modeMemory = 0.006; break;
+        case 1: modeMemory = 0.015; break;
+        case 2: modeMemory = 0.026; break;
+        default: modeMemory = 0.010; break;
+    }
+
+    const double staticToleranceBias =
+        0.0008 * variation * d;
+    const double dynamicBias =
+        modeMemory * d * state.biasMemory *
+        (1.0 + 0.30 * std::clamp(state.envelope, 0.0, 1.5));
+    x += staticToleranceBias + dynamicBias;
+
+    OversamplingEngine* engine = nullptr;
+    int* currentFactor = nullptr;
+    const int factor = qualityFactor(
+        mixFxEngaged_
+            ? mixFxQuality_.load(std::memory_order_relaxed)
+            : params_[kParamQuality]);
+
+    if (mixFxEngaged_) {
+        engine =
+            &mixFxConsoleOversampling_[static_cast<std::size_t>(sourceIndex)]
+                                      [static_cast<std::size_t>(lane)];
+        currentFactor =
+            &mixFxConsoleOversamplingFactor_[static_cast<std::size_t>(sourceIndex)]
+                                           [static_cast<std::size_t>(lane)];
+    } else {
+        engine = &consoleOversampling_[static_cast<std::size_t>(lane)];
+        currentFactor =
+            &consoleOversamplingFactor_[static_cast<std::size_t>(lane)];
+    }
+
+    double y = processConsoleOversampledCore(
+        *engine, *currentFactor, factor, x, low, high, mode, d);
+    y = dcBlock(y, state);
+
+    const double noiseAmount = std::clamp(
+        mixFxEngaged_
+            ? mixFxConsoleNoise_.load(std::memory_order_relaxed)
+            : params_[kParamConsoleNoise],
+        0.0, 1.0);
+    if (noiseAmount > 0.0) {
+        if (state.noiseRng == 0u)
+            state.noiseRng =
+                makeNoiseSeed(sourceIndex, lane, 0xC01150E1u);
+        const double white = randomBipolar(state.noiseRng);
+        const double coeff =
+            1.0 - std::exp(-2.0 * kPi * 6500.0 / sampleRate_);
+        state.noiseMemory +=
+            coeff * (white - state.noiseMemory);
+        const double colored =
+            0.70 * white + 0.30 * state.noiseMemory;
+        const double n = noiseAmount * noiseAmount;
+        const double sourceScale =
+            (mixFxEngaged_ && mixFxChannelCount_ > 1)
+                ? 1.0 / std::sqrt(static_cast<double>(mixFxChannelCount_))
+                : 1.0;
+        const double calibrationNorm = dbToGain(-calibrationReferenceDb(
+            mixFxEngaged_
+                ? mixFxCalibration_.load(std::memory_order_relaxed)
+                : params_[kParamCalibration]));
+        y += colored * 0.00022 * n *
+             sourceScale * calibrationNorm;
+    }
+
+    return std::clamp(y, -6.0, 6.0);
+}
 double Processor::processTubeSample(double x,TubeChannelState& state,int type,double amount,double effectiveSampleRate)const{return processTubeModelV2(x,state,type,amount,effectiveSampleRate);}
 double Processor::processTapeSample(double x,
                                     TapeChannelState& state,
