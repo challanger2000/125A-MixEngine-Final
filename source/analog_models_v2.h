@@ -25,12 +25,14 @@ struct TubeModelState {
     double envelope = 0.0;
     double biasMemory = 0.0;
     double cathodeMemory = 0.0;
+    double evenDcMemory = 0.0;
 
     void reset() noexcept {
         lowMemory = 0.0;
         envelope = 0.0;
         biasMemory = 0.0;
         cathodeMemory = 0.0;
+        evenDcMemory = 0.0;
     }
 };
 
@@ -124,14 +126,25 @@ inline double processTubeModelV2(double x,
     // and the local small-signal slope is restored before the dynamic/spectral
     // behaviour is blended back with the dry signal.
     const double atanBias = std::atan(bias);
+    // Divide by the explicit drive so low-level gain stays close to unity.
+    // The drive then changes curvature/headroom instead of acting as a hidden
+    // make-up gain. Sag is intentionally not divided out: it remains dynamic
+    // compression.
     const double first =
-        (std::atan(z + bias) - atanBias) * (1.0 + bias * bias);
+        (std::atan(z + bias) - atanBias) *
+        (1.0 + bias * bias) /
+        std::max(1.0e-9, drive);
 
-    // Bounded asymmetric term controls even-harmonic growth without polynomial
-    // runaway when the user deliberately drives the stage hard.
+    // A true even-symmetry component generates H2. Its DC component is removed
+    // with a very slow local memory, analogous to AC coupling around a tube
+    // stage, so asymmetry does not inject a persistent DC offset.
     const double z2 = z * z;
+    const double rawEven = z2 / (1.0 + 0.85 * z2);
+    const double evenDcCoeff = analogOnePoleHz(6.0, sampleRate);
+    state.evenDcMemory +=
+        evenDcCoeff * (rawEven - state.evenDcMemory);
     const double even =
-        p.asymmetry * c * (z * std::abs(z)) / (1.0 + 0.85 * z2);
+        p.asymmetry * c * (rawEven - state.evenDcMemory);
 
     const double stage1 = first + even;
     const double secondDrive = 1.0 + p.secondStage * c;
@@ -229,8 +242,11 @@ inline double processTapeMagneticV2(double x,
     const double hysteresisResidual =
         state.magnetisation - reference;
 
+    // Normalize the static branch by its actual excitation drive. This keeps
+    // the low-level transfer near unity while allowing the same drive to move
+    // the magnetic path deeper into saturation at higher levels.
     const double normalized =
-        staticMag / std::max(1.0, p.driveBase + 0.35 * p.driveRange * c);
+        staticMag / std::max(1.0e-9, drive);
     const double magnetic =
         normalized + p.memoryMix * c * hysteresisResidual;
 
@@ -252,14 +268,19 @@ inline double processVinylGrooveV2(double x,
     const double bias = 0.010 * c + 0.020 * w;
     const double z = x * drive;
     const double centre = std::atan(bias);
+    // Normalize the explicit drive so COLOR/WEAR change curvature rather than
+    // quietly raising low-level gain.
     const double curved =
         (std::atan(z + bias) - centre) * (1.0 + bias * bias) /
-        std::max(1.0, drive * 0.78);
+        std::max(1.0e-9, drive);
 
     const double z2 = z * z;
+    // True even-symmetry tracing term. The processor AC-couples the processed
+    // groove branch after oversampling so this can generate realistic H2
+    // without leaking its DC component to the plugin output.
     const double tracingAsym =
         (0.012 * c + 0.026 * w) *
-        (z * std::abs(z)) / (1.0 + 0.90 * z2);
+        z2 / (1.0 + 0.90 * z2);
     const double groove = curved + tracingAsym;
     return std::clamp(groove, -4.0, 4.0);
 }
