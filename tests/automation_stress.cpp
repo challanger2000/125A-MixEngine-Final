@@ -94,6 +94,9 @@ int main(){
         long long samplePos=0;
         double maxDiff=0.0;
         double maxAbs=0.0;
+        int firstDiffBlock=-1;
+        int firstDiffSample=-1;
+        double firstChL=0.0,firstMxL=0.0,firstChR=0.0,firstMxR=0.0;
         const std::array<int,5> sizes{{1,7,31,64,127}};
 
         for(int block=0;block<240;++block){
@@ -154,13 +157,37 @@ int main(){
                     if(!std::isfinite(v))throw 33;
                     maxAbs=std::max(maxAbs,std::abs(v));
                 }
-                maxDiff=std::max(maxDiff,std::abs(chL[static_cast<std::size_t>(i)]-mxL[static_cast<std::size_t>(i)]));
-                maxDiff=std::max(maxDiff,std::abs(chR[static_cast<std::size_t>(i)]-mxR[static_cast<std::size_t>(i)]));
+                const double diffL=std::abs(chL[static_cast<std::size_t>(i)]-mxL[static_cast<std::size_t>(i)]);
+                const double diffR=std::abs(chR[static_cast<std::size_t>(i)]-mxR[static_cast<std::size_t>(i)]);
+                maxDiff=std::max({maxDiff,diffL,diffR});
+                if(firstDiffBlock<0 && std::max(diffL,diffR)>1.0e-10){
+                    firstDiffBlock=block;
+                    firstDiffSample=i;
+                    firstChL=chL[static_cast<std::size_t>(i)];
+                    firstMxL=mxL[static_cast<std::size_t>(i)];
+                    firstChR=chR[static_cast<std::size_t>(i)];
+                    firstMxR=mxR[static_cast<std::size_t>(i)];
+                }
             }
         }
 
         std::cout<<"Automation stress maxAbs="<<maxAbs
                  <<" Channel/MixFX maxDiff="<<maxDiff<<"\n";
+        if(firstDiffBlock>=0){
+            std::cout<<"First parity mismatch block="<<firstDiffBlock
+                     <<" sample="<<firstDiffSample
+                     <<" blockSize="<<sizes[static_cast<std::size_t>(firstDiffBlock%sizes.size())]
+                     <<" chL="<<firstChL<<" mxL="<<firstMxL
+                     <<" chR="<<firstChR<<" mxR="<<firstMxR
+                     <<" bypass="<<(((firstDiffBlock%37)==0)?1:0)
+                     <<" console="<<(((firstDiffBlock%11)==0)?0:1)
+                     <<" tube="<<(((firstDiffBlock%3)==0)?1:0)
+                     <<" tape="<<(((firstDiffBlock%4)<2)?1:0)
+                     <<" glue="<<(((firstDiffBlock%5)<3)?1:0)
+                     <<" vinyl="<<(((firstDiffBlock%7)<3)?1:0)
+                     <<" quality="<<((firstDiffBlock%3)/2.0)
+                     <<"\n";
+        }
 
         if(maxAbs>8.0){
             std::cerr<<"Automation stress produced implausible output peak\n";
