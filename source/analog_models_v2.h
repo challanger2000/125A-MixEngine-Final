@@ -228,11 +228,10 @@ inline double processTapeMagneticV2(double x,
 
     state.previousField = field;
 
-    // Parallel architecture preserves transient definition at low settings and
-    // still allows deliberately strong magnetic colour at the top of the knob.
-    const double wet = 0.05 + 0.90 * std::pow(a, 0.86);
-    const double y = x + (magnetic - x) * wet;
-    return std::clamp(y, -4.0, 4.0);
+    // Parallel mixing is applied by the processor after oversampling so the
+    // dry path can be latency-aligned exactly. Return the fully processed
+    // magnetic branch here.
+    return std::clamp(magnetic, -4.0, 4.0);
 }
 
 } // namespace MixEngine
