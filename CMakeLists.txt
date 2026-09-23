@@ -105,3 +105,55 @@ smtg_target_configure_version_file(125A-MixEngine)
 smtg_target_configure_version_file(125A-MixEngine-Channel)
 target_compile_definitions(125A-MixEngine PRIVATE MIXENGINE_VERSION="${PROJECT_VERSION}")
 target_compile_definitions(125A-MixEngine-Channel PRIVATE MIXENGINE_VERSION="${PROJECT_VERSION}")
+
+add_executable(range-philosophy-diagnostic tests/range_philosophy.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(range-philosophy-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(range-philosophy-diagnostic PRIVATE sdk)
+
+add_executable(tape-memory-diagnostic tests/tape_memory.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(tape-memory-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(tape-memory-diagnostic PRIVATE sdk)
+target_include_directories(level-match-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(level-match-diagnostic PRIVATE sdk)
+
+add_executable(glue-transient-diagnostic tests/glue_transient.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(glue-transient-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(glue-transient-diagnostic PRIVATE sdk)
+
+add_executable(vinyl-material-diagnostic tests/vinyl_material.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(vinyl-material-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(vinyl-material-diagnostic PRIVATE sdk)
+
+add_executable(console-character-diagnostic tests/console_character.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(console-character-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(console-character-diagnostic PRIVATE sdk)
+
+add_executable(console-vintage-memory-diagnostic tests/console_vintage_memory.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(console-vintage-memory-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(console-vintage-memory-diagnostic PRIVATE sdk)
+
+add_executable(quality-switch-diagnostic tests/quality_switch.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(quality-switch-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(quality-switch-diagnostic PRIVATE sdk)
+
+add_executable(zero-neutrality-diagnostic tests/zero_neutrality.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(zero-neutrality-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(zero-neutrality-diagnostic PRIVATE sdk)
+target_include_directories(automation-stress-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(automation-stress-diagnostic PRIVATE sdk)
+
+add_executable(sample-accuracy-diagnostic tests/sample_accuracy.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(sample-accuracy-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(sample-accuracy-diagnostic PRIVATE sdk)
+
+add_executable(mixfx-sample-accuracy-diagnostic tests/mixfx_sample_accuracy.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(mixfx-sample-accuracy-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(mixfx-sample-accuracy-diagnostic PRIVATE sdk)
+
+add_executable(sonic-impact-diagnostic tests/sonic_impact.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(sonic-impact-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(sonic-impact-diagnostic PRIVATE sdk)
+
+add_executable(sample-rate-matrix-diagnostic tests/sample_rate_matrix.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(sample-rate-matrix-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(sample-rate-matrix-diagnostic PRIVATE sdk)
