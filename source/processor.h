@@ -75,7 +75,7 @@ private:
 #endif
     struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,biasMemory=0.0,envelope=0.0,crosstalkLowMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
     using TubeChannelState = TubeModelState;
-    struct TapeChannelState { TapeMagneticState magnetic{}; double highMemory=0.0,bumpFast=0.0,bumpSlow=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0; std::uint32_t noiseRng=0; };
+    struct TapeChannelState { TapeMagneticState magnetic{}; double highMemory=0.0,bumpFast=0.0,bumpSlow=0.0,wowPhase=0.0,flutterPhase=0.0,transportZ=0.0,hissMemory=0.0,compressionEnvelope=0.0; std::uint32_t noiseRng=0; };
     struct GlueChannelState { double fastEnvelope=0.0,slowEnvelope=0.0,gainDb=0.0,crestMemory=1.0; };
     struct VinylChannelState { double highMemory=0.0,bodyMemory=0.0,wearEnvelope=0.0,previousInput=0.0,surfaceMemory=0.0,rumbleMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
     using StereoChannelState = StereoFieldState;
