@@ -599,7 +599,7 @@ double Processor::processTapeSample(double x,
                 : params_[kParamCalibration]));
         const double speedTone =
             speed == 0 ? 0.82 : (speed == 1 ? 1.0 : 1.10);
-        y += hiss * 0.0065 * speedTone * n * noiseSourceScale * calibrationNorm;
+        y += hiss * 0.0065 * speedTone * n * sourceScale * calibrationNorm;
     }
 
     // Keep the processed magnetic branch bounded, but never hard-clip the
