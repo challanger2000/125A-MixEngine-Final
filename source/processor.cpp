@@ -92,6 +92,41 @@ inline int qualityFactor(double normalized) {
     if (normalized < 0.75) return 2;
     return 4;
 }
+inline void advanceCharacterWeights(std::array<double,3>& weights,
+                                    bool& initialized,
+                                    int target,
+                                    double step) noexcept {
+    target = std::clamp(target, 0, 2);
+    if (!initialized) {
+        weights = {{0.0,0.0,0.0}};
+        weights[static_cast<std::size_t>(target)] = 1.0;
+        initialized = true;
+        return;
+    }
+    const double s = std::clamp(step, 0.0, 1.0);
+    for (int i = 0; i < 3; ++i) {
+        const double targetWeight = i == target ? 1.0 : 0.0;
+        weights[static_cast<std::size_t>(i)] +=
+            s * (targetWeight - weights[static_cast<std::size_t>(i)]);
+    }
+    const double sum = weights[0] + weights[1] + weights[2];
+    if (sum > 1.0e-12)
+        for (double& w : weights) w /= sum;
+}
+
+inline double weightedGain(const std::array<double,3>& weights,
+                           double g0, double g1, double g2) noexcept {
+    const double w0 = std::clamp(weights[0],0.0,1.0);
+    const double w1 = std::clamp(weights[1],0.0,1.0);
+    const double w2 = std::clamp(weights[2],0.0,1.0);
+    const double sum = std::max(1.0e-12,w0+w1+w2);
+    const double logGain =
+        (w0*std::log(std::max(g0,1.0e-12)) +
+         w1*std::log(std::max(g1,1.0e-12)) +
+         w2*std::log(std::max(g2,1.0e-12))) / sum;
+    return std::exp(logGain);
+}
+
 inline double consoleAutoGain(int mode, double drive) {
     const double d = std::clamp(drive, 0.0, 1.0);
     if (d <= 0.0) return 1.0;
@@ -252,6 +287,7 @@ tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;i
 
 void Processor::resetConsoleState(){
  channelSmoothing_.reset();for(auto&state:mixFxSmoothing_)state.reset();
+ channelCharacterMorph_.reset();for(auto&state:mixFxCharacterMorph_)state.reset();
  blockAutomationSamples_=0;
  for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s.reset();for(auto&source:mixFxTubeState_)for(auto&s:source)s.reset();for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
  for(auto&s:consoleOversampling_)s.reset();for(auto&source:mixFxConsoleOversampling_)for(auto&s:source)s.reset();
