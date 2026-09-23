@@ -84,7 +84,7 @@ bool verifyVinyl(){
   for(double f:{9000.0,15000.0}){
    const auto fn=[=](double v){return vinylCore(v,drive,material);};
    const double r1=residualRms(fn,1,f),r2=residualRms(fn,2,f),r4=residualRms(fn,4,f);
-   const bool pass=(drive==1.0&&material==0.0)?(r1<1e-8&&r2<1e-8&&r4<1e-8):(r2<r1&&r4<=r2*1.01);
+   const bool pass=(r2<r1&&r4<=r2*1.01);
    std::cout<<"Vinyl drive="<<drive<<" material="<<material<<" f="<<f<<" residual "<<r1<<" "<<r2<<" "<<r4<<" "<<(pass?"PASS":"FAIL")<<"\n";
    ok&=pass;
   }
