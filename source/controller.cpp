@@ -52,7 +52,7 @@ tresult PLUGIN_API Controller::initialize(FUnknown* context){
 
     addRange(parameters,STR16("Input Gain"),STR16("dB"),kParamInput,-12.0,12.0,0.0,1);
     auto* calibration=new StringListParameter(STR16("Reference Level"),kParamCalibration);
-    calibration->appendString(STR16("-18 dBFS"));calibration->appendString(STR16("-14 dBFS"));calibration->appendString(STR16("-10 dBFS"));setListDefault(calibration,.5);parameters.addParameter(calibration);setParamNormalized(kParamCalibration,.5);
+    calibration->appendString(STR16("-18 dBFS"));calibration->appendString(STR16("-14 dBFS"));calibration->appendString(STR16("-10 dBFS"));setListDefault(calibration,0.0);parameters.addParameter(calibration);setParamNormalized(kParamCalibration,0.0);
     addToggle(parameters,STR16("Level Match"),kParamAutoGain,1.);
 
     addToggle(parameters,STR16("Console On"),kParamConsoleOn,1.);
