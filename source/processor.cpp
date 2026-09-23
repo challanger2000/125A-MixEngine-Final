@@ -12,7 +12,9 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#if defined(__SSE2__) || defined(_M_X64) || defined(_M_IX86_FP)
 #include <xmmintrin.h>
+#endif
 
 namespace MixEngine {
 
@@ -22,16 +24,36 @@ using namespace Steinberg::Vst;
 namespace {
 class ScopedNoDenormals {
 public:
+#if defined(__SSE2__) || defined(_M_X64) || defined(_M_IX86_FP)
     ScopedNoDenormals() noexcept : previous_(_mm_getcsr()) {
-        // FTZ (bit 15) + DAZ (bit 6). Restore the host thread state when the
-        // audio callback returns; no persistent floating-point environment change.
+        // x86/x64: FTZ (bit 15) + DAZ (bit 6). Restore the host thread state
+        // when the audio callback returns; no persistent FP environment change.
         _mm_setcsr(previous_ | 0x8040u);
     }
     ~ScopedNoDenormals() noexcept { _mm_setcsr(previous_); }
+#elif defined(__aarch64__)
+    ScopedNoDenormals() noexcept {
+        // ARM64: preserve FPCR and enable Flush-to-Zero (FZ, bit 24).
+        // FPCR is restored on exit so the host thread state is never leaked.
+        asm volatile("mrs %0, fpcr" : "=r"(previous_));
+        const std::uint64_t updated = previous_ | (std::uint64_t{1} << 24);
+        asm volatile("msr fpcr, %0" : : "r"(updated));
+    }
+    ~ScopedNoDenormals() noexcept {
+        asm volatile("msr fpcr, %0" : : "r"(previous_));
+    }
+#else
+    ScopedNoDenormals() noexcept = default;
+    ~ScopedNoDenormals() noexcept = default;
+#endif
     ScopedNoDenormals(const ScopedNoDenormals&) = delete;
     ScopedNoDenormals& operator=(const ScopedNoDenormals&) = delete;
 private:
-    unsigned int previous_;
+#if defined(__SSE2__) || defined(_M_X64) || defined(_M_IX86_FP)
+    unsigned int previous_ {};
+#elif defined(__aarch64__)
+    std::uint64_t previous_ {};
+#endif
 };
 
 constexpr double kPi = 3.14159265358979323846;
