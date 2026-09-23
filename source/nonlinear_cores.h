@@ -62,7 +62,7 @@ inline double processConsoleNonlinearCore(double x,
             double y = consoleSoftClip(pre, 0.58 * d);
             const double p2 = pre * pre;
             y += 0.012 * d *
-                 (pre * std::abs(pre)) /
+                 p2 /
                  (1.0 + 0.70 * p2);
             return y;
         }
@@ -73,7 +73,7 @@ inline double processConsoleNonlinearCore(double x,
             double y = consoleSoftSign(pre, 0.72 * d);
             const double p2 = pre * pre;
             y += 0.022 * d *
-                 (pre * std::abs(pre)) /
+                 p2 /
                  (1.0 + 0.55 * p2);
             // Mild second curvature stage creates density without hard clipping.
             const double second =
