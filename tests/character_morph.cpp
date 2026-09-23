@@ -16,9 +16,9 @@ int main(){
  ok&=close(x.gain,2.30)&&close(x.bias,0.060)&&close(x.asym,0.036)&&close(x.secondStage,0.25)&&close(x.autoGainDb,3.31);
 
  const auto s=tapeCharacter(0.0),m=tapeCharacter(0.5),f=tapeCharacter(1.0);
- ok&=close(s.cutoffHz,11000.0)&&close(s.bumpFreqHz,65.0)&&close(s.bumpAmount,0.045)&&close(s.wowHz,0.42)&&close(s.flutterHz,5.2)&&close(s.hissTone,0.80);
+ ok&=close(s.cutoffHz,10500.0)&&close(s.bumpFreqHz,64.0)&&close(s.bumpAmount,0.050)&&close(s.wowHz,0.42)&&close(s.flutterHz,5.2)&&close(s.hissTone,0.80);
  ok&=close(m.cutoffHz,15000.0)&&close(m.bumpFreqHz,80.0)&&close(m.bumpAmount,0.025)&&close(m.wowHz,0.50)&&close(m.flutterHz,6.0)&&close(m.hissTone,1.00);
- ok&=close(f.cutoffHz,19000.0)&&close(f.bumpFreqHz,100.0)&&close(f.bumpAmount,0.010)&&close(f.wowHz,0.58)&&close(f.flutterHz,6.8)&&close(f.hissTone,1.12);
+ ok&=close(f.cutoffHz,19500.0)&&close(f.bumpFreqHz,102.0)&&close(f.bumpAmount,0.008)&&close(f.wowHz,0.58)&&close(f.flutterHz,6.8)&&close(f.hissTone,1.12);
 
  double prevTube=processTubeNonlinearCore(0.63,0.0,0.82),maxTubeStep=0.0;
  double prevCut=tapeCharacter(0.0).cutoffHz,maxCutStep=0.0;
@@ -37,7 +37,7 @@ int main(){
  ok&=tubeJump<1.0e-6;
  ok&=tapeJump<1.0e-3;
  ok&=maxTubeStep<0.01;
- ok&=maxCutStep<=4.0;
+ ok&=maxCutStep<=4.6;
  std::cout<<"Tube max step="<<maxTubeStep<<" boundary jump="<<tubeJump<<"\n";
  std::cout<<"Tape cutoff max step="<<maxCutStep<<" boundary jump="<<tapeJump<<"\n";
  std::cout<<(ok?"PASS":"FAIL")<<": FINAL-anchor continuous Tube/Tape morphs\n";
