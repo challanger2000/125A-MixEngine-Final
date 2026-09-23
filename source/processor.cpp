@@ -934,11 +934,302 @@ tresult PLUGIN_API Processor::processMixChannel(int32 index,ProcessData* data){i
 #endif
 
 
-tresult PLUGIN_API Processor::process(ProcessData& data){readParameterChanges(data.inputParameterChanges);if(mixFxEngaged_){syncMixFxTargets();return kResultOk;}if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;auto&inBus=data.inputs[0];auto&outBus=data.outputs[0];const int32 channels=std::min(inBus.numChannels,outBus.numChannels);inputMeter_.beginBlock();outputMeter_.beginBlock();const bool bypass=params_[kParamBypass]>=0.5,consoleOn=params_[kParamConsoleOn]>=0.5,tubeOn=params_[kParamTubeOn]>=0.5,tapeOn=params_[kParamTapeOn]>=0.5,glueOn=params_[kParamGlueOn]>=0.5,vinylOn=params_[kParamVinylOn]>=0.5,autoGainOn=params_[kParamAutoGain]>=0.5;const double inputGain=dbToGain((params_[kParamInput]-0.5)*24.0),outputGain=dbToGain((params_[kParamOutput]-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(params_[kParamCalibration]),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=params_[kParamConsoleDrive];const int mode=std::clamp(static_cast<int>(std::lround(params_[kParamConsoleMode]*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(params_[kParamTubeType]*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(params_[kParamTapeSpeed]*2.0)),0,2),osFactor=qualityFactor(params_[kParamQuality]);const double tubeAmount=std::clamp(params_[kParamTubeAmount],0.0,1.0),tapeAmount=std::clamp(params_[kParamTapeAmount],0.0,1.0),tapeStability=std::clamp(params_[kParamTapeStability],0.0,1.0),glueAmount=std::clamp(params_[kParamGlueAmount],0.0,1.0),glueCharacter=std::clamp(params_[kParamGlueCharacter],0.0,1.0),vinylCharacter=std::clamp(params_[kParamVinylCharacter],0.0,1.0),vinylWear=std::clamp(params_[kParamVinylWear],0.0,1.0),widthGain=2.0*std::clamp(params_[kParamWidth],0.0,1.0),depthBipolar=(std::clamp(params_[kParamDepth],0.0,1.0)-0.5)*2.0,lowMono=std::clamp(params_[kParamLowMono],0.0,1.0),autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeSpeed,tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);
- auto processFrame=[&](double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){const double meterL=bypass?leftIn:leftIn*inputGain,meterR=bypass?rightIn:rightIn*inputGain;inputMeter_.push(meterL,stereo?meterR:meterL);if(bypass){leftOut=latencyAligner_[0].process(leftIn,kFixedLatencySamples);rightOut=stereo?latencyAligner_[1].process(rightIn,kFixedLatencySamples):leftOut;outputMeter_.push(leftOut,stereo?rightOut:leftOut);return;}double l=meterL,r=meterR;if(consoleOn){l*=calibrationGain;r*=calibrationGain;l=processConsoleSample(l,consoleState_[0],0,0,mode,drive);r=stereo?processConsoleSample(r,consoleState_[1],0,1,mode,drive):l;l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;}if(tubeOn){const double tubeSampleRate=sampleRate_*static_cast<double>(osFactor);if(nonlinearOversamplingFactor_[0]!=osFactor){nonlinearOversampling_[0].reset();nonlinearOversamplingFactor_[0]=osFactor;tubeState_[0].reset();}l=nonlinearOversampling_[0].process(l*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeState_[0],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;if(stereo){if(nonlinearOversamplingFactor_[1]!=osFactor){nonlinearOversampling_[1].reset();nonlinearOversamplingFactor_[1]=osFactor;tubeState_[1].reset();}r=nonlinearOversampling_[1].process(r*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeState_[1],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;}else r=l;}if(tapeOn){l=processTapeSample(l*calibrationGain,tapeState_[0],0,0,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain;r=stereo?processTapeSample(r*calibrationGain,tapeState_[1],0,1,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain:l;}if(glueOn){const double glueL=l*calibrationGain,glueR=r*calibrationGain,detector=stereo?std::max(std::abs(glueL),std::abs(glueR)):std::abs(glueL),linkedGain=processGlueGain(detector,glueState_[0],glueAmount,glueCharacter)*glueGain;l=glueL*linkedGain*calibrationReturn;r=stereo?glueR*linkedGain*calibrationReturn:l;}if(vinylOn){l=processVinylSample(l*calibrationGain,vinylState_[0],0,0,vinylCharacter,vinylWear)*calibrationReturn*vinylGain;r=stereo?processVinylSample(r*calibrationGain,vinylState_[1],0,1,vinylCharacter,vinylWear)*calibrationReturn*vinylGain:l;}if(stereo){auto&st=stereoState_[0];processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff,correlationCoeff);}leftOut=latencyAligner_[0].process(l*outputGain*inputMatchGain,latencyDelay);rightOut=stereo?latencyAligner_[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;outputMeter_.push(leftOut,stereo?rightOut:leftOut);};
- if(data.symbolicSampleSize==kSample32){auto*inL=channels>0?inBus.channelBuffers32[0]:nullptr;auto*outL=channels>0?outBus.channelBuffers32[0]:nullptr;auto*inR=channels>1?inBus.channelBuffers32[1]:inL;auto*outR=channels>1?outBus.channelBuffers32[1]:outL;if(inL&&outL)for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=static_cast<float>(l);if(channels>1&&outR)outR[i]=static_cast<float>(r);}}else if(data.symbolicSampleSize==kSample64){auto*inL=channels>0?inBus.channelBuffers64[0]:nullptr;auto*outL=channels>0?outBus.channelBuffers64[0]:nullptr;auto*inR=channels>1?inBus.channelBuffers64[1]:inL;auto*outR=channels>1?outBus.channelBuffers64[1]:outL;if(inL&&outL)for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=l;if(channels>1&&outR)outR[i]=r;}}inputMeter_.publish();outputMeter_.publish();const bool outputSource=params_[kParamMeterSource]>=0.5;const Metering& selected=outputSource?outputMeter_:inputMeter_;publishMeterParameters(data.outputParameterChanges,selected.vuL(),selected.vuR(),selected.peakL(),selected.peakR(),outputSource,data.numSamples);// Never forward input silence metadata blindly: the fixed latency line and DSP state
- // can still emit valid tail samples after the host marks the input block silent.
- outBus.silenceFlags=0;return kResultOk;
+tresult PLUGIN_API Processor::process(ProcessData& data) {
+    readParameterChanges(data.inputParameterChanges);
+    if (mixFxEngaged_) {
+        syncMixFxTargets();
+        return kResultOk;
+    }
+    if (data.numInputs < 1 || data.numOutputs < 1 || data.numSamples <= 0)
+        return kResultOk;
+
+    auto& inBus = data.inputs[0];
+    auto& outBus = data.outputs[0];
+    const int32 channels = std::min(inBus.numChannels, outBus.numChannels);
+    inputMeter_.beginBlock();
+    outputMeter_.beginBlock();
+
+    const bool bypass = params_[kParamBypass] >= 0.5;
+    const bool consoleOn = params_[kParamConsoleOn] >= 0.5;
+    const bool tubeOn = params_[kParamTubeOn] >= 0.5;
+    const bool tapeOn = params_[kParamTapeOn] >= 0.5;
+    const bool glueOn = params_[kParamGlueOn] >= 0.5;
+    const bool vinylOn = params_[kParamVinylOn] >= 0.5;
+    const bool autoGainOn = params_[kParamAutoGain] >= 0.5;
+
+    const int mode = std::clamp(
+        static_cast<int>(std::lround(params_[kParamConsoleMode] * 3.0)), 0, 3);
+    const int tubeType = std::clamp(
+        static_cast<int>(std::lround(params_[kParamTubeType] * 2.0)), 0, 2);
+    const int tapeSpeed = std::clamp(
+        static_cast<int>(std::lround(params_[kParamTapeSpeed] * 2.0)), 0, 2);
+    const int osFactor = qualityFactor(params_[kParamQuality]);
+
+    const double calibrationDb =
+        calibrationReferenceDb(params_[kParamCalibration]);
+    const double calibrationGain = dbToGain(-calibrationDb);
+    const double calibrationReturn = 1.0 / calibrationGain;
+    const double vinylCharacter =
+        std::clamp(params_[kParamVinylCharacter], 0.0, 1.0);
+    const double vinylWear =
+        std::clamp(params_[kParamVinylWear], 0.0, 1.0);
+
+    const int osIslands = bypass ? 0 :
+        (static_cast<int>(consoleOn) +
+         static_cast<int>(tubeOn) +
+         static_cast<int>(tapeOn) +
+         static_cast<int>(vinylOn && (vinylCharacter > 0.0 || vinylWear > 0.0)));
+    const int latencyDelay = latencyCompensation(osFactor, osIslands);
+
+    const double inputTarget = params_[kParamInput];
+    const double outputTarget = params_[kParamOutput];
+    const double driveTarget = params_[kParamConsoleDrive];
+    const double tubeTarget = std::clamp(params_[kParamTubeAmount], 0.0, 1.0);
+    const double tapeTarget = std::clamp(params_[kParamTapeAmount], 0.0, 1.0);
+    const double stabilityTarget =
+        std::clamp(params_[kParamTapeStability], 0.0, 1.0);
+    const double glueTarget = std::clamp(params_[kParamGlueAmount], 0.0, 1.0);
+    const double glueCharacterTarget =
+        std::clamp(params_[kParamGlueCharacter], 0.0, 1.0);
+    const double depthTarget = std::clamp(params_[kParamDepth], 0.0, 1.0);
+    const double widthTarget = std::clamp(params_[kParamWidth], 0.0, 1.0);
+    const double lowMonoTarget = std::clamp(params_[kParamLowMono], 0.0, 1.0);
+
+    auto& smooth = channelSmoothing_;
+    if (!smooth.initialized) {
+        smooth.current[kParamInput] = inputTarget;
+        smooth.current[kParamOutput] = outputTarget;
+        smooth.current[kParamConsoleDrive] = driveTarget;
+        smooth.current[kParamTubeAmount] = tubeTarget;
+        smooth.current[kParamTapeAmount] = tapeTarget;
+        smooth.current[kParamTapeStability] = stabilityTarget;
+        smooth.current[kParamGlueAmount] = glueTarget;
+        smooth.current[kParamGlueCharacter] = glueCharacterTarget;
+        smooth.current[kParamDepth] = depthTarget;
+        smooth.current[kParamWidth] = widthTarget;
+        smooth.current[kParamLowMono] = lowMonoTarget;
+        smooth.initialized = true;
+    }
+
+    const double gainStep = smoothingStep(3.0, sampleRate_);
+    const double colourStep = smoothingStep(5.0, sampleRate_);
+    const double slowStep = smoothingStep(8.0, sampleRate_);
+    const double lowMonoCoeff =
+        stereoOnePoleCoefficient(120.0, sampleRate_);
+    const double depthCoeff =
+        stereoOnePoleCoefficient(2000.0, sampleRate_);
+    const double correlationCoeff =
+        stereoOnePoleCoefficient(4.0, sampleRate_);
+
+    auto processFrame = [&](double leftIn, double rightIn, bool stereo,
+                            double& leftOut, double& rightOut) {
+        const double inputNorm =
+            advanceSmoothed(smooth, kParamInput, inputTarget, gainStep);
+        const double outputNorm =
+            advanceSmoothed(smooth, kParamOutput, outputTarget, gainStep);
+        const double drive =
+            advanceSmoothed(smooth, kParamConsoleDrive, driveTarget, colourStep);
+        const double tubeAmount =
+            advanceSmoothed(smooth, kParamTubeAmount, tubeTarget, colourStep);
+        const double tapeAmount =
+            advanceSmoothed(smooth, kParamTapeAmount, tapeTarget, colourStep);
+        const double tapeStability =
+            advanceSmoothed(smooth, kParamTapeStability, stabilityTarget, slowStep);
+        const double glueAmount =
+            advanceSmoothed(smooth, kParamGlueAmount, glueTarget, colourStep);
+        const double glueCharacter =
+            advanceSmoothed(smooth, kParamGlueCharacter, glueCharacterTarget, slowStep);
+        const double depthNorm =
+            advanceSmoothed(smooth, kParamDepth, depthTarget, slowStep);
+        const double widthNorm =
+            advanceSmoothed(smooth, kParamWidth, widthTarget, slowStep);
+        const double lowMono =
+            advanceSmoothed(smooth, kParamLowMono, lowMonoTarget, slowStep);
+
+        const double inputGain =
+            dbToGain((inputNorm - 0.5) * 24.0);
+        const double outputGain =
+            dbToGain((outputNorm - 0.5) * 24.0);
+        const double inputMatchGain =
+            autoGainOn ? 1.0 / inputGain : 1.0;
+        const double widthGain = 2.0 * widthNorm;
+        const double depthBipolar = (depthNorm - 0.5) * 2.0;
+        const double depthGain = stereoDepthGain(depthBipolar);
+
+        const double consoleGain =
+            consoleOn && autoGainOn ? consoleAutoGain(mode, drive) : 1.0;
+        const double tubeGain =
+            tubeOn && autoGainOn ? tubeAutoGain(tubeType, tubeAmount) : 1.0;
+        const double tapeGain =
+            tapeOn && autoGainOn ? tapeAutoGain(tapeSpeed, tapeAmount) : 1.0;
+        const double glueGain =
+            glueOn && autoGainOn ? glueAutoGain(glueAmount, glueCharacter) : 1.0;
+        const double vinylGain =
+            vinylOn && autoGainOn ? vinylAutoGain(vinylCharacter, vinylWear) : 1.0;
+
+        const double meterL = bypass ? leftIn : leftIn * inputGain;
+        const double meterR = bypass ? rightIn : rightIn * inputGain;
+        inputMeter_.push(meterL, stereo ? meterR : meterL);
+
+        if (bypass) {
+            leftOut =
+                latencyAligner_[0].process(leftIn, kFixedLatencySamples);
+            rightOut = stereo
+                ? latencyAligner_[1].process(rightIn, kFixedLatencySamples)
+                : leftOut;
+            outputMeter_.push(leftOut, stereo ? rightOut : leftOut);
+            return;
+        }
+
+        double l = meterL;
+        double r = meterR;
+
+        if (consoleOn) {
+            l *= calibrationGain;
+            r *= calibrationGain;
+            l = processConsoleSample(l, consoleState_[0], 0, 0, mode, drive);
+            r = stereo
+                ? processConsoleSample(r, consoleState_[1], 0, 1, mode, drive)
+                : l;
+            l *= calibrationReturn * consoleGain;
+            r *= calibrationReturn * consoleGain;
+        }
+
+        if (tubeOn) {
+            const double tubeSampleRate =
+                sampleRate_ * static_cast<double>(osFactor);
+            if (nonlinearOversamplingFactor_[0] != osFactor) {
+                nonlinearOversampling_[0].reset();
+                nonlinearOversamplingFactor_[0] = osFactor;
+                tubeState_[0].reset();
+            }
+            l = nonlinearOversampling_[0].process(
+                    l * calibrationGain, osFactor,
+                    [&](double v) {
+                        return processTubeSample(
+                            v, tubeState_[0], tubeType, tubeAmount, tubeSampleRate);
+                    }) *
+                calibrationReturn * tubeGain;
+            if (stereo) {
+                if (nonlinearOversamplingFactor_[1] != osFactor) {
+                    nonlinearOversampling_[1].reset();
+                    nonlinearOversamplingFactor_[1] = osFactor;
+                    tubeState_[1].reset();
+                }
+                r = nonlinearOversampling_[1].process(
+                        r * calibrationGain, osFactor,
+                        [&](double v) {
+                            return processTubeSample(
+                                v, tubeState_[1], tubeType, tubeAmount, tubeSampleRate);
+                        }) *
+                    calibrationReturn * tubeGain;
+            } else {
+                r = l;
+            }
+        }
+
+        if (tapeOn) {
+            l = processTapeSample(
+                    l * calibrationGain, tapeState_[0], 0, 0,
+                    tapeSpeed, tapeAmount, tapeStability) *
+                calibrationReturn * tapeGain;
+            r = stereo
+                ? processTapeSample(
+                      r * calibrationGain, tapeState_[1], 0, 1,
+                      tapeSpeed, tapeAmount, tapeStability) *
+                      calibrationReturn * tapeGain
+                : l;
+        }
+
+        if (glueOn) {
+            const double glueL = l * calibrationGain;
+            const double glueR = r * calibrationGain;
+            const double detector = stereo
+                ? std::max(std::abs(glueL), std::abs(glueR))
+                : std::abs(glueL);
+            const double linkedGain =
+                processGlueGain(
+                    detector, glueState_[0], glueAmount, glueCharacter) *
+                glueGain;
+            l = glueL * linkedGain * calibrationReturn;
+            r = stereo ? glueR * linkedGain * calibrationReturn : l;
+        }
+
+        if (vinylOn) {
+            l = processVinylSample(
+                    l * calibrationGain, vinylState_[0], 0, 0,
+                    vinylCharacter, vinylWear) *
+                calibrationReturn * vinylGain;
+            r = stereo
+                ? processVinylSample(
+                      r * calibrationGain, vinylState_[1], 0, 1,
+                      vinylCharacter, vinylWear) *
+                      calibrationReturn * vinylGain
+                : l;
+        }
+
+        if (stereo) {
+            auto& st = stereoState_[0];
+            processStereoFieldSample(
+                l, r, st, widthGain, lowMono, lowMonoCoeff,
+                depthGain, depthCoeff, correlationCoeff);
+        }
+
+        leftOut = latencyAligner_[0].process(
+            l * outputGain * inputMatchGain, latencyDelay);
+        rightOut = stereo
+            ? latencyAligner_[1].process(
+                  r * outputGain * inputMatchGain, latencyDelay)
+            : leftOut;
+        outputMeter_.push(leftOut, stereo ? rightOut : leftOut);
+    };
+
+    if (data.symbolicSampleSize == kSample32) {
+        auto* inL = channels > 0 ? inBus.channelBuffers32[0] : nullptr;
+        auto* outL = channels > 0 ? outBus.channelBuffers32[0] : nullptr;
+        auto* inR = channels > 1 ? inBus.channelBuffers32[1] : inL;
+        auto* outR = channels > 1 ? outBus.channelBuffers32[1] : outL;
+        if (inL && outL) {
+            for (int32 i = 0; i < data.numSamples; ++i) {
+                double l = 0.0, r = 0.0;
+                processFrame(
+                    inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
+                outL[i] = static_cast<float>(l);
+                if (channels > 1 && outR)
+                    outR[i] = static_cast<float>(r);
+            }
+        }
+    } else if (data.symbolicSampleSize == kSample64) {
+        auto* inL = channels > 0 ? inBus.channelBuffers64[0] : nullptr;
+        auto* outL = channels > 0 ? outBus.channelBuffers64[0] : nullptr;
+        auto* inR = channels > 1 ? inBus.channelBuffers64[1] : inL;
+        auto* outR = channels > 1 ? outBus.channelBuffers64[1] : outL;
+        if (inL && outL) {
+            for (int32 i = 0; i < data.numSamples; ++i) {
+                double l = 0.0, r = 0.0;
+                processFrame(
+                    inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
+                outL[i] = l;
+                if (channels > 1 && outR)
+                    outR[i] = r;
+            }
+        }
+    }
+
+    inputMeter_.publish();
+    outputMeter_.publish();
+    const bool outputSource = params_[kParamMeterSource] >= 0.5;
+    const Metering& selected = outputSource ? outputMeter_ : inputMeter_;
+    publishMeterParameters(
+        data.outputParameterChanges,
+        selected.vuL(), selected.vuR(),
+        selected.peakL(), selected.peakR(),
+        outputSource, data.numSamples);
+
+    // Never forward input silence metadata blindly: the fixed latency line and
+    // DSP state can still emit valid tail samples after a silent input block.
+    outBus.silenceFlags = 0;
+    return kResultOk;
 }
 tresult PLUGIN_API Processor::setState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(ParamID id=0;id<kParamCount;++id){double loaded=0.0;if(!streamer.readDouble(loaded)){if(id==kParamTubeType){params_[kParamTubeType]=0.5;params_[kParamMeterSource]=1.0;break;}if(id==kParamMeterSource){params_[kParamMeterSource]=1.0;break;}if(id==kParamTapeHiss){params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamVinylNoise){params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}return kResultFalse;}params_[id]=std::clamp(loaded,0.0,1.0);}syncMixFxTargets();resetConsoleState();return kResultOk;}
 tresult PLUGIN_API Processor::getState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(const auto value:params_)if(!streamer.writeDouble(value))return kResultFalse;return kResultOk;}
