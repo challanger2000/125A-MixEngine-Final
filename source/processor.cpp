@@ -35,6 +35,28 @@ constexpr double kDefaults[kParamCount] = {
 
 inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 inline double gainToDb(double gain) { return 20.0 * std::log10(std::max(gain, 1.0e-12)); }
+
+inline double smoothingStep(double milliseconds, double sampleRate) noexcept {
+    const double sr = sampleRate > 1.0 ? sampleRate : 44100.0;
+    const double ms = std::max(0.05, milliseconds);
+    return 1.0 - std::exp(-1.0 / (0.001 * ms * sr));
+}
+
+inline double advanceSmoothed(ContinuousSmoothingState& state,
+                              ParamID id,
+                              double target,
+                              double step) noexcept {
+    const auto index = static_cast<std::size_t>(id);
+    if (!state.initialized) {
+        state.current[index] = target;
+        return target;
+    }
+    double& current = state.current[index];
+    current += step * (target - current);
+    if (std::abs(target - current) < 1.0e-12)
+        current = target;
+    return current;
+}
 inline double calibrationReferenceDb(double normalized) {
     if (normalized < 0.25) return -18.0;
     if (normalized < 0.75) return -14.0;
@@ -201,6 +223,7 @@ tresult PLUGIN_API Processor::setActive(TBool state){
 tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;if(p&&!processing_)resetConsoleState();processing_=p;return kResultOk;}
 
 void Processor::resetConsoleState(){
+ channelSmoothing_.reset();for(auto&state:mixFxSmoothing_)state.reset();
  for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s.reset();for(auto&source:mixFxTubeState_)for(auto&s:source)s.reset();for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
  for(auto&s:consoleOversampling_)s.reset();for(auto&source:mixFxConsoleOversampling_)for(auto&s:source)s.reset();
  consoleOversamplingFactor_.fill(1);for(auto&source:mixFxConsoleOversamplingFactor_)source.fill(1);
