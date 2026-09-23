@@ -1155,42 +1155,64 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         [&](int32 sampleIndex,
             double leftIn, double rightIn, bool stereo,
             double& leftOut, double& rightOut) {
+        const auto targetAt = [&](ParamID id, double fallback) noexcept {
+            if (blockAutomationSamples_ == data.numSamples &&
+                sampleIndex >= 0 && sampleIndex < blockAutomationSamples_ &&
+                isContinuousSmoothedParam(id)) {
+                return blockAutomation_[static_cast<std::size_t>(id)]
+                                       [static_cast<std::size_t>(sampleIndex)];
+            }
+            return fallback;
+        };
+
         const double inputNorm =
-            advanceSmoothed(smooth, kParamInput, inputTarget, gainStep);
+            advanceSmoothed(smooth, kParamInput,
+                            targetAt(kParamInput, inputTarget), gainStep);
         const double outputNorm =
-            advanceSmoothed(smooth, kParamOutput, outputTarget, gainStep);
+            advanceSmoothed(smooth, kParamOutput,
+                            targetAt(kParamOutput, outputTarget), gainStep);
         const double drive =
             advanceSmoothed(
-                smooth, kParamConsoleDrive, driveTarget, colourStep);
+                smooth, kParamConsoleDrive,
+                targetAt(kParamConsoleDrive, driveTarget), colourStep);
         const double crosstalkNorm =
             advanceSmoothed(
-                smooth, kParamConsoleCrosstalk, crosstalkTarget, slowStep);
+                smooth, kParamConsoleCrosstalk,
+                targetAt(kParamConsoleCrosstalk, crosstalkTarget), slowStep);
         const double crosstalk =
             std::clamp(crosstalkNorm, 0.0, 1.0) * 0.018;
         const double tubeAmount =
             advanceSmoothed(
-                smooth, kParamTubeAmount, tubeTarget, colourStep);
+                smooth, kParamTubeAmount,
+                targetAt(kParamTubeAmount, tubeTarget), colourStep);
         const double tapeAmount =
             advanceSmoothed(
-                smooth, kParamTapeAmount, tapeTarget, colourStep);
+                smooth, kParamTapeAmount,
+                targetAt(kParamTapeAmount, tapeTarget), colourStep);
         const double tapeStability =
             advanceSmoothed(
-                smooth, kParamTapeStability, stabilityTarget, slowStep);
+                smooth, kParamTapeStability,
+                targetAt(kParamTapeStability, stabilityTarget), slowStep);
         const double glueAmount =
             advanceSmoothed(
-                smooth, kParamGlueAmount, glueTarget, colourStep);
+                smooth, kParamGlueAmount,
+                targetAt(kParamGlueAmount, glueTarget), colourStep);
         const double glueCharacter =
             advanceSmoothed(
-                smooth, kParamGlueCharacter, glueCharacterTarget, slowStep);
+                smooth, kParamGlueCharacter,
+                targetAt(kParamGlueCharacter, glueCharacterTarget), slowStep);
         const double depthNorm =
             advanceSmoothed(
-                smooth, kParamDepth, depthTarget, slowStep);
+                smooth, kParamDepth,
+                targetAt(kParamDepth, depthTarget), slowStep);
         const double widthNorm =
             advanceSmoothed(
-                smooth, kParamWidth, widthTarget, slowStep);
+                smooth, kParamWidth,
+                targetAt(kParamWidth, widthTarget), slowStep);
         const double lowMono =
             advanceSmoothed(
-                smooth, kParamLowMono, lowMonoTarget, slowStep);
+                smooth, kParamLowMono,
+                targetAt(kParamLowMono, lowMonoTarget), slowStep);
 
         const double inputGain =
             dbToGain((inputNorm - 0.5) * 24.0);
@@ -1531,30 +1553,52 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
     const double correlationCoeff =
         stereoOnePoleCoefficient(4.0, sampleRate_);
 
-    auto processFrame = [&](double leftIn, double rightIn, bool stereo,
+    auto processFrame = [&](int32 sampleIndex,
+                            double leftIn, double rightIn, bool stereo,
                             double& leftOut, double& rightOut) {
+        const auto targetAt = [&](ParamID id, double fallback) noexcept {
+            if (blockAutomationSamples_ == data.numSamples &&
+                sampleIndex >= 0 && sampleIndex < blockAutomationSamples_ &&
+                isContinuousSmoothedParam(id)) {
+                return blockAutomation_[static_cast<std::size_t>(id)]
+                                       [static_cast<std::size_t>(sampleIndex)];
+            }
+            return fallback;
+        };
+
         const double inputNorm =
-            advanceSmoothed(smooth, kParamInput, inputTarget, gainStep);
+            advanceSmoothed(smooth, kParamInput,
+                            targetAt(kParamInput, inputTarget), gainStep);
         const double outputNorm =
-            advanceSmoothed(smooth, kParamOutput, outputTarget, gainStep);
+            advanceSmoothed(smooth, kParamOutput,
+                            targetAt(kParamOutput, outputTarget), gainStep);
         const double drive =
-            advanceSmoothed(smooth, kParamConsoleDrive, driveTarget, colourStep);
+            advanceSmoothed(smooth, kParamConsoleDrive,
+                            targetAt(kParamConsoleDrive, driveTarget), colourStep);
         const double tubeAmount =
-            advanceSmoothed(smooth, kParamTubeAmount, tubeTarget, colourStep);
+            advanceSmoothed(smooth, kParamTubeAmount,
+                            targetAt(kParamTubeAmount, tubeTarget), colourStep);
         const double tapeAmount =
-            advanceSmoothed(smooth, kParamTapeAmount, tapeTarget, colourStep);
+            advanceSmoothed(smooth, kParamTapeAmount,
+                            targetAt(kParamTapeAmount, tapeTarget), colourStep);
         const double tapeStability =
-            advanceSmoothed(smooth, kParamTapeStability, stabilityTarget, slowStep);
+            advanceSmoothed(smooth, kParamTapeStability,
+                            targetAt(kParamTapeStability, stabilityTarget), slowStep);
         const double glueAmount =
-            advanceSmoothed(smooth, kParamGlueAmount, glueTarget, colourStep);
+            advanceSmoothed(smooth, kParamGlueAmount,
+                            targetAt(kParamGlueAmount, glueTarget), colourStep);
         const double glueCharacter =
-            advanceSmoothed(smooth, kParamGlueCharacter, glueCharacterTarget, slowStep);
+            advanceSmoothed(smooth, kParamGlueCharacter,
+                            targetAt(kParamGlueCharacter, glueCharacterTarget), slowStep);
         const double depthNorm =
-            advanceSmoothed(smooth, kParamDepth, depthTarget, slowStep);
+            advanceSmoothed(smooth, kParamDepth,
+                            targetAt(kParamDepth, depthTarget), slowStep);
         const double widthNorm =
-            advanceSmoothed(smooth, kParamWidth, widthTarget, slowStep);
+            advanceSmoothed(smooth, kParamWidth,
+                            targetAt(kParamWidth, widthTarget), slowStep);
         const double lowMono =
-            advanceSmoothed(smooth, kParamLowMono, lowMonoTarget, slowStep);
+            advanceSmoothed(smooth, kParamLowMono,
+                            targetAt(kParamLowMono, lowMonoTarget), slowStep);
 
         const double inputGain =
             dbToGain((inputNorm - 0.5) * 24.0);
@@ -1703,7 +1747,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
             for (int32 i = 0; i < data.numSamples; ++i) {
                 double l = 0.0, r = 0.0;
                 processFrame(
-                    inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
+                    i, inL[i], inR ? inR[i] : inL[i], channels > 1, l, r);
                 outL[i] = static_cast<float>(l);
                 if (channels > 1 && outR)
                     outR[i] = static_cast<float>(r);
