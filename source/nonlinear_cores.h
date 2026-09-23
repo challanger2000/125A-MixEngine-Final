@@ -16,49 +16,83 @@ inline double analogCharacterAmount(double amount) noexcept {
 
 inline double consoleSoftClip(double x, double amount) noexcept {
     const double a = std::clamp(amount, 0.0, 1.0);
-    if (a <= 0.0)
-        return x;
-
-    // DRIVE=0 must be a true identity point. As DRIVE rises, progressively
-    // blend in the normalized tanh transfer instead of starting fully inside
-    // a tanh curve even at zero.
-    const double shape = 1.0 + a;
-    const double norm = std::tanh(shape);
-    const double saturated = norm > 0.0 ? std::tanh(x * shape) / norm : x;
+    if (a <= 0.0) return x;
+    const double shape = 1.0 + 1.35 * a;
+    const double saturated = std::tanh(x * shape) / shape;
     return x + (saturated - x) * a;
 }
 
-// Exact nonlinear/shaping portion of the existing Console DSP.
-// Host-rate tolerance/bias, low/high state calculation, DC blocking and noise
-// intentionally remain outside this function.
+inline double consoleAtanClip(double x, double amount) noexcept {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    if (a <= 0.0) return x;
+    const double shape = 1.0 + 2.20 * a;
+    const double saturated = std::atan(x * shape) / shape;
+    return x + (saturated - x) * a;
+}
+
+inline double consoleSoftSign(double x, double amount) noexcept {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    if (a <= 0.0) return x;
+    const double k = 0.35 + 1.45 * a;
+    const double saturated = x / (1.0 + k * std::abs(x));
+    return x + (saturated - x) * a;
+}
+
+// V2 Console nonlinear families. DRIVE=0 is an exact identity point for every
+// mode. The modes intentionally use different transfer families and spectral
+// weighting rather than merely scaling one waveshaper.
 inline double processConsoleNonlinearCore(double x,
                                           double low,
                                           double high,
                                           int mode,
                                           double drive) noexcept {
     const double d = std::clamp(drive, 0.0, 1.0);
-    double y = x;
+    if (d <= 0.0) return x;
 
     switch (mode) {
-        case 0:
-            y = consoleSoftClip(x, 0.20 * d);
-            break;
-        case 1:
-            y = consoleSoftClip(x + 0.035 * d * low, 0.65 * d);
-            y += 0.008 * d * high * std::abs(x);
-            break;
-        case 2:
-            y = consoleSoftClip(x + 0.070 * d * low
-                                  + 0.018 * d * x * x * (x >= 0.0 ? 1.0 : -0.55), d);
-            y -= 0.018 * d * high;
-            break;
-        default:
-            y = consoleSoftClip(x + 0.012 * d * high, 0.45 * d);
-            y += 0.010 * d * high * (1.0 - std::min(1.0, std::abs(x)));
-            break;
-    }
+        case 0: { // Clean: high headroom, mostly symmetric, slight HF density
+            const double pre =
+                x + 0.012 * d * high - 0.004 * d * low;
+            return consoleAtanClip(pre, 0.24 * d);
+        }
 
-    return y;
+        case 1: { // Classic: broader saturation with controlled even harmonics
+            const double pre =
+                x + 0.030 * d * low + 0.010 * d * high;
+            double y = consoleSoftClip(pre, 0.58 * d);
+            const double p2 = pre * pre;
+            y += 0.012 * d *
+                 (pre * std::abs(pre)) /
+                 (1.0 + 0.70 * p2);
+            return y;
+        }
+
+        case 2: { // Vintage: softer knees, low-mid density, stronger asymmetry
+            const double pre =
+                x + 0.062 * d * low - 0.014 * d * high;
+            double y = consoleSoftSign(pre, 0.72 * d);
+            const double p2 = pre * pre;
+            y += 0.022 * d *
+                 (pre * std::abs(pre)) /
+                 (1.0 + 0.55 * p2);
+            // Mild second curvature stage creates density without hard clipping.
+            const double second =
+                std::tanh(y * (1.0 + 0.30 * d)) /
+                (1.0 + 0.30 * d);
+            return y + (second - y) * (0.16 + 0.20 * d);
+        }
+
+        default: { // Modern: tighter LF, faster/cleaner odd-harmonic structure
+            const double pre =
+                x - 0.018 * d * low + 0.026 * d * high;
+            double y = consoleAtanClip(pre, 0.46 * d);
+            const double p2 = pre * pre;
+            y += 0.006 * d *
+                 (pre * pre * pre) /
+                 (1.0 + 0.85 * p2);
+            return y;
+        }
+    }
 }
 
 // Exact stateless nonlinear Tube DSP. Tube type values intentionally match the
