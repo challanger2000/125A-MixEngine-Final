@@ -8,6 +8,7 @@
 #include "metering.h"
 #include "meter_exchange.h"
 #include "stereo_field.h"
+#include "analog_models_v2.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
 #include <array>
 #include <atomic>
@@ -73,6 +74,7 @@ private:
     static constexpr int kMaxMixFxChannels = 128;
 #endif
     struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
+    using TubeChannelState = TubeModelState;
     struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0; std::uint32_t noiseRng=0; };
     struct GlueChannelState { double envelope=0.0; };
     struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
@@ -86,7 +88,7 @@ private:
     void sendMeterExchange(double vuL, double vuR, double clipL, double clipR,
                            Steinberg::int32 numSamples);
     double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive);
-    double processTubeSample(double x, int type, double amount) const;
+    double processTubeSample(double x, TubeChannelState& state, int type, double amount, double effectiveSampleRate) const;
     double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, int speed, double amount, double stability);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
     double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear);
@@ -100,6 +102,8 @@ private:
     std::array<double,kParamCount> params_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
     std::array<std::array<ConsoleChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleState_{};
+    std::array<TubeChannelState,kMaxAudioChannels> tubeState_{};
+    std::array<std::array<TubeChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxTubeState_{};
     std::array<TapeChannelState,kMaxAudioChannels> tapeState_{};
     std::array<std::array<TapeChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxTapeState_{};
     std::array<GlueChannelState,kMaxAudioChannels> glueState_{};
