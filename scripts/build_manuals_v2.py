@@ -37,7 +37,7 @@ def build(src,out,lang):
         else:
             story.append(Paragraph(esc(line),styles['V2Body']))
     story.append(Paragraph('125A Audio Software - 125A MixEngine V2 - Version 2.0.0',styles['V2Footer']))
-    doc=SimpleDocTemplate(out,pagesize=A4,rightMargin=17*mm,leftMargin=17*mm,topMargin=14*mm,bottomMargin=14*mm,title=lines[0],author='125A Audio Software')
+    doc=SimpleDocTemplate(str(out),pagesize=A4,rightMargin=17*mm,leftMargin=17*mm,topMargin=14*mm,bottomMargin=14*mm,title=lines[0],author='125A Audio Software')
     doc.build(story)
 
 if __name__=='__main__':
