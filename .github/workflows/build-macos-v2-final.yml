@@ -71,38 +71,38 @@ jobs:
           cp RELEASE_NOTES.md "$ROOT/"
           cp LICENSE.txt "$ROOT/"
 
-          cat > "$ROOT/INSTALL_MACOS_BETA.txt" <<'EOF'
-125A MixEngine V2 v2.0.0 - macOS Universal VST3 BETA
-
-IMPORTANT
-This macOS build is a beta because it has not yet been tested by 125A Systems on physical Mac hardware.
-The contained VST3 binaries are Universal (Apple Silicon arm64 + Intel x86_64).
-
-INSTALLATION
-1. Close the DAW.
-2. Copy the desired .vst3 bundle from the VST3 folder to:
-   ~/Library/Audio/Plug-Ins/VST3/
-   or
-   /Library/Audio/Plug-Ins/VST3/
-3. Start the DAW and rescan VST3 plug-ins if required.
-
-125A-MixEngine.vst3
-- PreSonus Studio One Mix FX edition.
-- Intended for the Studio One Mix FX slot.
-
-125A-MixEngine-Channel.vst3
-- Standard VST3 insert edition.
-- Intended for tracks, buses and normal VST3 hosts.
-
-Both editions may be installed side by side.
-
-If macOS blocks an unsigned/not-notarized beta build, remove quarantine from the copied bundle in Terminal:
-xattr -dr com.apple.quarantine "/path/to/125A-MixEngine.vst3"
-or
-xattr -dr com.apple.quarantine "/path/to/125A-MixEngine-Channel.vst3"
-
-Please report the macOS version, Mac model/CPU, DAW/version and exact reproduction steps for any problem.
-EOF
+          printf '%s\n' \
+            '125A MixEngine V2 v2.0.0 - macOS Universal VST3 BETA' \
+            '' \
+            'IMPORTANT' \
+            'This macOS build is a beta because it has not yet been tested by 125A Systems on physical Mac hardware.' \
+            'The contained VST3 binaries are Universal (Apple Silicon arm64 + Intel x86_64).' \
+            '' \
+            'INSTALLATION' \
+            '1. Close the DAW.' \
+            '2. Copy the desired .vst3 bundle from the VST3 folder to:' \
+            '   ~/Library/Audio/Plug-Ins/VST3/' \
+            '   or' \
+            '   /Library/Audio/Plug-Ins/VST3/' \
+            '3. Start the DAW and rescan VST3 plug-ins if required.' \
+            '' \
+            '125A-MixEngine.vst3' \
+            '- PreSonus Studio One Mix FX edition.' \
+            '- Intended for the Studio One Mix FX slot.' \
+            '' \
+            '125A-MixEngine-Channel.vst3' \
+            '- Standard VST3 insert edition.' \
+            '- Intended for tracks, buses and normal VST3 hosts.' \
+            '' \
+            'Both editions may be installed side by side.' \
+            '' \
+            'If macOS blocks an unsigned/not-notarized beta build, remove quarantine from the copied bundle in Terminal:' \
+            'xattr -dr com.apple.quarantine "/path/to/125A-MixEngine.vst3"' \
+            'or' \
+            'xattr -dr com.apple.quarantine "/path/to/125A-MixEngine-Channel.vst3"' \
+            '' \
+            'Please report the macOS version, Mac model/CPU, DAW/version and exact reproduction steps for any problem.' \
+            > "$ROOT/INSTALL_MACOS_BETA.txt"
 
           (
             cd "$ROOT"
