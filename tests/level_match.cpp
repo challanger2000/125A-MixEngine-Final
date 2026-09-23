@@ -219,6 +219,62 @@ int main(){
             }
         }
 
+        // V2 calibration grid. Channel and Mix FX numerical parity is guarded
+        // elsewhere, so use the Channel path here to avoid doubling calibration
+        // runtime. Each row reports the fixed compensation that would bring the
+        // representative -18 dBFS production signal back to unity RMS.
+        std::cout<<"=== V2 LEVEL MATCH CALIBRATION GRID ===\n";
+        const auto reportRaw=[&](const char* module,const std::string& settings,
+                                 const std::vector<std::pair<ParamID,double>>& params){
+            const double rawDb=dbRatio(renderRms(false,false,params),inRms);
+            std::cout<<"CAL "<<module<<" "<<settings
+                     <<" rawDb="<<rawDb
+                     <<" idealCompDb="<<(-rawDb)<<"\n";
+            if(!std::isfinite(rawDb)||std::abs(rawDb)>12.0)ok=false;
+        };
+
+        for(int mode=0;mode<4;++mode)
+            for(double drive:{0.25,0.50,0.75,1.00})
+                reportRaw("Console",
+                    "mode="+std::to_string(mode)+" drive="+std::to_string(drive),
+                    {{MixEngine::kParamConsoleOn,1.0},
+                     {MixEngine::kParamConsoleMode,static_cast<double>(mode)/3.0},
+                     {MixEngine::kParamConsoleDrive,drive}});
+
+        for(int type=0;type<3;++type)
+            for(double amount:{0.0,0.25,0.50,0.75,1.00})
+                reportRaw("Tube",
+                    "type="+std::to_string(type)+" amount="+std::to_string(amount),
+                    {{MixEngine::kParamTubeOn,1.0},
+                     {MixEngine::kParamTubeType,static_cast<double>(type)/2.0},
+                     {MixEngine::kParamTubeAmount,amount}});
+
+        for(int speed=0;speed<3;++speed)
+            for(double amount:{0.0,0.25,0.50,0.75,1.00})
+                reportRaw("Tape",
+                    "speed="+std::to_string(speed)+" amount="+std::to_string(amount),
+                    {{MixEngine::kParamTapeOn,1.0},
+                     {MixEngine::kParamTapeSpeed,static_cast<double>(speed)/2.0},
+                     {MixEngine::kParamTapeAmount,amount},
+                     {MixEngine::kParamTapeStability,1.0}});
+
+        for(double response:{0.0,0.5,1.0})
+            for(double amount:{0.25,0.50,0.75,1.00})
+                reportRaw("Glue",
+                    "response="+std::to_string(response)+" amount="+std::to_string(amount),
+                    {{MixEngine::kParamGlueOn,1.0},
+                     {MixEngine::kParamGlueCharacter,response},
+                     {MixEngine::kParamGlueAmount,amount}});
+
+        for(double color:{0.25,0.50,0.75,1.00})
+            for(double wear:{0.0,0.25,0.50})
+                reportRaw("Vinyl",
+                    "color="+std::to_string(color)+" wear="+std::to_string(wear),
+                    {{MixEngine::kParamVinylOn,1.0},
+                     {MixEngine::kParamVinylCharacter,color},
+                     {MixEngine::kParamVinylWear,wear},
+                     {MixEngine::kParamVinylNoise,0.0}});
+
         if(!ok){
             std::cerr<<"V2 Level Match calibration diagnostic FAILED\n";
             return 1;
