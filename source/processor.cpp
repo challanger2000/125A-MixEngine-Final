@@ -1733,7 +1733,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
             r = stereo
                 ? processTapeSample(
                       r * calibrationGain, tapeState_[1], 0, 1,
-                      tapeSpeed, tapeAmount, tapeStability) *
+                      tapeSpeed, tapeAmount, tapeStability, tapeHiss) *
                       calibrationReturn * tapeGain
                 : l;
         }
@@ -1755,12 +1755,12 @@ tresult PLUGIN_API Processor::process(ProcessData& data) {
         if (vinylOn) {
             l = processVinylSample(
                     l * calibrationGain, vinylState_[0], 0, 0,
-                    vinylCharacter, vinylWear) *
+                    vinylCharacter, vinylWear, vinylNoise) *
                 calibrationReturn * vinylGain;
             r = stereo
                 ? processVinylSample(
                       r * calibrationGain, vinylState_[1], 0, 1,
-                      vinylCharacter, vinylWear) *
+                      vinylCharacter, vinylWear, vinylNoise) *
                       calibrationReturn * vinylGain
                 : l;
         }
