@@ -16,6 +16,7 @@ namespace {
 constexpr double kSr=48000.0;
 constexpr int kMaxBlock=127;
 constexpr double kPi=3.14159265358979323846;
+using Param=std::pair<ParamID,double>;
 
 void setParam(ParameterChanges& changes,ParamID id,double value){
     int32 queueIndex=0;
@@ -86,6 +87,63 @@ struct Harness {
     }
 };
 
+
+double runFocusedParity(const std::vector<Param>& params,const char* name){
+    Harness h;
+    long long samplePos=0;
+    double maxDiff=0.0;
+    const std::array<int,5> sizes{{1,7,31,64,127}};
+    for(int block=0;block<80;++block){
+        const int n=sizes[static_cast<std::size_t>(block%sizes.size())];
+        std::array<double,kMaxBlock> inL{},inR{},chL{},chR{},mxL{},mxR{};
+        for(int i=0;i<n;++i,++samplePos){
+            const double t=static_cast<double>(samplePos)/kSr;
+            inL[static_cast<std::size_t>(i)]=0.10*std::sin(2.0*kPi*197.0*t)+0.05*std::sin(2.0*kPi*3011.0*t+0.2);
+            inR[static_cast<std::size_t>(i)]=0.08*std::sin(2.0*kPi*313.0*t+0.4)+0.04*std::sin(2.0*kPi*7013.0*t+0.7);
+        }
+        ParameterChanges chChanges{64},mxChanges{64};
+        if(block==0){
+            for(const auto&q:std::vector<Param>{
+                {MixEngine::kParamBypass,0.0},{MixEngine::kParamInput,0.5},{MixEngine::kParamOutput,0.5},
+                {MixEngine::kParamCalibration,0.0},{MixEngine::kParamAutoGain,0.0},
+                {MixEngine::kParamConsoleOn,0.0},{MixEngine::kParamConsoleNoise,0.0},
+                {MixEngine::kParamTubeOn,0.0},{MixEngine::kParamTapeOn,0.0},{MixEngine::kParamTapeHiss,0.0},
+                {MixEngine::kParamGlueOn,0.0},{MixEngine::kParamVinylOn,0.0},{MixEngine::kParamVinylNoise,0.0},
+                {MixEngine::kParamDepth,0.5},{MixEngine::kParamWidth,0.5},{MixEngine::kParamLowMono,0.0},
+                {MixEngine::kParamQuality,1.0}}){
+                setParam(chChanges,q.first,q.second);setParam(mxChanges,q.first,q.second);
+            }
+            for(const auto&q:params){setParam(chChanges,q.first,q.second);setParam(mxChanges,q.first,q.second);}
+        }
+
+        double* inPtrs[2]{inL.data(),inR.data()};
+        double* chPtrs[2]{chL.data(),chR.data()};
+        double* mxPtrs[2]{mxL.data(),mxR.data()};
+        AudioBusBuffers chIn{},chOut{},mxIn{},mxOut{};
+        chIn.numChannels=2;chIn.channelBuffers64=inPtrs;chOut.numChannels=2;chOut.channelBuffers64=chPtrs;
+        mxIn.numChannels=2;mxIn.channelBuffers64=inPtrs;mxOut.numChannels=2;mxOut.channelBuffers64=mxPtrs;
+
+        ProcessData chData{};chData.processMode=kRealtime;chData.symbolicSampleSize=kSample64;chData.numSamples=n;
+        chData.numInputs=1;chData.numOutputs=1;chData.inputs=&chIn;chData.outputs=&chOut;
+        chData.inputParameterChanges=block==0?&chChanges:nullptr;
+        if(h.channel->process(chData)!=kResultOk)throw 40;
+
+        ProcessData control{};control.processMode=kRealtime;control.symbolicSampleSize=kSample64;control.numSamples=n;
+        control.inputParameterChanges=block==0?&mxChanges:nullptr;
+        if(h.mixfx->processMixControl(&control)!=kResultOk)throw 41;
+
+        ProcessData mxData{};mxData.processMode=kRealtime;mxData.symbolicSampleSize=kSample64;mxData.numSamples=n;
+        mxData.numInputs=1;mxData.numOutputs=1;mxData.inputs=&mxIn;mxData.outputs=&mxOut;
+        if(h.mixfx->processMixChannel(0,&mxData)!=kResultOk)throw 42;
+
+        for(int i=0;i<n;++i){
+            maxDiff=std::max(maxDiff,std::abs(chL[static_cast<std::size_t>(i)]-mxL[static_cast<std::size_t>(i)]));
+            maxDiff=std::max(maxDiff,std::abs(chR[static_cast<std::size_t>(i)]-mxR[static_cast<std::size_t>(i)]));
+        }
+    }
+    std::cout<<"FocusedParity "<<name<<" maxDiff="<<maxDiff<<"\n";
+    return maxDiff;
+}
 }
 
 int main(){
@@ -96,7 +154,10 @@ int main(){
         double maxAbs=0.0;
         int firstDiffBlock=-1;
         int firstDiffSample=-1;
+        int maxDiffBlock=-1;
+        int maxDiffSample=-1;
         double firstChL=0.0,firstMxL=0.0,firstChR=0.0,firstMxR=0.0;
+        double maxChL=0.0,maxMxL=0.0,maxChR=0.0,maxMxR=0.0;
         const std::array<int,5> sizes{{1,7,31,64,127}};
 
         for(int block=0;block<240;++block){
@@ -159,8 +220,17 @@ int main(){
                 }
                 const double diffL=std::abs(chL[static_cast<std::size_t>(i)]-mxL[static_cast<std::size_t>(i)]);
                 const double diffR=std::abs(chR[static_cast<std::size_t>(i)]-mxR[static_cast<std::size_t>(i)]);
-                maxDiff=std::max({maxDiff,diffL,diffR});
-                if(firstDiffBlock<0 && std::max(diffL,diffR)>1.0e-10){
+                const double localMax=std::max(diffL,diffR);
+                if(localMax>maxDiff){
+                    maxDiff=localMax;
+                    maxDiffBlock=block;
+                    maxDiffSample=i;
+                    maxChL=chL[static_cast<std::size_t>(i)];
+                    maxMxL=mxL[static_cast<std::size_t>(i)];
+                    maxChR=chR[static_cast<std::size_t>(i)];
+                    maxMxR=mxR[static_cast<std::size_t>(i)];
+                }
+                if(firstDiffBlock<0 && localMax>1.0e-10){
                     firstDiffBlock=block;
                     firstDiffSample=i;
                     firstChL=chL[static_cast<std::size_t>(i)];
@@ -169,6 +239,17 @@ int main(){
                     firstMxR=mxR[static_cast<std::size_t>(i)];
                 }
             }
+        }
+
+        for(const auto& focused:std::vector<std::pair<const char*,std::vector<Param>>>{
+            {"Console",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.65}}},
+            {"Glue",{{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueAmount,0.65},{MixEngine::kParamGlueCharacter,0.5}}},
+            {"Vinyl",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.25}}},
+            {"Console+Vinyl",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.65},{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.25}}},
+            {"Glue+Vinyl",{{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueAmount,0.65},{MixEngine::kParamGlueCharacter,0.5},{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.25}}},
+            {"Console+Glue+Vinyl",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.65},{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueAmount,0.65},{MixEngine::kParamGlueCharacter,0.5},{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.25}}}
+        }){
+            runFocusedParity(focused.second,focused.first);
         }
 
         std::cout<<"Automation stress maxAbs="<<maxAbs
@@ -186,6 +267,22 @@ int main(){
                      <<" glue="<<(((firstDiffBlock%5)<3)?1:0)
                      <<" vinyl="<<(((firstDiffBlock%7)<3)?1:0)
                      <<" quality="<<((firstDiffBlock%3)/2.0)
+                     <<"\n";
+        }
+
+        if(maxDiffBlock>=0){
+            std::cout<<"Maximum parity mismatch block="<<maxDiffBlock
+                     <<" sample="<<maxDiffSample
+                     <<" blockSize="<<sizes[static_cast<std::size_t>(maxDiffBlock%sizes.size())]
+                     <<" chL="<<maxChL<<" mxL="<<maxMxL
+                     <<" chR="<<maxChR<<" mxR="<<maxMxR
+                     <<" bypass="<<(((maxDiffBlock%37)==0)?1:0)
+                     <<" console="<<(((maxDiffBlock%11)==0)?0:1)
+                     <<" tube="<<(((maxDiffBlock%3)==0)?1:0)
+                     <<" tape="<<(((maxDiffBlock%4)<2)?1:0)
+                     <<" glue="<<(((maxDiffBlock%5)<3)?1:0)
+                     <<" vinyl="<<(((maxDiffBlock%7)<3)?1:0)
+                     <<" quality="<<((maxDiffBlock%3)/2.0)
                      <<"\n";
         }
 
