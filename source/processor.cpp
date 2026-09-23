@@ -305,7 +305,8 @@ double Processor::processConsoleSample(double x,
                                       int sourceIndex,
                                       int lane,
                                       int mode,
-                                      double drive) {
+                                      double drive,
+                                      double noiseAmount) {
     const double d = std::clamp(drive, 0.0, 1.0);
     const double variation = stableVariation(sourceIndex, lane);
     const double tolerance = 1.0 + 0.006 * variation;
@@ -376,11 +377,7 @@ double Processor::processConsoleSample(double x,
         *engine, *currentFactor, factor, x, low, high, mode, d);
     y = dcBlock(y, state);
 
-    const double noiseAmount = std::clamp(
-        mixFxEngaged_
-            ? mixFxConsoleNoise_.load(std::memory_order_relaxed)
-            : params_[kParamConsoleNoise],
-        0.0, 1.0);
+    noiseAmount = std::clamp(noiseAmount, 0.0, 1.0);
     if (noiseAmount > 0.0) {
         if (state.noiseRng == 0u)
             state.noiseRng =
@@ -417,7 +414,8 @@ double Processor::processTapeSample(double x,
                                     int lane,
                                     int speed,
                                     double amount,
-                                    double stability) {
+                                    double stability,
+                                    double hissAmount) {
     const double a = std::clamp(amount, 0.0, 1.0);
     const double character = analogCharacterAmount(a);
     speed = std::clamp(speed, 0, 2);
@@ -572,11 +570,7 @@ double Processor::processTapeSample(double x,
         dryAligner->process(x, oversamplingBulkDelay(osFactor, 1));
     double y = dry + (tape - dry) * wet;
 
-    const double noiseAmount = std::clamp(
-        mixFxEngaged_
-            ? mixFxTapeHiss_.load(std::memory_order_relaxed)
-            : params_[kParamTapeHiss],
-        0.0, 1.0);
+    const double noiseAmount = std::clamp(hissAmount, 0.0, 1.0);
     if (noiseAmount > 0.0) {
         if (state.noiseRng == 0u)
             state.noiseRng = makeNoiseSeed(sourceIndex, lane, 0x7A9E51A5u);
@@ -704,7 +698,8 @@ double Processor::processVinylSample(double x,
                                     int sourceIndex,
                                     int lane,
                                     double character,
-                                    double wear) {
+                                    double wear,
+                                    double noiseAmount) {
     const double c = std::clamp(character, 0.0, 1.0);
     const double w = std::clamp(wear, 0.0, 1.0);
     double y = x;
@@ -810,11 +805,7 @@ double Processor::processVinylSample(double x,
 
     // SURFACE remains independent from Color/Wear. Wear changes the statistical
     // severity of a noisy surface, but Surface=0 is still mathematically silent.
-    const double noiseAmount = std::clamp(
-        mixFxEngaged_
-            ? mixFxVinylNoise_.load(std::memory_order_relaxed)
-            : params_[kParamVinylNoise],
-        0.0, 1.0);
+    noiseAmount = std::clamp(noiseAmount, 0.0, 1.0);
 
     if (noiseAmount > 0.0) {
         if (state.noiseRng == 0u)
