@@ -234,4 +234,26 @@ inline double processTapeMagneticV2(double x,
     return std::clamp(magnetic, -4.0, 4.0);
 }
 
+
+inline double processVinylGrooveV2(double x,
+                                   double character,
+                                   double wear) noexcept {
+    const double c = std::clamp(character, 0.0, 1.0);
+    const double w = std::clamp(wear, 0.0, 1.0);
+    const double drive = 1.0 + 0.42 * c + 0.58 * w;
+    const double bias = 0.010 * c + 0.020 * w;
+    const double z = x * drive;
+    const double centre = std::atan(bias);
+    const double curved =
+        (std::atan(z + bias) - centre) * (1.0 + bias * bias) /
+        std::max(1.0, drive * 0.78);
+
+    const double z2 = z * z;
+    const double tracingAsym =
+        (0.012 * c + 0.026 * w) *
+        (z * std::abs(z)) / (1.0 + 0.90 * z2);
+    const double groove = curved + tracingAsym;
+    return std::clamp(groove, -4.0, 4.0);
+}
+
 } // namespace MixEngine
