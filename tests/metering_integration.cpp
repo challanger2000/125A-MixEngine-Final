@@ -110,8 +110,8 @@ int main() {
             !getLast(h.outputChanges, MixEngine::kParamMeterR, meterR))
             return fail("missing INPUT telemetry", 31);
 
-        const double expectedInL = MixEngine::vuNeedleNormalized(0.10, -14.0);
-        const double expectedInR = MixEngine::vuNeedleNormalized(0.05, -14.0);
+        const double expectedInL = MixEngine::vuNeedleNormalized(0.10, -18.0);
+        const double expectedInR = MixEngine::vuNeedleNormalized(0.05, -18.0);
         if (std::abs(meterL - expectedInL) > 0.03) return fail("INPUT left VU is outside tolerance", 32);
         if (std::abs(meterR - expectedInR) > 0.03) return fail("INPUT right VU is outside tolerance", 33);
         if (!(meterL > meterR)) return fail("stereo L/R ordering is wrong", 34);
@@ -128,8 +128,8 @@ int main() {
             return fail("missing OUTPUT telemetry", 36);
 
         const double gain6 = std::pow(10.0, 6.0 / 20.0);
-        const double expectedOutL = MixEngine::vuNeedleNormalized(0.10 * gain6, -14.0);
-        const double expectedOutR = MixEngine::vuNeedleNormalized(0.05 * gain6, -14.0);
+        const double expectedOutL = MixEngine::vuNeedleNormalized(0.10 * gain6, -18.0);
+        const double expectedOutR = MixEngine::vuNeedleNormalized(0.05 * gain6, -18.0);
         if (std::abs(meterL - expectedOutL) > 0.04) return fail("OUTPUT left VU is outside tolerance", 37);
         if (std::abs(meterR - expectedOutR) > 0.04) return fail("OUTPUT right VU is outside tolerance", 38);
         if (meterL - inputMeterL < 0.20) return fail("INPUT/OUTPUT source switching is not observable", 39);
