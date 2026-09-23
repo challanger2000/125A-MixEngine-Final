@@ -1,114 +1,60 @@
-# 125A MixEngine
+# 125A MixEngine V2
 
-**125A MixEngine v1.1.0** is a Windows x64 VST3 coloration and summing processor with two editions built from the same DSP core:
+**125A MixEngine V2 v2.0.0** is a Windows x64 VST3 coloration, summing and mix-finishing processor with two editions built from the same DSP core:
 
-- **125A MixEngine** - PreSonus Studio One **Mix FX** edition with true adjacent-channel console crosstalk.
-- **125A MixEngine Channel** - standard **VST3 insert** edition for normal channel/bus use and VST3 hosts that do not expose the PreSonus Mix FX API.
+- **125A MixEngine V2** - PreSonus Studio One **Mix FX** edition with true adjacent-channel console crosstalk.
+- **125A MixEngine V2 Channel** - standard **VST3 insert** edition for tracks, buses and VST3 hosts without the PreSonus Mix FX API.
 
 ## Signal flow
 
 `INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT`
 
-The order is fixed by design. Console, Tube, Tape, Glue and Vinyl may be active at the same time.
+## V2 highlights
 
-## Main features
-
-- Four generic Console characters: Clean, Classic, Vintage and Modern
-- Corrected Console Drive law: 0% is neutral in the nonlinear core and saturation increases progressively
-- True Mix FX adjacent-channel Crosstalk; no fake L/R stereo bleed
-- Independent Console Noise, Tape Hiss and Vinyl Surface controls
-- Tube section with Soft / Balanced / Hot voices
-- Studio reel-to-reel Tape section with 7.5 / 15 / 30 ips, Stability and Hiss
-- Linked Glue dynamics
-- Vinyl Color, Wear and optional Surface noise/clicks
-- M/S Stereo section with Depth, Width and fixed-120-Hz Low Mono
-- Selectable 0 VU reference: -18 / -14 / -10 dBFS
-- Input/Output VU source selection and clip hold indicators
+- Sample-offset accurate automation in both standard VST3 and Mix FX paths
+- True 0% neutral intensity points
+- Continuous monotonic amount/drive laws: 20-50% musical working range, 75-100% strong/creative
+- Continuous Tube Voice and Tape Speed morphing
+- Tape: retained v1.1 program-dependent compression plus V2 magnetic/hysteresis memory
+- Glue: program-dependent release and improved transient behavior
+- Vinyl: clearly separated Color and Wear axes
+- Console: stronger character separation and bounded Vintage transformer memory
+- Scoped FTZ/DAZ denormal protection inside audio callbacks with host MXCSR restoration
 - Eco 1x / Normal 2x / High 4x quality modes
 - Fixed reported host latency: **21 samples**
 - UI scaling: 75 / 100 / 125 / 150%
-- 32-bit and 64-bit audio sample processing
+- 32-bit and 64-bit audio processing
 - Mono and stereo support
-
-## Documentation
-
-- [Deutsche Bedienungsanleitung](docs/125A_MixEngine_Bedienungsanleitung_DE.pdf)
-- [English User Manual](docs/125A_MixEngine_User_Manual_EN.pdf)
-- [Building from source](docs/BUILDING.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Release notes](RELEASE_NOTES.md)
+- Tested at 44.1 / 48 / 96 / 192 kHz
 
 ## Installation
 
-Copy the required VST3 bundle into:
+Copy the desired VST3 bundle to:
 
 `C:\Program Files\Common Files\VST3`
 
-Then rescan plugins in the DAW.
+Then rescan VST3 plugins in the DAW.
 
-### Which edition should I use?
+### Which edition?
 
-Use **125A MixEngine** in Studio One's Mix FX slot when you want channel-aware console behaviour. Crosstalk couples only direct neighbouring Mix FX channels and preserves stereo lanes.
+Use **125A MixEngine V2** in Studio One's Mix FX slot for channel-aware console behavior and true adjacent-channel crosstalk.
 
-Use **125A MixEngine Channel** as a normal insert on tracks or buses. It uses the same coloration core but intentionally omits inter-channel crosstalk because a normal VST3 insert cannot access neighbouring DAW channels.
-
-Both editions use separate VST3 identities and can be installed side by side.
+Use **125A MixEngine V2 Channel** as a normal insert on tracks or buses.
 
 ## Gain staging
 
-0 VU is a reference point, not a level every musical signal must constantly hit. With the default reference, **0 VU = -14 dBFS**. Dynamic music can show a lower VU reading while short DAW peaks are substantially higher.
+0 VU is a reference point, not a target every signal must constantly hit. The selectable references are -18 / -14 / -10 dBFS.
 
-Level Match is a fixed parameter-dependent compensation system. It is not an adaptive loudness normalizer.
-
-## Build
-
-Requirements:
-
-- Windows x64
-- Visual Studio 2022 C++ toolchain
-- CMake 3.25+
-- Steinberg VST3 SDK
-- Network access for the pinned HIIR dependency when not already cached
-
-Set `VST3_SDK_ROOT` and build the two release targets:
-
-```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="C:/path/to/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
-cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel
-```
-
-The GitHub Actions workflow checks out a pinned VST3 SDK revision and can run the full DSP/validator suite.
+Level Match is parameter-dependent compensation, not an adaptive loudness normalizer. Input Level Match compensates the linear input-gain component while preserving changed drive into nonlinear stages.
 
 ## Validation
 
-The final source includes diagnostics for:
+The V2 source includes diagnostics for zero-neutrality, range continuity, oversampling/aliasing, fixed latency, metering, mono/phase behavior, Channel/Mix FX parity, Level Match, automation stress, sample-offset accuracy, real Mix FX crosstalk, character morphing, Tape/Console memory, Glue transients, Vinyl axis separation, quality switching, sample-rate/sample-format matrix, denormal hardening and the Steinberg VST3 validator.
 
-- oversampling roundtrip, aliasing and latency
-- Tube/Tape/Vinyl nonlinear paths
-- Console Drive zero-neutrality
-- Console/Tube ordering
-- VU metering and data exchange
-- fixed processor latency
-- mono/phase behaviour
-- host/block/sample-format matrix
-- Channel/Mix FX DSP parity
-- Level Match
-- automation stress
-- true Mix FX adjacent-channel Crosstalk
-- GUI/resource/parameter contracts
-- Steinberg VST3 validator for the Channel edition
+## Documentation
 
-The current GUI is procedural VSTGUI; no raster faceplate or prerendered knob assets are required.
-
-## Source layout
-
-- `source/` - shared DSP, VST3 processor/controller and procedural GUI
-- `resource/` - authoritative 125A vector logo plus generated layout/UIDESC contracts
-- `tests/` - objective DSP and integration diagnostics
-- `scripts/` - GUI and architecture contract verification
-- `docs/` - manuals, architecture and build instructions
-- `.github/workflows/` - Windows x64 build and validation workflow
+The Gumroad package contains complete German and English V2 PDF manuals.
 
 ## License
 
-Copyright 2026 125A Audio Software. All rights reserved. This repository does not grant an open-source license. See [LICENSE.txt](LICENSE.txt).
+Copyright 2026 125A Audio Software. All rights reserved. See [LICENSE.txt](LICENSE.txt).
