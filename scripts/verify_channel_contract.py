@@ -20,7 +20,7 @@ if "0x4A17C2D3" not in ids or "0xB8D2517E" not in ids:
     fail("original Mix FX UIDs changed")
 
 for needle in (
-    '#define stringPluginName "125A MixEngine Channel"',
+    '#define stringPluginName "125A MixEngine V2 Channel"',
     "kChannelProcessorUID",
     "kChannelControllerUID",
     "kVstAudioEffectClass",
