@@ -39,9 +39,9 @@ bool tapeEcoExact(int speed,double amount) {
     MixEngine::TapeMagneticState directState,ecoState;
     for(int i=0;i<20000;++i){
         const double x=1.2*std::sin(0.013*i)+0.21*std::sin(0.071*i);
-        const double direct=MixEngine::processTapeMagneticV2(x,directState,speed,amount);
+        const double direct=MixEngine::processTapeMagneticV2(x,directState,speed,amount,kSampleRate);
         const double eco=e.process(x,1,[&](double v){
-            return MixEngine::processTapeMagneticV2(v,ecoState,speed,amount);
+            return MixEngine::processTapeMagneticV2(v,ecoState,speed,amount,kSampleRate);
         });
         if(direct!=eco)return false;
     }
@@ -68,7 +68,7 @@ double tapeResidual(int factor,double frequency,int speed,double amount) {
     for(int n=0;n<kCount;++n){
         const double x=0.92*std::sin(2.0*kPi*frequency*n/kSampleRate);
         y[n]=e.process(x,factor,[&](double v){
-            return MixEngine::processTapeMagneticV2(v,state,speed,amount);
+            return MixEngine::processTapeMagneticV2(v,state,speed,amount,kSampleRate*static_cast<double>(factor));
         });
         if(!std::isfinite(y[n]))return 1.0e9;
     }
