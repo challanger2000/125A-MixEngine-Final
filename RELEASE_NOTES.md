@@ -1,45 +1,34 @@
 # Release Notes
 
+## 125A MixEngine V2 v2.0.0 - 2026-09-24
+
+### DSP / musical behavior
+
+- Rebuilt from the final v1.1.0 codebase rather than the older development repository.
+- 0% is a true neutral point for intensity controls.
+- Amount/Drive laws are continuous and monotonic with no hard upper-range knee.
+- Tube Voice and Tape Speed use continuous internal morphing.
+- Tape keeps the v1.1.0 program-dependent compression envelope and adds bounded magnetic/hysteresis memory.
+- Glue was reworked around a calibrated threshold, program-dependent release, amount-dependent attack, parallel-style blend and revised Level Match.
+- Vinyl Color and Wear were separated into materially different sonic axes.
+- Console mode identity was strengthened; Vintage adds bounded decaying transformer memory.
+
+### Automation / host behavior
+
+- Standard VST3 automation is applied at exact host-supplied sample offsets.
+- Mix FX automation is also applied sample-accurately.
+- Character transitions are smoothed to prevent hard switching artifacts.
+- Fixed reported host latency remains 21 samples.
+- Scoped FTZ/DAZ denormal protection is active during audio callbacks and the host MXCSR state is restored afterward.
+
+### Validation
+
+- Steinberg VST3 Validator: 47 tests passed, 0 failed on the validated Channel build.
+- Channel/Mix FX sample-accuracy diagnostics: maxDiff = 0 across the tested automation matrix.
+- Sample-rate/sample-format matrix passed at 44.1 / 48 / 96 / 192 kHz in float32 and float64 paths.
+- Zero-neutrality, range, Tape memory, Glue transient/recovery, Vinyl material-axis, Console character/memory, quality switching, oversampling/alias, latency, phase/mono and Level Match diagnostics passed.
+- Dedicated denormal/MXCSR restoration diagnostic added for V2.
+
 ## 125A MixEngine v1.1.0 - 2026-09-22
 
-### Tube / Tape refinement
-
-- Tube and Tape now retain a subtle hardware-like base character when the module is enabled at 0% Amount.
-- Amount controls now span from subtle coloration to substantially stronger character at 100%.
-- Tube and Tape Level Match compensation was recalibrated against the refined DSP.
-- Input Level Match now compensates the linear input-gain component while preserving nonlinear drive into the processing chain.
-- Tape processing retains independent Hiss control and correct oversampling/latency participation at 0% Amount.
-- Channel and Mix FX editions use the same updated DSP core.
-
-### Validation
-
-- Steinberg Validator: 47/47 tests passed.
-- Full DSP diagnostics passed, including Tube/Tape oversampling, aliasing, fixed 21-sample latency, phase/mono behaviour, Level Match, automation stress, and exact Channel/Mix FX DSP parity.
-- Measured Level Match at the production test point: Tube +0.0013 dB, Tape -0.0049 dB, full chain -0.0685 dB.
-
-## 125A MixEngine v1.0.0 - 2026-09-19
-
-Initial commercial release candidate/final source baseline.
-
-### Included
-
-- PreSonus Studio One Mix FX edition
-- Standard Windows x64 VST3 Channel edition
-- shared modular DSP chain: Console, Tube, Tape, Glue, Vinyl, Stereo
-- true adjacent-channel Mix FX Crosstalk
-- independent Console Noise, Tape Hiss and Vinyl Surface
-- three reference levels and VU source selection
-- 1x / 2x / 4x quality modes
-- fixed 21-sample reported latency
-- procedural VSTGUI with 75/100/125/150% UI scaling
-- German and English PDF manuals
-
-### Final Console Drive correction
-
-Console Drive was recalibrated before release so that **0% is a true identity point in the nonlinear core**. Saturation, peak rounding and density now increase progressively with Drive instead of being strongly present at the zero position.
-
-A dedicated diagnostic permanently guards this behaviour.
-
-### Validation
-
-The final validation suite covers DSP finiteness, oversampling, alias behaviour, latency, metering, mono/phase behaviour, Channel/Mix FX parity, Level Match, automation stress, real adjacent-channel Crosstalk, GUI contracts and the Steinberg validator for the Channel edition.
+Previous production release and the final base from which V2 was rebuilt.
