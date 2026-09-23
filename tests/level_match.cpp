@@ -209,13 +209,16 @@ int main(){
                          <<" ON="<<onDb<<" dB"
                          <<" improvement="<<(std::abs(offDb)-std::abs(onDb))<<" dB\n";
 
-                // V2 calibration pass: the nonlinear models have changed
-                // substantially, so the old fixed compensation coefficients are
-                // intentionally being measured before they are retuned. Keep
-                // only a broad finite/sanity bound in this characterization
-                // phase; this is tightened again after measured calibration.
+                // V2 Level Match is a fixed transparent compensation, not a
+                // programme-dependent loudness rider. Isolated modules should
+                // land very close to unity; the full interacting chain gets a
+                // wider allowance because restoring one stage also changes the
+                // operating level presented to downstream nonlinear stages.
                 if(!std::isfinite(offDb)||!std::isfinite(onDb))ok=false;
-                if(std::abs(offDb)>12.0||std::abs(onDb)>12.0)ok=false;
+                const bool full=std::string(c.name)=="Full";
+                const double tolerance=full?0.75:0.35;
+                if(std::abs(onDb)>tolerance)ok=false;
+                if(std::abs(onDb)>std::abs(offDb)+0.10)ok=false;
             }
         }
 
@@ -227,10 +230,14 @@ int main(){
         const auto reportRaw=[&](const char* module,const std::string& settings,
                                  const std::vector<std::pair<ParamID,double>>& params){
             const double rawDb=dbRatio(renderRms(false,false,params),inRms);
+            const double matchedDb=dbRatio(renderRms(false,true,params),inRms);
             std::cout<<"CAL "<<module<<" "<<settings
                      <<" rawDb="<<rawDb
-                     <<" idealCompDb="<<(-rawDb)<<"\n";
-            if(!std::isfinite(rawDb)||std::abs(rawDb)>12.0)ok=false;
+                     <<" idealCompDb="<<(-rawDb)
+                     <<" matchedDb="<<matchedDb<<"\n";
+            if(!std::isfinite(rawDb)||!std::isfinite(matchedDb))ok=false;
+            if(std::abs(rawDb)>12.0)ok=false;
+            if(std::abs(matchedDb)>0.15)ok=false;
         };
 
         for(int mode=0;mode<4;++mode)
@@ -276,10 +283,10 @@ int main(){
                      {MixEngine::kParamVinylNoise,0.0}});
 
         if(!ok){
-            std::cerr<<"V2 Level Match calibration diagnostic FAILED\n";
+            std::cerr<<"V2 Level Match objective diagnostic FAILED\n";
             return 1;
         }
-        std::cout<<"V2 Level Match calibration diagnostic PASSED\n";
+        std::cout<<"V2 Level Match objective diagnostic PASSED\n";
         return 0;
     }catch(int code){
         std::cerr<<"Level Match diagnostic setup FAIL: "<<code<<"\n";
