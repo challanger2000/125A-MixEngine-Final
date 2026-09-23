@@ -47,34 +47,103 @@ inline int qualityFactor(double normalized) {
 }
 inline double consoleAutoGain(int mode, double drive) {
     const double d = std::clamp(drive, 0.0, 1.0);
-    double amount = 0.45 * d;
-    switch (mode) { case 0: amount = 0.20*d; break; case 1: amount = 0.65*d; break; case 2: amount = d; break; default: break; }
-    if (amount <= 0.0) return 1.0;
+    if (d <= 0.0) return 1.0;
 
-    // Match the small-signal gain of consoleSoftClip(), which now morphs from
-    // dry/identity at DRIVE=0 into the normalized tanh transfer as DRIVE rises.
-    const double shape = 1.0 + amount;
-    const double norm = std::tanh(shape);
-    if (norm <= 0.0) return 1.0;
-    const double saturatedSlope = shape / norm;
-    const double blendedSlope = (1.0 - amount) + amount * saturatedSlope;
-    return blendedSlope > 0.0 ? 1.0 / blendedSlope : 1.0;
+    // V2 measured compensation at the -18 dBFS = 0 VU operating reference.
+    // Each console mode has its own fitted loss curve because the transfer
+    // families are intentionally different.
+    double linear = 0.76044803;
+    double quadratic = 0.83174813;
+    switch (std::clamp(mode, 0, 3)) {
+        case 0: linear = 0.43726244; quadratic = 0.17564619; break;
+        case 1: linear = 0.83954979; quadratic = 1.17466297; break;
+        case 2: linear = 2.68284178; quadratic = 1.55514890; break;
+        default: break;
+    }
+    const double compensationDb =
+        linear * d + quadratic * d * d;
+    return dbToGain(compensationDb);
 }
+
 inline double tubeAutoGain(int type, double amount) {
-    const double c = analogCharacterAmount(amount);
-    // Calibrated against the current live Tube transfer at production level.
-    // Preserve the relative strength of the three voices while avoiding the
-    // slight over-attenuation introduced by the previous coefficients.
-    double m=2.39; switch(type){case kTube12AU7:m=1.38;break;case kTube12AT7:m=2.39;break;default:m=3.31;break;} return dbToGain(-m*c*c);
+    const double a = std::clamp(amount, 0.0, 1.0);
+
+    // Measured V2 fits include the intentional Amount=0 base colour.
+    double base = 0.08117400;
+    double linear = 2.17855318;
+    double quadratic = 1.71084594;
+    switch (std::clamp(type, 0, 2)) {
+        case kTube12AU7:
+            base = 0.07801063; linear = 1.98058655; quadratic = 0.95506537;
+            break;
+        case kTube12AT7:
+            break;
+        default:
+            base = 0.08573736; linear = 2.43663914; quadratic = 2.53950286;
+            break;
+    }
+    const double compensationDb =
+        base + linear * a + quadratic * a * a;
+    return dbToGain(compensationDb);
 }
-inline double tapeAutoGain(double amount){
-    const double c=analogCharacterAmount(amount);
-    // The refined tape path includes program-dependent compression and filtering;
-    // its measured RMS loss is substantially larger than the old 1.2*dB model.
-    return dbToGain(3.00*c*c);
+
+inline double tapeAutoGain(int speed, double amount) {
+    const double a = std::clamp(amount, 0.0, 1.0);
+
+    // Tape loss is strongly speed-dependent in V2, so a single Amount-only
+    // compensation is no longer adequate. Cubic fits stay within a few
+    // hundredths of a dB over the measured 0/25/50/75/100% grid.
+    double base = 0.10391574;
+    double p1 = 4.23620619;
+    double p2 = 2.15866514;
+    double p3 = 2.18081067;
+    switch (std::clamp(speed, 0, 2)) {
+        case 0:
+            base = 0.11247080; p1 = 4.72967333; p2 = 1.82382400; p3 = 2.75741867;
+            break;
+        case 1:
+            break;
+        default:
+            base = 0.09658058; p1 = 3.71617512; p2 = 2.37957131; p3 = 1.58044747;
+            break;
+    }
+    const double compensationDb =
+        base + p1 * a + p2 * a * a + p3 * a * a * a;
+    return dbToGain(compensationDb);
 }
-inline double glueAutoGain(double amount,double character){const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0);return dbToGain((3.2+1.8*c)*a*a);}
-inline double vinylAutoGain(double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);return dbToGain(1.24*c+0.91*w);}
+
+inline double glueAutoGain(double amount, double character) {
+    const double a = std::clamp(amount, 0.0, 1.0);
+    if (a <= 0.0) return 1.0;
+    const double c = std::clamp(character, 0.0, 1.0);
+
+    // RESPONSE changes both the approximately linear and quadratic components
+    // of gain reduction. These coefficients are fitted jointly across
+    // RESPONSE 0/50/100 and AMOUNT 25/50/75/100.
+    const double linear = 0.79559015 + 1.18225346 * c;
+    const double quadratic = 5.29655910 + 0.37289729 * c;
+    const double compensationDb =
+        linear * a + quadratic * a * a;
+    return dbToGain(compensationDb);
+}
+
+inline double vinylAutoGain(double character, double wear) {
+    const double c = std::clamp(character, 0.0, 1.0);
+    const double w = std::clamp(wear, 0.0, 1.0);
+    if (c <= 0.0 && w <= 0.0) return 1.0;
+
+    // Joint V2 fit over Color/Wear grid. The cross-term matters because worn
+    // groove loss rises more strongly when Color is already driving the
+    // tracing path.
+    const double compensationDb =
+        1.41064667 * c +
+        0.05342071 * c * c +
+        0.82946898 * w +
+        0.27091501 * w * w +
+        0.65669402 * c * w;
+    return dbToGain(compensationDb);
+}
+
 inline double stableVariation(int sourceIndex,int lane){std::uint32_t x=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x7F4A7C15u*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return(static_cast<double>(x&0xFFFFu)/32767.5)-1.0;}
 inline std::uint32_t makeNoiseSeed(int sourceIndex,int lane,std::uint32_t salt){std::uint32_t x=salt;x^=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x85EBCA6Bu*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return x?x:0xA341316Cu;}
 inline double randomBipolar(std::uint32_t& state){state^=state<<13;state^=state>>17;state^=state<<5;return(static_cast<double>(state)/2147483647.5)-1.0;}
@@ -815,7 +884,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
  if(index<0||index>=kMaxMixFxChannels)return kInvalidArgument;if(mixFxChannelCount_>0&&index>=mixFxChannelCount_)return kInvalidArgument;if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;auto&inBus=data.inputs[0];auto&outBus=data.outputs[0];const int32 channels=std::min<int32>(std::min(inBus.numChannels,outBus.numChannels),kMaxAudioChannels);if(channels<=0)return kResultOk;
  auto& inputMeter=mixFxInputMeters_[static_cast<std::size_t>(index)];auto& outputMeter=mixFxOutputMeters_[static_cast<std::size_t>(index)];inputMeter.beginBlock();outputMeter.beginBlock();
  const bool bypass=mixFxBypass_.load(std::memory_order_relaxed)>=0.5,consoleOn=mixFxConsoleOn_.load(std::memory_order_relaxed)>=0.5,tubeOn=mixFxTubeOn_.load(std::memory_order_relaxed)>=0.5,tapeOn=mixFxTapeOn_.load(std::memory_order_relaxed)>=0.5,glueOn=mixFxGlueOn_.load(std::memory_order_relaxed)>=0.5,vinylOn=mixFxVinylOn_.load(std::memory_order_relaxed)>=0.5,autoGainOn=mixFxAutoGain_.load(std::memory_order_relaxed)>=0.5;
- const double inputGain=dbToGain((mixFxInput_.load(std::memory_order_relaxed)-0.5)*24.0),outputGain=dbToGain((mixFxOutput_.load(std::memory_order_relaxed)-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(mixFxCalibration_.load(std::memory_order_relaxed)),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=mixFxConsoleDrive_.load(std::memory_order_relaxed);const double crosstalk=std::clamp(mixFxCrosstalk_.load(std::memory_order_relaxed),0.0,1.0)*0.018;const int mode=std::clamp(static_cast<int>(std::lround(mixFxConsoleMode_.load(std::memory_order_relaxed)*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(mixFxTubeType_.load(std::memory_order_relaxed)*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(mixFxTapeSpeed_.load(std::memory_order_relaxed)*2.0)),0,2);const double tubeAmount=std::clamp(mixFxTubeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeAmount=std::clamp(mixFxTapeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeStability=std::clamp(mixFxTapeStability_.load(std::memory_order_relaxed),0.0,1.0),glueAmount=std::clamp(mixFxGlueAmount_.load(std::memory_order_relaxed),0.0,1.0),glueCharacter=std::clamp(mixFxGlueCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylCharacter=std::clamp(mixFxVinylCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylWear=std::clamp(mixFxVinylWear_.load(std::memory_order_relaxed),0.0,1.0),widthGain=2.0*std::clamp(mixFxWidth_.load(std::memory_order_relaxed),0.0,1.0),depthBipolar=(std::clamp(mixFxDepth_.load(std::memory_order_relaxed),0.0,1.0)-0.5)*2.0,lowMono=std::clamp(mixFxLowMono_.load(std::memory_order_relaxed),0.0,1.0);const int osFactor=qualityFactor(mixFxQuality_.load(std::memory_order_relaxed));const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);const double autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);
+ const double inputGain=dbToGain((mixFxInput_.load(std::memory_order_relaxed)-0.5)*24.0),outputGain=dbToGain((mixFxOutput_.load(std::memory_order_relaxed)-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(mixFxCalibration_.load(std::memory_order_relaxed)),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=mixFxConsoleDrive_.load(std::memory_order_relaxed);const double crosstalk=std::clamp(mixFxCrosstalk_.load(std::memory_order_relaxed),0.0,1.0)*0.018;const int mode=std::clamp(static_cast<int>(std::lround(mixFxConsoleMode_.load(std::memory_order_relaxed)*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(mixFxTubeType_.load(std::memory_order_relaxed)*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(mixFxTapeSpeed_.load(std::memory_order_relaxed)*2.0)),0,2);const double tubeAmount=std::clamp(mixFxTubeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeAmount=std::clamp(mixFxTapeAmount_.load(std::memory_order_relaxed),0.0,1.0),tapeStability=std::clamp(mixFxTapeStability_.load(std::memory_order_relaxed),0.0,1.0),glueAmount=std::clamp(mixFxGlueAmount_.load(std::memory_order_relaxed),0.0,1.0),glueCharacter=std::clamp(mixFxGlueCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylCharacter=std::clamp(mixFxVinylCharacter_.load(std::memory_order_relaxed),0.0,1.0),vinylWear=std::clamp(mixFxVinylWear_.load(std::memory_order_relaxed),0.0,1.0),widthGain=2.0*std::clamp(mixFxWidth_.load(std::memory_order_relaxed),0.0,1.0),depthBipolar=(std::clamp(mixFxDepth_.load(std::memory_order_relaxed),0.0,1.0)-0.5)*2.0,lowMono=std::clamp(mixFxLowMono_.load(std::memory_order_relaxed),0.0,1.0);const int osFactor=qualityFactor(mixFxQuality_.load(std::memory_order_relaxed));const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);const double autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeSpeed,tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);
  auto processFrame=[&](int32 sampleIndex,double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){const double meterL=bypass?leftIn:leftIn*inputGain,meterR=bypass?rightIn:rightIn*inputGain;inputMeter.push(meterL,stereo?meterR:meterL);if(bypass){auto&align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];leftOut=align[0].process(leftIn,kFixedLatencySamples);rightOut=stereo?align[1].process(rightIn,kFixedLatencySamples):leftOut;outputMeter.push(leftOut,stereo?rightOut:leftOut);return;}double l=meterL,r=meterR;if(consoleOn){auto&states=mixFxConsoleState_[static_cast<std::size_t>(index)];if(crosstalk>0.0&&mixFxSnapshotSamples_.load(std::memory_order_acquire)==data.numSamples){const double xtCoeff=1.0-std::exp(-2.0*kPi*720.0/sampleRate_);auto shapeCrosstalk=[&](double source,ConsoleChannelState&st){st.crosstalkLowMemory+=xtCoeff*(source-st.crosstalkLowMemory);const double high=source-st.crosstalkLowMemory;return 0.52*st.crosstalkLowMemory+1.08*high;};const double xtL=shapeCrosstalk(mixFxCrosstalkSource(index,0,sampleIndex),states[0]);const double xtR=shapeCrosstalk(mixFxCrosstalkSource(index,1,sampleIndex),states[1]);l+=xtL*inputGain*crosstalk;r+=xtR*inputGain*crosstalk;}l*=calibrationGain;r*=calibrationGain;l=processConsoleSample(l,states[0],index,0,mode,drive);r=stereo?processConsoleSample(r,states[1],index,1,mode,drive):l;l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;}if(tubeOn){auto&engines=mixFxNonlinearOversampling_[static_cast<std::size_t>(index)];auto&factors=mixFxNonlinearOversamplingFactor_[static_cast<std::size_t>(index)];auto&tubeStates=mixFxTubeState_[static_cast<std::size_t>(index)];const double tubeSampleRate=sampleRate_*static_cast<double>(osFactor);if(factors[0]!=osFactor){engines[0].reset();factors[0]=osFactor;tubeStates[0].reset();}l=engines[0].process(l*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeStates[0],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;if(stereo){if(factors[1]!=osFactor){engines[1].reset();factors[1]=osFactor;tubeStates[1].reset();}r=engines[1].process(r*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeStates[1],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;}else r=l;}if(tapeOn){auto&states=mixFxTapeState_[static_cast<std::size_t>(index)];l=processTapeSample(l*calibrationGain,states[0],index,0,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain;r=stereo?processTapeSample(r*calibrationGain,states[1],index,1,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain:l;}if(glueOn){auto&states=mixFxGlueState_[static_cast<std::size_t>(index)];const double glueL=l*calibrationGain,glueR=r*calibrationGain,detector=stereo?std::max(std::abs(glueL),std::abs(glueR)):std::abs(glueL),linkedGain=processGlueGain(detector,states[0],glueAmount,glueCharacter)*glueGain;l=glueL*linkedGain*calibrationReturn;r=stereo?glueR*linkedGain*calibrationReturn:l;}if(vinylOn){auto&states=mixFxVinylState_[static_cast<std::size_t>(index)];l=processVinylSample(l*calibrationGain,states[0],index,0,vinylCharacter,vinylWear)*calibrationReturn*vinylGain;r=stereo?processVinylSample(r*calibrationGain,states[1],index,1,vinylCharacter,vinylWear)*calibrationReturn*vinylGain:l;}if(stereo){auto&st=mixFxStereoState_[static_cast<std::size_t>(index)][0];processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff,correlationCoeff);}auto&align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];leftOut=align[0].process(l*outputGain*inputMatchGain,latencyDelay);rightOut=stereo?align[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;outputMeter.push(leftOut,stereo?rightOut:leftOut);};
  if(data.symbolicSampleSize==kSample32){auto*inL=inBus.channelBuffers32[0];auto*outL=outBus.channelBuffers32[0];auto*inR=channels>1?inBus.channelBuffers32[1]:inL;auto*outR=channels>1?outBus.channelBuffers32[1]:outL;if(!inL||!outL)return kResultOk;for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(i,inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=static_cast<float>(l);if(channels>1&&outR)outR[i]=static_cast<float>(r);}}else if(data.symbolicSampleSize==kSample64){auto*inL=inBus.channelBuffers64[0];auto*outL=outBus.channelBuffers64[0];auto*inR=channels>1?inBus.channelBuffers64[1]:inL;auto*outR=channels>1?outBus.channelBuffers64[1]:outL;if(!inL||!outL)return kResultOk;for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(i,inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=l;if(channels>1&&outR)outR[i]=r;}}else return kResultFalse;inputMeter.publish();outputMeter.publish();outBus.silenceFlags=0;return kResultOk;
 }
@@ -823,7 +892,7 @@ tresult PLUGIN_API Processor::processMixChannel(int32 index,ProcessData* data){i
 #endif
 
 
-tresult PLUGIN_API Processor::process(ProcessData& data){readParameterChanges(data.inputParameterChanges);if(mixFxEngaged_){syncMixFxTargets();return kResultOk;}if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;auto&inBus=data.inputs[0];auto&outBus=data.outputs[0];const int32 channels=std::min(inBus.numChannels,outBus.numChannels);inputMeter_.beginBlock();outputMeter_.beginBlock();const bool bypass=params_[kParamBypass]>=0.5,consoleOn=params_[kParamConsoleOn]>=0.5,tubeOn=params_[kParamTubeOn]>=0.5,tapeOn=params_[kParamTapeOn]>=0.5,glueOn=params_[kParamGlueOn]>=0.5,vinylOn=params_[kParamVinylOn]>=0.5,autoGainOn=params_[kParamAutoGain]>=0.5;const double inputGain=dbToGain((params_[kParamInput]-0.5)*24.0),outputGain=dbToGain((params_[kParamOutput]-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(params_[kParamCalibration]),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=params_[kParamConsoleDrive];const int mode=std::clamp(static_cast<int>(std::lround(params_[kParamConsoleMode]*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(params_[kParamTubeType]*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(params_[kParamTapeSpeed]*2.0)),0,2),osFactor=qualityFactor(params_[kParamQuality]);const double tubeAmount=std::clamp(params_[kParamTubeAmount],0.0,1.0),tapeAmount=std::clamp(params_[kParamTapeAmount],0.0,1.0),tapeStability=std::clamp(params_[kParamTapeStability],0.0,1.0),glueAmount=std::clamp(params_[kParamGlueAmount],0.0,1.0),glueCharacter=std::clamp(params_[kParamGlueCharacter],0.0,1.0),vinylCharacter=std::clamp(params_[kParamVinylCharacter],0.0,1.0),vinylWear=std::clamp(params_[kParamVinylWear],0.0,1.0),widthGain=2.0*std::clamp(params_[kParamWidth],0.0,1.0),depthBipolar=(std::clamp(params_[kParamDepth],0.0,1.0)-0.5)*2.0,lowMono=std::clamp(params_[kParamLowMono],0.0,1.0),autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);
+tresult PLUGIN_API Processor::process(ProcessData& data){readParameterChanges(data.inputParameterChanges);if(mixFxEngaged_){syncMixFxTargets();return kResultOk;}if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0)return kResultOk;auto&inBus=data.inputs[0];auto&outBus=data.outputs[0];const int32 channels=std::min(inBus.numChannels,outBus.numChannels);inputMeter_.beginBlock();outputMeter_.beginBlock();const bool bypass=params_[kParamBypass]>=0.5,consoleOn=params_[kParamConsoleOn]>=0.5,tubeOn=params_[kParamTubeOn]>=0.5,tapeOn=params_[kParamTapeOn]>=0.5,glueOn=params_[kParamGlueOn]>=0.5,vinylOn=params_[kParamVinylOn]>=0.5,autoGainOn=params_[kParamAutoGain]>=0.5;const double inputGain=dbToGain((params_[kParamInput]-0.5)*24.0),outputGain=dbToGain((params_[kParamOutput]-0.5)*24.0),inputMatchGain=autoGainOn?1.0/inputGain:1.0,calibrationDb=calibrationReferenceDb(params_[kParamCalibration]),calibrationGain=dbToGain(-calibrationDb),calibrationReturn=1.0/calibrationGain,drive=params_[kParamConsoleDrive];const int mode=std::clamp(static_cast<int>(std::lround(params_[kParamConsoleMode]*3.0)),0,3),tubeType=std::clamp(static_cast<int>(std::lround(params_[kParamTubeType]*2.0)),0,2),tapeSpeed=std::clamp(static_cast<int>(std::lround(params_[kParamTapeSpeed]*2.0)),0,2),osFactor=qualityFactor(params_[kParamQuality]);const double tubeAmount=std::clamp(params_[kParamTubeAmount],0.0,1.0),tapeAmount=std::clamp(params_[kParamTapeAmount],0.0,1.0),tapeStability=std::clamp(params_[kParamTapeStability],0.0,1.0),glueAmount=std::clamp(params_[kParamGlueAmount],0.0,1.0),glueCharacter=std::clamp(params_[kParamGlueCharacter],0.0,1.0),vinylCharacter=std::clamp(params_[kParamVinylCharacter],0.0,1.0),vinylWear=std::clamp(params_[kParamVinylWear],0.0,1.0),widthGain=2.0*std::clamp(params_[kParamWidth],0.0,1.0),depthBipolar=(std::clamp(params_[kParamDepth],0.0,1.0)-0.5)*2.0,lowMono=std::clamp(params_[kParamLowMono],0.0,1.0),autoGain=consoleOn&&autoGainOn?consoleAutoGain(mode,drive):1.0,tubeGain=tubeOn&&autoGainOn?tubeAutoGain(tubeType,tubeAmount):1.0,tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeSpeed,tapeAmount):1.0,glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0,vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0,lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_),depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_),depthGain=stereoDepthGain(depthBipolar),correlationCoeff=stereoOnePoleCoefficient(4.0,sampleRate_);const int osIslands=bypass?0:(static_cast<int>(consoleOn)+static_cast<int>(tubeOn)+static_cast<int>(tapeOn)+static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));const int latencyDelay=latencyCompensation(osFactor,osIslands);
  auto processFrame=[&](double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){const double meterL=bypass?leftIn:leftIn*inputGain,meterR=bypass?rightIn:rightIn*inputGain;inputMeter_.push(meterL,stereo?meterR:meterL);if(bypass){leftOut=latencyAligner_[0].process(leftIn,kFixedLatencySamples);rightOut=stereo?latencyAligner_[1].process(rightIn,kFixedLatencySamples):leftOut;outputMeter_.push(leftOut,stereo?rightOut:leftOut);return;}double l=meterL,r=meterR;if(consoleOn){l*=calibrationGain;r*=calibrationGain;l=processConsoleSample(l,consoleState_[0],0,0,mode,drive);r=stereo?processConsoleSample(r,consoleState_[1],0,1,mode,drive):l;l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;}if(tubeOn){const double tubeSampleRate=sampleRate_*static_cast<double>(osFactor);if(nonlinearOversamplingFactor_[0]!=osFactor){nonlinearOversampling_[0].reset();nonlinearOversamplingFactor_[0]=osFactor;tubeState_[0].reset();}l=nonlinearOversampling_[0].process(l*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeState_[0],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;if(stereo){if(nonlinearOversamplingFactor_[1]!=osFactor){nonlinearOversampling_[1].reset();nonlinearOversamplingFactor_[1]=osFactor;tubeState_[1].reset();}r=nonlinearOversampling_[1].process(r*calibrationGain,osFactor,[&](double v){return processTubeSample(v,tubeState_[1],tubeType,tubeAmount,tubeSampleRate);})*calibrationReturn*tubeGain;}else r=l;}if(tapeOn){l=processTapeSample(l*calibrationGain,tapeState_[0],0,0,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain;r=stereo?processTapeSample(r*calibrationGain,tapeState_[1],0,1,tapeSpeed,tapeAmount,tapeStability)*calibrationReturn*tapeGain:l;}if(glueOn){const double glueL=l*calibrationGain,glueR=r*calibrationGain,detector=stereo?std::max(std::abs(glueL),std::abs(glueR)):std::abs(glueL),linkedGain=processGlueGain(detector,glueState_[0],glueAmount,glueCharacter)*glueGain;l=glueL*linkedGain*calibrationReturn;r=stereo?glueR*linkedGain*calibrationReturn:l;}if(vinylOn){l=processVinylSample(l*calibrationGain,vinylState_[0],0,0,vinylCharacter,vinylWear)*calibrationReturn*vinylGain;r=stereo?processVinylSample(r*calibrationGain,vinylState_[1],0,1,vinylCharacter,vinylWear)*calibrationReturn*vinylGain:l;}if(stereo){auto&st=stereoState_[0];processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff,correlationCoeff);}leftOut=latencyAligner_[0].process(l*outputGain*inputMatchGain,latencyDelay);rightOut=stereo?latencyAligner_[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;outputMeter_.push(leftOut,stereo?rightOut:leftOut);};
  if(data.symbolicSampleSize==kSample32){auto*inL=channels>0?inBus.channelBuffers32[0]:nullptr;auto*outL=channels>0?outBus.channelBuffers32[0]:nullptr;auto*inR=channels>1?inBus.channelBuffers32[1]:inL;auto*outR=channels>1?outBus.channelBuffers32[1]:outL;if(inL&&outL)for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=static_cast<float>(l);if(channels>1&&outR)outR[i]=static_cast<float>(r);}}else if(data.symbolicSampleSize==kSample64){auto*inL=channels>0?inBus.channelBuffers64[0]:nullptr;auto*outL=channels>0?outBus.channelBuffers64[0]:nullptr;auto*inR=channels>1?inBus.channelBuffers64[1]:inL;auto*outR=channels>1?outBus.channelBuffers64[1]:outL;if(inL&&outL)for(int32 i=0;i<data.numSamples;++i){double l=0,r=0;processFrame(inL[i],inR?inR[i]:inL[i],channels>1,l,r);outL[i]=l;if(channels>1&&outR)outR[i]=r;}}inputMeter_.publish();outputMeter_.publish();const bool outputSource=params_[kParamMeterSource]>=0.5;const Metering& selected=outputSource?outputMeter_:inputMeter_;publishMeterParameters(data.outputParameterChanges,selected.vuL(),selected.vuR(),selected.peakL(),selected.peakR(),outputSource,data.numSamples);// Never forward input silence metadata blindly: the fixed latency line and DSP state
  // can still emit valid tail samples after the host marks the input block silent.
