@@ -1,3 +1,4 @@
+#include "analog_models_v2.h"
 #include "nonlinear_cores.h"
 
 #include <algorithm>
@@ -22,6 +23,8 @@ int main() {
 
     double legacyX1 = 0.0, legacyY1 = 0.0;
     double movedX1 = 0.0, movedY1 = 0.0;
+    MixEngine::TubeModelState legacyTube;
+    MixEngine::TubeModelState movedTube;
     double sumSq = 0.0;
     double peak = 0.0;
     constexpr int count = 65536;
@@ -34,16 +37,22 @@ int main() {
         const double low = 0.31 * x;
         const double high = x - low;
 
-        const double console = MixEngine::processConsoleNonlinearCore(x, low, high, 2, 0.73);
+        const double console =
+            MixEngine::processConsoleNonlinearCore(x, low, high, 2, 0.73);
 
-        // Legacy production ordering: Console nonlinear -> Console DC block -> Tube.
-        const double legacyDc = dcBlock(console, dcCoeff, legacyX1, legacyY1);
-        const double legacy = MixEngine::processTubeNonlinearCore(legacyDc, 2, 0.67);
+        // Production ordering: Console nonlinear -> Console DC block -> Tube.
+        const double legacyDc =
+            dcBlock(console, dcCoeff, legacyX1, legacyY1);
+        const double legacy =
+            MixEngine::processTubeModelV2(
+                legacyDc, legacyTube, 2, 0.67, sampleRate);
 
-        // Tempting one-island ordering: Console nonlinear -> Tube -> Console DC block.
-        // This is what we must NOT silently substitute unless it proves equivalent.
-        const double combined = MixEngine::processTubeNonlinearCore(console, 2, 0.67);
-        const double moved = dcBlock(combined, dcCoeff, movedX1, movedY1);
+        // Deliberately reordered comparison: Console nonlinear -> Tube -> DC.
+        const double combined =
+            MixEngine::processTubeModelV2(
+                console, movedTube, 2, 0.67, sampleRate);
+        const double moved =
+            dcBlock(combined, dcCoeff, movedX1, movedY1);
 
         const double e = legacy - moved;
         sumSq += e * e;
@@ -51,21 +60,20 @@ int main() {
     }
 
     const double rms = std::sqrt(sumSq / static_cast<double>(count));
-    std::cout << "Legacy-vs-reordered Console/Tube DC RMS difference: " << rms << "\n";
-    std::cout << "Legacy-vs-reordered Console/Tube DC peak difference: " << peak << "\n";
+    std::cout << "V2 production-vs-reordered Console/Tube DC RMS difference: "
+              << rms << "\n";
+    std::cout << "V2 production-vs-reordered Console/Tube DC peak difference: "
+              << peak << "\n";
 
     if (!std::isfinite(rms) || !std::isfinite(peak)) {
-        std::cerr << "FAILED: ordering diagnostic produced non-finite values\n";
+        std::cerr << "FAILED: V2 ordering diagnostic produced non-finite values\n";
         return 1;
     }
-
-    // Diagnostic only: a non-zero result is expected and proves that moving the
-    // Console DC blocker across Tube is a real DSP reorder, not an exact refactor.
     if (peak == 0.0) {
-        std::cerr << "FAILED: ordering diagnostic unexpectedly found exact equivalence\n";
+        std::cerr << "FAILED: V2 ordering diagnostic unexpectedly found exact equivalence\n";
         return 1;
     }
 
-    std::cout << "PASSED: live integration guard confirms legacy ordering must be preserved\n";
+    std::cout << "PASSED: V2 integration guard confirms Console DC/Tube ordering is significant\n";
     return 0;
 }
