@@ -169,11 +169,13 @@ struct TapeMagneticState {
     double magnetisation = 0.0;
     double previousField = 0.0;
     double previousDirection = 1.0;
+    double evenDcMemory = 0.0;
 
     void reset() noexcept {
         magnetisation = 0.0;
         previousField = 0.0;
         previousDirection = 1.0;
+        evenDcMemory = 0.0;
     }
 };
 
@@ -184,16 +186,17 @@ struct TapeSpeedModel {
     double feedback;
     double memoryMix;
     double saturation;
+    double asymmetry;
 };
 
 inline TapeSpeedModel tapeSpeedModel(int speed) noexcept {
     switch (speed) {
         case 0: // 7.5 ips: earlier saturation, broader loop, strongest memory
-            return {1.28, 2.15, 0.070, 0.22, 0.145, 1.08};
+            return {1.28, 2.15, 0.070, 0.22, 0.145, 1.08, 0.018};
         case 1: // 15 ips: balanced studio operating point
-            return {1.12, 1.45, 0.045, 0.13, 0.082, 1.20};
+            return {1.12, 1.45, 0.045, 0.13, 0.082, 1.20, 0.012};
         default: // 30 ips: higher headroom, tighter and more open
-            return {1.03, 0.85, 0.025, 0.075, 0.042, 1.35};
+            return {1.03, 0.85, 0.025, 0.075, 0.042, 1.35, 0.006};
     }
 }
 
@@ -250,8 +253,18 @@ inline double processTapeMagneticV2(double x,
     // the magnetic path deeper into saturation at higher levels.
     const double normalized =
         staticMag / std::max(1.0e-9, drive);
-    const double magnetic =
+    double magnetic =
         normalized + p.memoryMix * c * hysteresisResidual;
+
+    // Small AC-coupled even component represents record/playback electronics
+    // and operating-point imperfections around the magnetic path. It is
+    // intentionally restrained: the hysteretic/odd structure remains dominant.
+    const double field2 = field * field;
+    const double rawEven = field2 / (1.0 + 0.90 * field2);
+    const double evenDcCoeff = analogOnePoleHz(5.0, sampleRate);
+    state.evenDcMemory +=
+        evenDcCoeff * (rawEven - state.evenDcMemory);
+    magnetic += p.asymmetry * c * (rawEven - state.evenDcMemory);
 
     state.previousField = field;
 
