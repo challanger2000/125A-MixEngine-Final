@@ -24,7 +24,7 @@ EXPECTED_PARAMS = [
 ]
 
 EXPECTED_DEFAULTS = [
-    0.0, 0.5, 0.5, 1.0,
+    0.0, 0.5, 0.0, 1.0,
     1.0, 1.0 / 3.0, 0.25, 0.10,
     0.0, 0.20,
     0.0, 0.20, 0.5, 0.9,
@@ -177,7 +177,7 @@ for param, expected in zip(EXPECTED_PARAMS, EXPECTED_DEFAULTS):
 if "p->getInfo().defaultNormalizedValue=std::clamp(d,0.0,1.0);" not in controller:
     fail("StringList/toggle VST3 metadata default helper missing")
 for needle in [
-    "setListDefault(calibration,.5)",
+    "setListDefault(calibration,0.0)",
     "setListDefault(cm,1./3.)",
     "setListDefault(tt,.5)",
     "setListDefault(ts,.5)",
