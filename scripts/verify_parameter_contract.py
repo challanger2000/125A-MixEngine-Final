@@ -297,7 +297,8 @@ for param in (
     "kParamGlueCharacter", "kParamVinylCharacter", "kParamVinylWear",
     "kParamVinylNoise", "kParamDepth", "kParamWidth", "kParamLowMono",
 ):
-    if processor.count(f"advanceSmoothed(smooth, {param}") < 1:
+    pattern = rf"advanceSmoothed\s*\(\s*smooth\s*,\s*{param}\b"
+    if not re.search(pattern, processor, re.S):
         fail(f"continuous smoothing missing for {param}")
 
 # Discrete switches/selectors must remain immediate and must never be passed
@@ -308,7 +309,8 @@ for param in (
     "kParamTapeSpeed", "kParamGlueOn", "kParamVinylOn", "kParamQuality",
     "kParamMeterSource",
 ):
-    if f"advanceSmoothed(smooth, {param}" in processor:
+    pattern = rf"advanceSmoothed\s*\(\s*smooth\s*,\s*{param}\b"
+    if re.search(pattern, processor, re.S):
         fail(f"discrete parameter was incorrectly smoothed: {param}")
 
 for needle in (
