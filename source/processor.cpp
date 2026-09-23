@@ -1081,16 +1081,11 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         mixFxCalibration_.load(std::memory_order_relaxed));
     const double calibrationGain = dbToGain(-calibrationDb);
     const double calibrationReturn = 1.0 / calibrationGain;
-    const double vinylCharacter = std::clamp(
-        mixFxVinylCharacter_.load(std::memory_order_relaxed), 0.0, 1.0);
-    const double vinylWear = std::clamp(
-        mixFxVinylWear_.load(std::memory_order_relaxed), 0.0, 1.0);
-
     const int osIslands = bypass ? 0 :
         (static_cast<int>(consoleOn) +
          static_cast<int>(tubeOn) +
          static_cast<int>(tapeOn) +
-         static_cast<int>(vinylOn && (vinylCharacter > 0.0 || vinylWear > 0.0)));
+         static_cast<int>(vinylOn));
     const int latencyDelay =
         latencyCompensation(osFactor, osIslands);
 
@@ -1102,16 +1097,26 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         mixFxConsoleDrive_.load(std::memory_order_relaxed);
     const double crosstalkTarget = std::clamp(
         mixFxCrosstalk_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double consoleNoiseTarget = std::clamp(
+        mixFxConsoleNoise_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double tubeTarget = std::clamp(
         mixFxTubeAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double tapeTarget = std::clamp(
         mixFxTapeAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double stabilityTarget = std::clamp(
         mixFxTapeStability_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double tapeHissTarget = std::clamp(
+        mixFxTapeHiss_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double glueTarget = std::clamp(
         mixFxGlueAmount_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double glueCharacterTarget = std::clamp(
         mixFxGlueCharacter_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double vinylCharacterTarget = std::clamp(
+        mixFxVinylCharacter_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double vinylWearTarget = std::clamp(
+        mixFxVinylWear_.load(std::memory_order_relaxed), 0.0, 1.0);
+    const double vinylNoiseTarget = std::clamp(
+        mixFxVinylNoise_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double depthTarget = std::clamp(
         mixFxDepth_.load(std::memory_order_relaxed), 0.0, 1.0);
     const double widthTarget = std::clamp(
@@ -1126,6 +1131,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
         smooth.current[kParamOutput] = outputTarget;
         smooth.current[kParamConsoleDrive] = driveTarget;
         smooth.current[kParamConsoleCrosstalk] = crosstalkTarget;
+        smooth.current[kParamConsoleNoise] = consoleNoiseTarget;
         smooth.current[kParamTubeAmount] = tubeTarget;
         smooth.current[kParamTapeAmount] = tapeTarget;
         smooth.current[kParamTapeStability] = stabilityTarget;
@@ -1181,6 +1187,10 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
                 targetAt(kParamConsoleCrosstalk, crosstalkTarget), slowStep);
         const double crosstalk =
             std::clamp(crosstalkNorm, 0.0, 1.0) * 0.018;
+        const double consoleNoise =
+            advanceSmoothed(
+                smooth, kParamConsoleNoise,
+                targetAt(kParamConsoleNoise, consoleNoiseTarget), slowStep);
         const double tubeAmount =
             advanceSmoothed(
                 smooth, kParamTubeAmount,
@@ -1193,6 +1203,10 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
             advanceSmoothed(
                 smooth, kParamTapeStability,
                 targetAt(kParamTapeStability, stabilityTarget), slowStep);
+        const double tapeHiss =
+            advanceSmoothed(
+                smooth, kParamTapeHiss,
+                targetAt(kParamTapeHiss, tapeHissTarget), slowStep);
         const double glueAmount =
             advanceSmoothed(
                 smooth, kParamGlueAmount,
@@ -1201,6 +1215,18 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
             advanceSmoothed(
                 smooth, kParamGlueCharacter,
                 targetAt(kParamGlueCharacter, glueCharacterTarget), slowStep);
+        const double vinylCharacter =
+            advanceSmoothed(
+                smooth, kParamVinylCharacter,
+                targetAt(kParamVinylCharacter, vinylCharacterTarget), colourStep);
+        const double vinylWear =
+            advanceSmoothed(
+                smooth, kParamVinylWear,
+                targetAt(kParamVinylWear, vinylWearTarget), colourStep);
+        const double vinylNoise =
+            advanceSmoothed(
+                smooth, kParamVinylNoise,
+                targetAt(kParamVinylNoise, vinylNoiseTarget), slowStep);
         const double depthNorm =
             advanceSmoothed(
                 smooth, kParamDepth,
@@ -1297,10 +1323,10 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
             l *= calibrationGain;
             r *= calibrationGain;
             l = processConsoleSample(
-                l, states[0], index, 0, mode, drive);
+                l, states[0], index, 0, mode, drive, consoleNoise);
             r = stereo
                 ? processConsoleSample(
-                      r, states[1], index, 1, mode, drive)
+                      r, states[1], index, 1, mode, drive, consoleNoise)
                 : l;
             l *= calibrationReturn * consoleGain;
             r *= calibrationReturn * consoleGain;
@@ -1356,13 +1382,13 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
             l = processTapeSample(
                     l * calibrationGain, states[0],
                     index, 0, tapeSpeed,
-                    tapeAmount, tapeStability) *
+                    tapeAmount, tapeStability, tapeHiss) *
                 calibrationReturn * tapeGain;
             r = stereo
                 ? processTapeSample(
                       r * calibrationGain, states[1],
                       index, 1, tapeSpeed,
-                      tapeAmount, tapeStability) *
+                      tapeAmount, tapeStability, tapeHiss) *
                       calibrationReturn * tapeGain
                 : l;
         }
@@ -1396,7 +1422,7 @@ tresult Processor::processMixFxChannelInternal(int32 index, ProcessData& data) {
             r = stereo
                 ? processVinylSample(
                       r * calibrationGain, states[1],
-                      index, 1, vinylCharacter, vinylWear) *
+                      index, 1, vinylCharacter, vinylWear, vinylNoise) *
                       calibrationReturn * vinylGain
                 : l;
         }
