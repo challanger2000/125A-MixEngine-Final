@@ -117,6 +117,16 @@ int main(){
         report("AllNoiseOff",silent);
         if(silent.rms>1.0e-12) ok=false;
 
+        for(const auto& module : std::vector<std::pair<std::string,std::vector<Param>>>{
+                {"TubeSilent",{{MixEngine::kParamTubeOn,1.0},{MixEngine::kParamTubeAmount,0.5}}},
+                {"TapeSilent",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeAmount,0.5},{MixEngine::kParamTapeHiss,0.0}}},
+                {"VinylSilent",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.5},{MixEngine::kParamVinylWear,0.5},{MixEngine::kParamVinylNoise,0.0}}}
+            }){
+            const auto s=analyze(renderNoise(module.second));
+            report(module.first,s);
+            if(!std::isfinite(s.rms)||s.rms>1.0e-8||std::abs(s.mean)>1.0e-9) ok=false;
+        }
+
         for(double n:{0.25,0.50,1.0}){
             const auto s=analyze(renderNoise({
                 {MixEngine::kParamConsoleOn,1.0},
