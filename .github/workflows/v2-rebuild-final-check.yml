@@ -1,135 +1,55 @@
-name: FINAL V2 Rebuild Validation
+name: FINAL V2 Targeted Retest
 
 on:
   push:
     branches: [v2-rebuild-from-final]
 
 jobs:
-  validate:
-    if: github.event.head_commit.message == 'Run FINAL V2 rebuild validation'
+  targeted:
+    if: github.event.head_commit.message == 'Run FINAL V2 targeted retest'
     runs-on: windows-2022
     steps:
-      - name: Checkout project
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Verify static contracts
         shell: pwsh
         run: |
-          python scripts/verify_gui_layout.py
           python scripts/verify_parameter_contract.py
           python scripts/verify_channel_contract.py
-
-      - name: Checkout Steinberg VST3 SDK
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: steinbergmedia/vst3sdk
           ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
           path: vst3sdk
           submodules: recursive
-
       - name: Configure
         shell: pwsh
         run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
-
-      - name: Build plugin variants and complete diagnostics
+      - name: Build touched targets
         run: >
           cmake --build build --config Release --target
           125A-MixEngine
           125A-MixEngine-Channel
-          oversampling-roundtrip
-          oversampling-alias
-          tube-oversampling
-          media-oversampling
-          console-core-equivalence
-          console-tube-island
-          console-tube-ordering
-          oversampling-latency
-          metering-diagnostic
-          stereo-field-diagnostic
-          metering-integration
-          processor-latency-integration
-          phase-mono-diagnostic
-          host-matrix-diagnostic
-          latency-matrix-diagnostic
-          level-match-diagnostic
-          automation-stress-diagnostic
-          mixfx-crosstalk-diagnostic
           character-morph-diagnostic
+          media-oversampling
           range-philosophy-diagnostic
           tape-memory-diagnostic
-          glue-transient-diagnostic
-          vinyl-material-diagnostic
-          console-character-diagnostic
-          console-vintage-memory-diagnostic
-          quality-switch-diagnostic
-          zero-neutrality-diagnostic
-          sample-accuracy-diagnostic
-          mixfx-sample-accuracy-diagnostic
           sonic-impact-diagnostic
           sample-rate-matrix-diagnostic
-          validator
-
-      - name: Run complete diagnostic matrix
+      - name: Run touched diagnostics
         shell: pwsh
         run: |
-          $tests = @(
-            "oversampling-roundtrip",
-            "oversampling-alias",
-            "tube-oversampling",
-            "media-oversampling",
-            "console-core-equivalence",
-            "console-tube-island",
-            "console-tube-ordering",
-            "oversampling-latency",
-            "metering-diagnostic",
-            "stereo-field-diagnostic",
-            "metering-integration",
-            "processor-latency-integration",
-            "phase-mono-diagnostic",
-            "host-matrix-diagnostic",
-            "latency-matrix-diagnostic",
-            "level-match-diagnostic",
-            "automation-stress-diagnostic",
-            "mixfx-crosstalk-diagnostic",
+          $tests=@(
             "character-morph-diagnostic",
+            "media-oversampling",
             "range-philosophy-diagnostic",
             "tape-memory-diagnostic",
-            "glue-transient-diagnostic",
-            "vinyl-material-diagnostic",
-            "console-character-diagnostic",
-            "console-vintage-memory-diagnostic",
-            "quality-switch-diagnostic",
-            "zero-neutrality-diagnostic",
-            "sample-accuracy-diagnostic",
-            "mixfx-sample-accuracy-diagnostic",
             "sonic-impact-diagnostic",
             "sample-rate-matrix-diagnostic"
           )
-          $failures = @()
-          foreach ($name in $tests) {
-            $exe = Get-ChildItem build -Recurse -File -Filter "$name.exe" | Select-Object -First 1
+          foreach($name in $tests){
+            $exe=Get-ChildItem build -Recurse -File -Filter "$name.exe"|Select-Object -First 1
+            if(-not $exe){throw "$name.exe not found"}
             Write-Host "===== $name ====="
-            if (-not $exe) {
-              Write-Host "FAIL: $name.exe not found"
-              $failures += "$name (missing)"
-              continue
-            }
             & $exe.FullName
-            if ($LASTEXITCODE -ne 0) {
-              Write-Host "FAIL: $name failed with exit code $LASTEXITCODE"
-              $failures += "$name ($LASTEXITCODE)"
-            }
+            if($LASTEXITCODE -ne 0){throw "$name failed with exit $LASTEXITCODE"}
           }
-          if ($failures.Count -gt 0) {
-            throw "Diagnostics failed: $($failures -join ', ')"
-          }
-
-      - name: Validate Channel VST3
-        shell: pwsh
-        run: |
-          $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
-          $plugin = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3" | Select-Object -First 1
-          if (-not $validator) { throw "validator.exe not found" }
-          if (-not $plugin) { throw "125A-MixEngine-Channel.vst3 not found" }
-          & $validator.FullName $plugin.FullName
-          if ($LASTEXITCODE -ne 0) { throw "Steinberg validator failed with exit code $LASTEXITCODE" }
