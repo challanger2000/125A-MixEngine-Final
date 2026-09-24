@@ -642,7 +642,7 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     // Engraved/silk-screen hierarchy: bright titles, quieter engineering legends.
     VSTGUI::CRect shadow=r;
     shadow.offset(0.0,1.0);
-    context->setFontColor({0,0,0,175});
+    context->setFontColor({0,0,0,145});
     context->drawString(VSTGUI::UTF8String(text_.c_str()),shadow,VSTGUI::kCenterText);
 
     context->setFontColor(muted_?VSTGUI::CColor{151,158,168,245}:VSTGUI::CColor{218,217,211,250});
@@ -686,14 +686,14 @@ void HardwareUIScale::draw(VSTGUI::CDrawContext* context)
     context->setDrawMode(VSTGUI::kAntiAliasing);
     VSTGUI::CRect shadow=r; shadow.offset(0.0,2.0);
     fillRoundGradient(context,shadow,6.0,{2,3,5,220},{0,0,0,245});
-    fillRoundGradient(context,r,6.0,{43,47,54,255},{18,21,25,255});
-    strokeRound(context,r,6.0,{91,97,106,180},1.0);
+    fillRoundGradient(context,r,6.0,{36,40,46,255},{17,20,24,255});
+    strokeRound(context,r,6.0,{82,89,98,150},1.0);
 
     VSTGUI::CRect inner=r; inner.inset(3.0,3.0);
     strokeRound(context,inner,4.0,{255,255,255,22},1.0);
 
     context->setFont(VSTGUI::kNormalFont,8.4,VSTGUI::kBoldFace);
-    context->setFontColor({211,199,171,255});
+    context->setFontColor({193,186,166,245});
     context->drawString(VSTGUI::UTF8String(label),r,VSTGUI::kCenterText);
     setDirty(false);
 }
@@ -732,7 +732,7 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     fillRoundGradient(context,shadow,12.0,{2,3,4,190},{0,0,0,255});
 
     // Three-stage machined bezel: gunmetal outer frame, satin shoulder, black inner lip.
-    fillRoundGradient(context,r,12.0,{119,124,132,255},{24,27,32,255});
+    fillRoundGradient(context,r,12.0,{108,113,121,255},{23,26,31,255});
     strokeRound(context,r,12.0,{5,6,8,255},1.5);
 
     VSTGUI::CRect shoulder=r; shoulder.inset(3.0,3.0);
@@ -744,15 +744,15 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
 
     // Warm ivory card with a deeper laminated/glass cavity.
     VSTGUI::CRect face=r; face.inset(12.0,12.0);
-    fillRoundGradient(context,face,5.5,{253,241,204,255},{203,177,126,255});
+    fillRoundGradient(context,face,5.5,{239,229,199,255},{190,170,130,255});
     strokeRound(context,face,5.5,{79,61,38,235},1.0);
 
     // Warm inner rim: this is the small amber edge that makes the glass look seated
     // above the printed card instead of painted directly onto it.
     VSTGUI::CRect amberRim=face; amberRim.inset(1.5,1.5);
-    strokeRound(context,amberRim,4.8,{242,171,70,190},1.8);
+    strokeRound(context,amberRim,4.8,{211,159,78,140},1.4);
     VSTGUI::CRect hotRim=face; hotRim.inset(3.2,3.2);
-    strokeRound(context,hotRim,4.0,{255,234,174,120},1.2);
+    strokeRound(context,hotRim,4.0,{244,229,190,78},1.0);
 
     // Slight edge vignette under the glass. Keep the middle open and luminous.
     auto shadeBand=[&](const VSTGUI::CRect& band,const VSTGUI::CColor& a,const VSTGUI::CColor& b,
@@ -776,7 +776,7 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
 
     // Deterministic micro-patina: enough texture to stop the face reading as a flat fill,
     // but subtle enough that the scale stays crisp at every zoom factor.
-    context->setFrameColor({92,67,35,28});
+    context->setFrameColor({92,67,35,16});
     context->setLineWidth(0.8);
     for(int i=0;i<42;++i){
         const double px=face.left+10.0+std::fmod(37.0*i+13.0,face.getWidth()-20.0);
@@ -791,7 +791,7 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     context->drawString(VSTGUI::UTF8String("125A"),
                         {face.left+13,face.top+10,face.left+53,face.top+23},VSTGUI::kLeftText);
     context->setFont(VSTGUI::kNormalFont,8.0,VSTGUI::kBoldFace);
-    context->setFontColor({121,60,49,220});
+    context->setFontColor({119,70,58,195});
     context->drawString(VSTGUI::UTF8String("CLIP"),
                         {face.right-66,face.top+10,face.right-27,face.top+23},VSTGUI::kRightText);
 
