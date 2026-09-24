@@ -1,5 +1,6 @@
 #pragma once
 #include "oversampling.h"
+#include "latency_alignment.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -49,6 +50,7 @@ struct TapeV3State {
     double dcX=0.0;
     double dcY=0.0;
     OversamplingEngine oversampler {};
+    LatencyAligner dryAligner {};
     int oversamplingFactor=1;
 
     void reset() noexcept {
@@ -57,6 +59,7 @@ struct TapeV3State {
         wowPhase=flutterPhase=0.0;
         hfMemory=bumpLp1=bumpLp2=envelope=magnetic=dcX=dcY=0.0;
         oversampler.reset();
+        dryAligner.reset();
         oversamplingFactor=1;
     }
 };
@@ -174,7 +177,12 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
 
     wet=dcBlockTape(wet,s,sampleRate);
     const double mix=std::clamp(a*(0.30+0.62*a)+0.08*creative,0.0,1.0);
-    return transported+(wet-transported)*mix;
+
+    // The nonlinear magnetic branch has the HIIR bulk delay. Align the
+    // transported reference before partial wet/dry blending so Amount does
+    // not create an unintended comb filter.
+    const double alignedTransport=s.dryAligner.process(transported,oversamplingBulkDelay(osFactor,1));
+    return alignedTransport+(wet-alignedTransport)*mix;
 }
 
 } // namespace MixEngine::V3Research
