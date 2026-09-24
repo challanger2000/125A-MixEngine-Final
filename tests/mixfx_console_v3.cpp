@@ -140,8 +140,13 @@ int main(){
            <<" blockDiff="<<blockDiff<<"\n";
 
   bool ok=true;
-  ok=ok&&zeroCross<1.0e-12;
-  ok=ok&&coupledDelta>1.0e-5;
+  // V3 Console ON + displayed Drive 0 retains a deliberate low-level base
+  // character, including a small amount of coupled MixFX interaction.
+  // The base interaction must be real but bounded, and higher Drive must
+  // increase the coupling materially without introducing order/block dependence.
+  ok=ok&&zeroCross>1.0e-5;
+  ok=ok&&zeroCross<0.02;
+  ok=ok&&coupledDelta>zeroCross*1.20;
   ok=ok&&orderDiff<1.0e-12;
   ok=ok&&blockDiff<1.0e-10;
   std::cout<<(ok?"PASS":"FAIL")<<": MixFX Console V3 live coupled interaction\n";
