@@ -98,6 +98,10 @@ private:
     Steinberg::tresult processMixFxChannelInternal(Steinberg::int32 index, Steinberg::Vst::ProcessData& data);
     void prepareMixFxSnapshotBuffers();
     void captureMixFxInputSnapshot(const Steinberg::Vst::ProcessData& data);
+    void prepareMixFxConsoleCoupling();
+    double mixFxConsoleCoupledCorrection(Steinberg::int32 targetIndex, Steinberg::int32 lane,
+                                         Steinberg::int32 sampleIndex, double inputGain,
+                                         double calibrationGain) const noexcept;
     double mixFxCrosstalkSource(Steinberg::int32 targetIndex, Steinberg::int32 lane, Steinberg::int32 sampleIndex) const noexcept;
 #endif
     std::array<double,kParamCount> params_{};
@@ -152,6 +156,9 @@ private:
     std::array<Steinberg::int32,kMaxMixFxChannels> mixFxSnapshotChannels_{};
     Steinberg::int32 mixFxSnapshotCapacity_=0;
     std::atomic<Steinberg::int32> mixFxSnapshotSamples_{0};
+    std::array<std::vector<double>,kMaxAudioChannels> mixFxConsoleCorrection_{};
+    std::array<std::vector<double>,kMaxAudioChannels> mixFxConsoleAbsSum_{};
+    std::atomic<Steinberg::int32> mixFxConsoleCouplingSamples_{0};
 
     struct MixFxAutomationPoint {
         Steinberg::int32 offset=0;

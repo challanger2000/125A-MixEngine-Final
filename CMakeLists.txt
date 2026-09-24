@@ -183,3 +183,7 @@ target_include_directories(tube-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_
 add_executable(tube-v3-autolevel-diagnostic tests/tube_v3_autolevel.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(tube-v3-autolevel-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(tube-v3-autolevel-diagnostic PRIVATE sdk)
+
+add_executable(mixfx-console-v3-diagnostic tests/mixfx_console_v3.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(mixfx-console-v3-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(mixfx-console-v3-diagnostic PRIVATE sdk)

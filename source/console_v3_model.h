@@ -20,6 +20,24 @@ inline ConsoleV3PairParameters consoleV3PairParameters(double drive,int mode) no
     return {base[m]+span[m]*d,headroom[m]};
 }
 
+inline double consoleV3SinFast(double z) noexcept {
+    // 9th-order odd Taylor polynomial. The input is always clamped to +/-1.45,
+    // where the next omitted term is below ~2e-6 before normalization.
+    const double z2=z*z;
+    const double z4=z2*z2;
+    const double z6=z4*z2;
+    const double z8=z4*z4;
+    return z*(1.0-z2/6.0+z4/120.0-z6/5040.0+z8/362880.0);
+}
+
+inline double consoleV3EncodeFast(double x,double drive,int mode) noexcept {
+    if(drive<=0.0)return x;
+    const auto p=consoleV3PairParameters(drive,mode);
+    const double a=std::max(1.0e-9,p.encodeStrength);
+    const double z=std::clamp(a*x,-1.45,1.45);
+    return consoleV3SinFast(z)/a;
+}
+
 inline double consoleV3Encode(double x,double drive,int mode) noexcept {
     if(drive<=0.0)return x;
     const auto p=consoleV3PairParameters(drive,mode);
@@ -43,6 +61,11 @@ inline double consoleV3Decode(double summed,double drive,int mode) noexcept {
     }
     z=std::clamp(z,-0.999999,0.999999);
     return std::asin(z)/a;
+}
+
+inline double consoleV3CoupledCorrection(double linearSum,double encodedSum,double drive,int mode) noexcept {
+    if(drive<=0.0)return 0.0;
+    return consoleV3Decode(encodedSum,drive,mode)-linearSum;
 }
 
 inline double consoleV3PairedSingle(double x,double drive,int mode) noexcept {

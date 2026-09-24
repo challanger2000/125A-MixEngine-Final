@@ -147,6 +147,20 @@ double fittedTwoToneResidual(const std::vector<double>& y){
 int main(){
     bool ok=true;
 
+    // The realtime encoder approximation must remain effectively identical
+    // to the exact research function throughout the supported domain.
+    double worstFastError=0.0;
+    for(int m=0;m<4;++m)
+        for(double d:{0.25,0.50,0.75,1.0})
+            for(int i=-2000;i<=2000;++i){
+                const double x=double(i)/1000.0;
+                const double exact=MixEngine::V3Research::consoleV3Encode(x,d,m);
+                const double fast=MixEngine::V3Research::consoleV3EncodeFast(x,d,m);
+                worstFastError=std::max(worstFastError,std::abs(exact-fast));
+            }
+    std::cout<<"fastEncode worstError="<<worstFastError<<"\n";
+    if(worstFastError>1.0e-5)ok=false;
+
     // Drive=0 must be exactly linear.
     for(int m=0;m<4;++m){
         for(double x:{-0.9,-0.3,0.0,0.2,0.8}){

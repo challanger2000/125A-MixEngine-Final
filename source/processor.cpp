@@ -1,5 +1,6 @@
 #include "processor.h"
 #include "console_oversampling_live.h"
+#include "console_v3_model.h"
 #include "media_oversampling_live.h"
 #include "nonlinear_cores.h"
 #include "character_morph.h"
@@ -218,6 +219,7 @@ void Processor::resetConsoleState(){
  mixFxTubeCompGainState_.fill(resetTubeGain);
 #ifndef MIXENGINE_CHANNEL_BUILD
  mixFxSnapshotSamples_.store(0,std::memory_order_relaxed);
+ mixFxConsoleCouplingSamples_.store(0,std::memory_order_relaxed);
  mixFxSnapshotChannels_.fill(0);
  for(auto& lane:mixFxAutomation_)lane.clear();
  mixFxBlockStartParams_=params_;
@@ -335,6 +337,10 @@ void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)ret
 void Processor::prepareMixFxSnapshotBuffers(){
  const auto count=std::clamp<int32>(mixFxChannelCount_,0,kMaxMixFxChannels);
  if(mixFxSnapshotCapacity_<=0)return;
+ for(int lane=0;lane<kMaxAudioChannels;++lane){
+  mixFxConsoleCorrection_[static_cast<std::size_t>(lane)].resize(static_cast<std::size_t>(mixFxSnapshotCapacity_));
+  mixFxConsoleAbsSum_[static_cast<std::size_t>(lane)].resize(static_cast<std::size_t>(mixFxSnapshotCapacity_));
+ }
  for(int32 channel=0;channel<count;++channel)
   for(int lane=0;lane<kMaxAudioChannels;++lane)
    mixFxInputSnapshot_[static_cast<std::size_t>(channel)][static_cast<std::size_t>(lane)].resize(static_cast<std::size_t>(mixFxSnapshotCapacity_));
@@ -364,6 +370,85 @@ void Processor::captureMixFxInputSnapshot(const ProcessData& data){
  for(int32 channel=count;channel<mixFxChannelCount_&&channel<kMaxMixFxChannels;++channel)mixFxSnapshotChannels_[static_cast<std::size_t>(channel)]=0;
  mixFxSnapshotSamples_.store(data.numSamples,std::memory_order_release);
 }
+void Processor::prepareMixFxConsoleCoupling(){
+ mixFxConsoleCouplingSamples_.store(0,std::memory_order_release);
+ const int32 samples=mixFxSnapshotSamples_.load(std::memory_order_acquire);
+ const int32 count=std::clamp<int32>(mixFxChannelCount_,0,kMaxMixFxChannels);
+ if(samples<=0||count<=1||samples>mixFxSnapshotCapacity_)return;
+ for(int lane=0;lane<kMaxAudioChannels;++lane){
+  auto& corr=mixFxConsoleCorrection_[static_cast<std::size_t>(lane)];
+  auto& absSum=mixFxConsoleAbsSum_[static_cast<std::size_t>(lane)];
+  if(static_cast<int32>(corr.size())<samples||static_cast<int32>(absSum.size())<samples)return;
+  std::fill_n(corr.begin(),samples,0.0);
+  std::fill_n(absSum.begin(),samples,0.0);
+ }
+
+ std::array<double,kParamCount> localParams=
+     mixFxAutomationSamples_==samples?mixFxBlockStartParams_:params_;
+ std::array<std::size_t,kParamCount> automationIndex{};
+ const bool haveAutomation=mixFxAutomationSamples_==samples;
+
+ for(int32 i=0;i<samples;++i){
+  if(haveAutomation){
+   for(ParamID id=0;id<kParamCount;++id){
+    auto& ai=automationIndex[static_cast<std::size_t>(id)];
+    const auto& lane=mixFxAutomation_[static_cast<std::size_t>(id)];
+    while(ai<lane.size()&&lane[ai].offset<=i){
+     localParams[id]=lane[ai].value;
+     ++ai;
+    }
+   }
+  }
+
+  const bool bypass=localParams[kParamBypass]>=0.5;
+  const bool consoleOn=localParams[kParamConsoleOn]>=0.5;
+  const double drive=std::clamp(localParams[kParamConsoleDrive],0.0,1.0);
+  if(bypass||!consoleOn||drive<=0.0)continue;
+
+  const int mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
+  const double inputGain=dbToGain((localParams[kParamInput]-0.5)*24.0);
+  const double calibrationGain=dbToGain(-calibrationReferenceDb(localParams[kParamCalibration]));
+
+  for(int lane=0;lane<kMaxAudioChannels;++lane){
+   double linearSum=0.0,encodedSum=0.0,absoluteSum=0.0;
+   int contributors=0;
+   for(int32 source=0;source<count;++source){
+    if(mixFxSnapshotChannels_[static_cast<std::size_t>(source)]<=0)continue;
+    const auto& snap=mixFxInputSnapshot_[static_cast<std::size_t>(source)][static_cast<std::size_t>(lane)];
+    if(i>=static_cast<int32>(snap.size()))continue;
+    const double x=snap[static_cast<std::size_t>(i)]*inputGain*calibrationGain;
+    linearSum+=x;
+    encodedSum+=V3Research::consoleV3EncodeFast(x,drive,mode);
+    absoluteSum+=std::abs(x);
+    ++contributors;
+   }
+   if(contributors>1&&absoluteSum>1.0e-15){
+    const double correction=V3Research::consoleV3CoupledCorrection(linearSum,encodedSum,drive,mode);
+    if(std::isfinite(correction)){
+     mixFxConsoleCorrection_[static_cast<std::size_t>(lane)][static_cast<std::size_t>(i)]=correction;
+     mixFxConsoleAbsSum_[static_cast<std::size_t>(lane)][static_cast<std::size_t>(i)]=absoluteSum;
+    }
+   }
+  }
+ }
+ mixFxConsoleCouplingSamples_.store(samples,std::memory_order_release);
+}
+
+double Processor::mixFxConsoleCoupledCorrection(int32 targetIndex,int32 lane,int32 sampleIndex,
+                                                double inputGain,double calibrationGain)const noexcept{
+ const int32 samples=mixFxConsoleCouplingSamples_.load(std::memory_order_acquire);
+ if(targetIndex<0||targetIndex>=mixFxChannelCount_||lane<0||lane>=kMaxAudioChannels||
+    sampleIndex<0||sampleIndex>=samples)return 0.0;
+ if(mixFxSnapshotChannels_[static_cast<std::size_t>(targetIndex)]<=0)return 0.0;
+ const auto& snap=mixFxInputSnapshot_[static_cast<std::size_t>(targetIndex)][static_cast<std::size_t>(lane)];
+ if(sampleIndex>=static_cast<int32>(snap.size()))return 0.0;
+ const double denom=mixFxConsoleAbsSum_[static_cast<std::size_t>(lane)][static_cast<std::size_t>(sampleIndex)];
+ if(!(denom>1.0e-15))return 0.0;
+ const double x=snap[static_cast<std::size_t>(sampleIndex)]*inputGain*calibrationGain;
+ const double weight=std::abs(x)/denom;
+ return mixFxConsoleCorrection_[static_cast<std::size_t>(lane)][static_cast<std::size_t>(sampleIndex)]*weight;
+}
+
 double Processor::mixFxCrosstalkSource(int32 targetIndex,int32 lane,int32 sampleIndex)const noexcept{
  const int32 snapshotSamples=mixFxSnapshotSamples_.load(std::memory_order_acquire);
  if(targetIndex<0||targetIndex>=mixFxChannelCount_||lane<0||lane>=kMaxAudioChannels||sampleIndex<0||sampleIndex>=snapshotSamples)return 0.0;
@@ -413,7 +498,10 @@ tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
  }
 
  syncMixFxTargets();
- if(data)captureMixFxInputSnapshot(*data);
+ if(data){
+  captureMixFxInputSnapshot(*data);
+  prepareMixFxConsoleCoupling();
+ }
 
  if(data){
   double inSqL=0.0,inSqR=0.0,outSqL=0.0,outSqR=0.0,inPeakL=0.0,inPeakR=0.0,outPeakL=0.0,outPeakR=0.0;
@@ -570,10 +658,12 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
     l+=mixFxCrosstalkSource(index,0,sampleIndex)*inputGain*crosstalk;
     r+=mixFxCrosstalkSource(index,1,sampleIndex)*inputGain*crosstalk;
    }
+   const double coupledL=mixFxConsoleCoupledCorrection(index,0,sampleIndex,inputGain,calibrationGain);
+   const double coupledR=stereo?mixFxConsoleCoupledCorrection(index,1,sampleIndex,inputGain,calibrationGain):0.0;
    l*=calibrationGain;r*=calibrationGain;
    auto& states=mixFxConsoleState_[static_cast<std::size_t>(index)];
-   l=processConsoleSample(l,states[0],index,0,mode,drive,osFactor,consoleNoise,calibrationGain);
-   r=stereo?processConsoleSample(r,states[1],index,1,mode,drive,osFactor,consoleNoise,calibrationGain):l;
+   l=processConsoleSample(l,states[0],index,0,mode,drive,osFactor,consoleNoise,calibrationGain)+coupledL;
+   r=stereo?processConsoleSample(r,states[1],index,1,mode,drive,osFactor,consoleNoise,calibrationGain)+coupledR:l;
    l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;
   }
   if(tubeOn&&tubeAmount>0.0){
