@@ -132,7 +132,18 @@ inline double tapeAutoGain(double amount){
     return dbToGain(makeupDb);
 }
 inline double glueAutoGain(double amount,double character){const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0),strength=a*(0.55+0.45*a),s2=strength*strength;const double makeupDb=(2.0+1.0*c)*s2*s2;return dbToGain(makeupDb);}
-inline double vinylAutoGain(double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);return dbToGain(1.05*c+0.48*w);}
+inline double vinylAutoGain(double character,double wear,int osFactor){
+    const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);
+    if(osFactor<2)return dbToGain(1.05*c+0.48*w);
+    // EMPIRICALLY TUNED from the integrated V3 Normal-quality level-match
+    // fixture after adding the physical tracing surrogate.  This is a gain
+    // compensation surface, not a hardware claim.  Eco intentionally keeps
+    // the established V2 compensation because V3 tracing is disabled at 1x.
+    const double makeupDb=
+        2.77529396*c-2.82174243*c*c+3.53102055*c*c*c+
+        1.07121479*w-0.01096001*w*w+0.47108215*c*w;
+    return dbToGain(makeupDb);
+}
 inline double stableVariation(int sourceIndex,int lane){std::uint32_t x=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x7F4A7C15u*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return(static_cast<double>(x&0xFFFFu)/32767.5)-1.0;}
 inline std::uint32_t makeNoiseSeed(int sourceIndex,int lane,std::uint32_t salt){std::uint32_t x=salt;x^=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x85EBCA6Bu*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return x?x:0xA341316Cu;}
 inline double randomBipolar(std::uint32_t& state){state^=state<<13;state^=state>>17;state^=state<<5;return(static_cast<double>(state)/2147483647.5)-1.0;}
@@ -614,7 +625,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   tubeGainTarget=tubeOn&&autoGainOn?tubeAutoGain(tubeTypeTarget,tubeAmount):1.0;
   tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeAmount):1.0;
   glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0;
-  vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0;
+  vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear,osFactor):1.0;
   lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_);
   depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_);
   depthGain=stereoDepthGain(depthBipolar);
@@ -866,7 +877,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         tubeGainTarget=tubeOn&&autoGainOn?tubeAutoGain(tubeTypeTarget,tubeAmount):1.0;
         tapeGain=tapeOn&&autoGainOn?tapeAutoGain(tapeAmount):1.0;
         glueGain=glueOn&&autoGainOn?glueAutoGain(glueAmount,glueCharacter):1.0;
-        vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear):1.0;
+        vinylGain=vinylOn&&autoGainOn?vinylAutoGain(vinylCharacter,vinylWear,osFactor):1.0;
         lowMonoCoeff=stereoOnePoleCoefficient(120.0,sampleRate_);
         depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_);
         depthGain=stereoDepthGain(depthBipolar);
