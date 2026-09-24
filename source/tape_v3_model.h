@@ -68,6 +68,11 @@ inline double cubic(double y0,double y1,double y2,double y3,double t) noexcept {
     return ((a0*t+a1)*t+a2)*t+y1;
 }
 
+inline double tapeV3TransportCenterSeconds() noexcept { return 0.00015; }
+inline double tapeV3TransportMaxExcursionSeconds() noexcept { return 0.00008; }
+inline int tapeV3MaxTransportSamples(double sampleRate) noexcept {
+    return static_cast<int>(std::ceil((tapeV3TransportCenterSeconds()+tapeV3TransportMaxExcursionSeconds())*sampleRate));
+}
 inline double readTransport(const TapeV3State& s,double delaySamples) noexcept {
     constexpr std::size_t N=512;
     const double d=std::clamp(delaySamples,2.0,500.0);
@@ -108,16 +113,16 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
 
     // Real causal variable-delay transport modulation. The base delay makes
     // the read position causal; V3 live integration must report/align it.
-    // Keep the transport delay bounded to a fixed sample budget so the research
-    // model cannot silently exceed the plug-in's declared latency. The eventual
-    // live integration must align this explicitly with kFixedLatencySamples.
-    const double maxDelaySamples=std::min(18.0, sampleRate*0.000375);
-    const double minDelaySamples=2.0;
-    const double excursion=(1.0-std::exp(-2.2*instability))*(maxDelaySamples-minDelaySamples)*0.46;
-    const double center=minDelaySamples+excursion;
+    // Transport modulation is expressed in seconds, not samples, so wow/flutter
+    // depth remains invariant across 44.1/48/96/192 kHz. The eventual V3 live
+    // path must include tapeV3MaxTransportSamples(sampleRate) in its reported
+    // latency budget rather than inheriting V2's fixed 21-sample contract.
+    const double centerSeconds=tapeV3TransportCenterSeconds();
+    const double maxExcursionSeconds=tapeV3TransportMaxExcursionSeconds();
+    const double excursionSeconds=(1.0-std::exp(-2.2*instability))*maxExcursionSeconds;
     const double modulation=0.78*std::sin(s.wowPhase)+0.22*std::sin(s.flutterPhase);
-    const double delaySamples=std::clamp(center+excursion*modulation,minDelaySamples,maxDelaySamples);
-    const double transported=readTransport(s,delaySamples);
+    const double delaySeconds=std::max(2.0/sampleRate,centerSeconds+excursionSeconds*modulation);
+    const double transported=readTransport(s,delaySeconds*sampleRate);
 
     // Program-dependent compression before magnetics.
     const double attack=std::exp(-1.0/(0.001*2.2*sampleRate));
