@@ -1,0 +1,36 @@
+name: V3 Research Diagnostics
+
+on:
+  push:
+    branches: [v3.0.0-development]
+
+jobs:
+  tape-v3:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
+
+      - name: Build tape V3 diagnostic
+        shell: pwsh
+        run: cmake --build build --config Release --target tape-v3-research-diagnostic
+
+      - name: Run tape V3 diagnostic
+        shell: pwsh
+        run: |
+          $exe=Get-ChildItem build -Recurse -File -Filter "tape-v3-research-diagnostic.exe"|Select-Object -First 1
+          if(-not $exe){throw "tape-v3-research-diagnostic.exe not found"}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "V3 tape research diagnostic failed with exit $LASTEXITCODE"}
