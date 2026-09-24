@@ -25,7 +25,34 @@ jobs:
 
       - name: Build tape V3 diagnostics
         shell: pwsh
-        run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel oversampling-roundtrip oversampling-alias tube-oversampling media-oversampling console-core-equivalence console-tube-island console-tube-ordering oversampling-latency metering-diagnostic metering-integration processor-latency-integration phase-mono-diagnostic host-matrix-diagnostic state-roundtrip-diagnostic state-migration-diagnostic release-robustness-diagnostic latency-matrix-diagnostic zero-neutrality-diagnostic quality-switch-diagnostic automation-stress-diagnostic parameter-transition-diagnostic sample-accuracy-diagnostic range-philosophy-diagnostic stereo-field-diagnostic glue-transient-diagnostic vinyl-material-diagnostic tape-memory-diagnostic tape-hiss-contract-diagnostic secondary-controls-diagnostic console-character-diagnostic console-vintage-memory-diagnostic character-morph-diagnostic sonic-impact-diagnostic sample-rate-matrix-diagnostic level-match-diagnostic denormal-safety-diagnostic tape-v3-autolevel-diagnostic console-v3-research-diagnostic mixfx-console-v3-diagnostic console-v3-alias-diagnostic console-v3-adaa-diagnostic console-v3-adaa-production-gate console-v3-prepared-adaa-diagnostic console-v3-prepared-cpu-diagnostic console-v3-correction-adaa-diagnostic console-v3-residual-adaa-diagnostic console-v3-correction-adaa2-diagnostic console-v3-cpu-diagnostic mixfx-crosstalk-diagnostic mixfx-sample-accuracy-diagnostic tube-v3-research-diagnostic tube-v3-autolevel-diagnostic tape-v3-research-diagnostic tape-v3-ja-oracle-diagnostic tape-v3-sample-rate-diagnostic vinyl-v3-tracing-oracle-diagnostic vinyl-v3-surrogate-diagnostic vinyl-v3-alias-diagnostic vinyl-v3-live-diagnostic vinyl-v3-autolevel-diagnostic vinyl-v3-cpu-diagnostic v3-autolevel-level-sweep
+        run: cmake --build build --config Release --target 125A-MixEngine-V3 125A-MixEngine-V3-Channel oversampling-roundtrip oversampling-alias tube-oversampling media-oversampling console-core-equivalence console-tube-island console-tube-ordering oversampling-latency metering-diagnostic metering-integration processor-latency-integration phase-mono-diagnostic host-matrix-diagnostic state-roundtrip-diagnostic state-migration-diagnostic release-robustness-diagnostic latency-matrix-diagnostic zero-neutrality-diagnostic quality-switch-diagnostic automation-stress-diagnostic parameter-transition-diagnostic sample-accuracy-diagnostic range-philosophy-diagnostic stereo-field-diagnostic glue-transient-diagnostic vinyl-material-diagnostic tape-memory-diagnostic tape-hiss-contract-diagnostic secondary-controls-diagnostic console-character-diagnostic console-vintage-memory-diagnostic character-morph-diagnostic sonic-impact-diagnostic sample-rate-matrix-diagnostic level-match-diagnostic denormal-safety-diagnostic tape-v3-autolevel-diagnostic console-v3-research-diagnostic mixfx-console-v3-diagnostic console-v3-alias-diagnostic console-v3-adaa-diagnostic console-v3-adaa-production-gate console-v3-prepared-adaa-diagnostic console-v3-prepared-cpu-diagnostic console-v3-correction-adaa-diagnostic console-v3-residual-adaa-diagnostic console-v3-correction-adaa2-diagnostic console-v3-cpu-diagnostic mixfx-crosstalk-diagnostic mixfx-sample-accuracy-diagnostic tube-v3-research-diagnostic tube-v3-autolevel-diagnostic tape-v3-research-diagnostic tape-v3-ja-oracle-diagnostic tape-v3-sample-rate-diagnostic vinyl-v3-tracing-oracle-diagnostic vinyl-v3-surrogate-diagnostic vinyl-v3-alias-diagnostic vinyl-v3-live-diagnostic vinyl-v3-autolevel-diagnostic vinyl-v3-cpu-diagnostic v3-autolevel-level-sweep
+
+      - name: Verify V3 side-by-side identity
+        shell: pwsh
+        run: |
+          $ids = Get-Content "source/pluginids.h" -Raw
+          $mixFactory = Get-Content "source/factory.cpp" -Raw
+          $channelFactory = Get-Content "source/factory_channel.cpp" -Raw
+          $cmake = Get-Content "CMakeLists.txt" -Raw
+
+          if (-not $cmake.Contains("project(MixEngine VERSION 3.0.0")) { throw "V3 identity: project version is not 3.0.0" }
+          if (-not $mixFactory.Contains('"125A MixEngine V3"')) { throw "V3 identity: Mix FX class name is not V3" }
+          if (-not $channelFactory.Contains('"125A MixEngine V3 Channel"')) { throw "V3 identity: Channel class name is not V3" }
+
+          foreach ($legacy in @(
+            "0x4A17C2D3, 0x8E5F41B0, 0x9C2A63E1, 0x715A9B44",
+            "0xB8D2517E, 0x3C6A4D92, 0xA1475E20, 0x6F39C8B1",
+            "0x0F9EFCF3, 0x80C94604, 0xB58940B8, 0x6D6B13E9",
+            "0xC39D1F81, 0x1058489F, 0x9B925AA3, 0xAB9BBB69"
+          )) {
+            if ($ids.Contains($legacy)) { throw "V3 identity: legacy V2 class ID still active: $legacy" }
+          }
+
+          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3" | Select-Object -First 1
+          if (-not $mix) { throw "V3 identity: 125A-MixEngine-V3.vst3 bundle missing" }
+          if (-not $channel) { throw "V3 identity: 125A-MixEngine-V3-Channel.vst3 bundle missing" }
+          Write-Host "V3 side-by-side identity PASS"
 
       - name: Run tape V3 diagnostics
         shell: pwsh
