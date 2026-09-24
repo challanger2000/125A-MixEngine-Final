@@ -235,7 +235,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     // typography and rendering stay under the same hardware-style renderer.
     if(auto* v=label("LabelVUSource","VU SOURCE",10.0,true,true))return v;
     if(auto* v=label("LabelVURef","0 VU = REF LEVEL",9.0,false,true))return v;
-    if(auto* v=label("LabelMixTitle","MIX ENGINE V2",13.0,true,false))return v;
+    if(auto* v=label("LabelMixTitle","MIX ENGINE V3",13.0,true,false))return v;
     if(auto* v=label("LabelQuality","QUALITY",10.0,true,true))return v;
     if(auto* v=label("LabelBypass","BYPASS",10.0,true,true))return v;
 

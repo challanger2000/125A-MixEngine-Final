@@ -24,8 +24,8 @@ constexpr VSTGUI::CColor kLogoSilver {217,217,217,255};
 constexpr VSTGUI::CColor kLogoRed {215,25,32,255};
 constexpr VSTGUI::CColor kNeedleHub {46,48,53,255};
 constexpr double kPi=3.14159265358979323846;
-constexpr VSTGUI::CColor kAccentGold {183,147,83,255};
-constexpr VSTGUI::CColor kAccentRed {215,25,32,255};
+constexpr VSTGUI::CColor kAccentGold {168,136,82,255};
+constexpr VSTGUI::CColor kAccentRed {205,42,46,255};
 
 void fillRoundGradient(VSTGUI::CDrawContext* context,const VSTGUI::CRect& rect,double radius,
                        const VSTGUI::CColor& top,const VSTGUI::CColor& bottom)
@@ -189,18 +189,18 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     };
     const auto raised=[&](double x,double y,double w,double h,double radius){
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{36,40,46,255},{15,18,22,255});
-        strokeRound(context,rr,radius,{91,97,107,150},1.0);
+        fillRoundGradient(context,rr,radius,{31,35,41,255},{16,19,23,255});
+        strokeRound(context,rr,radius,{83,90,99,128},1.0);
         auto hi=rr; hi.inset(2.0,2.0); hi.bottom=hi.top+1.0;
-        context->setFillColor({255,255,255,24});
+        context->setFillColor({255,255,255,16});
         context->drawRect(hi,VSTGUI::kDrawFilled);
     };
     const auto well=[&](double x,double y,double w,double h,double radius=7.0){
         const auto shadow=rect(x+1,y+2,w,h);
-        fillRoundGradient(context,shadow,radius,{4,5,7,220},{0,0,0,245});
+        fillRoundGradient(context,shadow,radius,{4,5,7,185},{0,0,0,225});
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{9,11,14,255},{18,21,26,255});
-        strokeRound(context,rr,radius,{70,77,87,150},1.0);
+        fillRoundGradient(context,rr,radius,{11,13,16,255},{19,22,27,255});
+        strokeRound(context,rr,radius,{66,73,82,128},1.0);
     };
     const auto screw=[&](double x,double y){
         const auto sr=rect(x-4.5,y-4.5,9,9);
@@ -216,17 +216,17 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     context->setFillColor({5,7,9,255});
     context->drawRect(r,VSTGUI::kDrawFilled);
     auto chassis=r; chassis.inset(7.0,7.0);
-    fillRoundGradient(context,chassis,16.0,{43,47,54,255},{12,14,18,255});
+    fillRoundGradient(context,chassis,16.0,{36,40,47,255},{14,17,21,255});
     strokeRound(context,chassis,16.0,{1,2,3,255},2.0);
     auto inner=chassis; inner.inset(4.0,4.0);
-    strokeRound(context,inner,13.0,{150,156,166,35},1.0);
+    strokeRound(context,inner,13.0,{145,151,160,27},1.0);
 
-    // Brushed anodised surface, deliberately restrained.
-    for(int y=16;y<788;y+=4) {
-        const uint8_t a=(y%16==0)?12:5;
-        line(14,y,1426,y,{190,195,203,a},1.0);
+    // Restrained anodised grain: enough material cue without visual shimmer.
+    for(int y=18;y<786;y+=8) {
+        const uint8_t a=(y%32==0)?7:3;
+        line(14,y,1426,y,{188,193,201,a},1.0);
     }
-    line(20,14,1420,14,{220,224,230,40},1.0);
+    line(20,14,1420,14,{220,224,230,28},1.0);
     line(20,786,1420,786,{0,0,0,210},1.0);
 
     // Upper bridge: logo, two recessed meters, centre utility strip and master block.
@@ -240,9 +240,9 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     well(1234,104,178,58,9.0);
     well(1256,188,136,74,9.0);
 
-    // A small brand-red datum line ties the whole instrument together.
-    line(226,267,1214,267,{215,25,32,92},1.5);
-    line(20,284,1420,284,{144,150,159,34},1.0);
+    // A restrained brand datum ties the meter bridge together without glowing at the user.
+    line(226,267,1214,267,{205,42,46,66},1.25);
+    line(20,284,1420,284,{144,150,159,25},1.0);
     line(20,287,1420,287,{0,0,0,215},2.0);
 
     // Lower console is four structural bays, not eight independent boxes.
@@ -251,10 +251,10 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     raised(1068,300,166,464,12.0);    // stereo
     raised(1246,300,174,464,12.0);    // output
 
-    // Process-module divisions are only subtle engraved hairlines.
+    // The five colour stages read as one ANALOG ENGINE, separated only by quiet engraved guides.
     for(double x : {360.0,536.0,712.0,888.0})
-        line(x,344,x,748,{148,154,163,24},1.0);
-    line(188,344,1052,344,{205,208,214,22},1.0);
+        line(x,350,x,742,{148,154,163,15},1.0);
+    line(188,344,1052,344,{205,208,214,16},1.0);
     line(24,344,168,344,{205,208,214,22},1.0);
     line(1072,344,1230,344,{205,208,214,22},1.0);
     line(1250,344,1416,344,{205,208,214,22},1.0);
@@ -266,19 +266,20 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     well(550,574,148,44,7.0);
     well(1266,582,124,76,8.0);
 
-    // Consistent fastener language: four chassis corners plus four fasteners
-    // on every major lower hardware bay (Input / analogue chain / Stereo / Output).
+    // Flagship restraint: fasteners are structural accents, not repeating decoration.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
                   VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782},
-                  VSTGUI::CPoint{32,314},VSTGUI::CPoint{160,314},
-                  VSTGUI::CPoint{32,750},VSTGUI::CPoint{160,750},
                   VSTGUI::CPoint{196,314},VSTGUI::CPoint{1044,314},
-                  VSTGUI::CPoint{196,750},VSTGUI::CPoint{1044,750},
-                  VSTGUI::CPoint{1080,314},VSTGUI::CPoint{1222,314},
-                  VSTGUI::CPoint{1080,750},VSTGUI::CPoint{1222,750},
-                  VSTGUI::CPoint{1258,314},VSTGUI::CPoint{1408,314},
-                  VSTGUI::CPoint{1258,750},VSTGUI::CPoint{1408,750}})
+                  VSTGUI::CPoint{196,750},VSTGUI::CPoint{1044,750}})
         screw(p.x,p.y);
+
+    // Quiet hierarchy labels are part of the chassis, not additional controls.
+    context->setFont(VSTGUI::kNormalFont,7.6,VSTGUI::kBoldFace);
+    context->setFontColor({126,133,143,210});
+    context->drawString(VSTGUI::UTF8String("ANALOG ENGINE"),rect(466,301,308,12),VSTGUI::kCenterText);
+    context->setFont(VSTGUI::kNormalFont,8.0,0);
+    context->setFontColor({137,143,151,220});
+    context->drawString(VSTGUI::UTF8String("v3.0.0"),rect(1260,74,128,12),VSTGUI::kCenterText);
 
     setDirty(false);
 }
@@ -548,8 +549,8 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
         face.inset(1.2,1.0);
 
         if(i==selected) {
-            fillRoundGradient(context,face,4.0,{108,83,46,255},{46,37,25,255});
-            strokeRound(context,face,4.0,{213,177,108,210},1.0);
+            fillRoundGradient(context,face,4.0,{88,70,44,255},{42,35,25,255});
+            strokeRound(context,face,4.0,{191,158,99,190},1.0);
             VSTGUI::CRect glint=face; glint.inset(2.0,2.0); glint.bottom=glint.top+1.0;
             context->setFillColor({255,237,190,55});
             context->drawRect(glint,VSTGUI::kDrawFilled);
@@ -564,7 +565,7 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
             context->drawLine({seg.left,inner.top+5.0},{seg.left,inner.bottom-5.0});
         }
 
-        context->setFontColor(i==selected?VSTGUI::CColor{248,239,215,255}:VSTGUI::CColor{190,196,203,255});
+        context->setFontColor(i==selected?VSTGUI::CColor{235,228,210,255}:VSTGUI::CColor{178,185,194,245});
         context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),face,VSTGUI::kCenterText);
     }
 
@@ -617,7 +618,7 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     context->setFontColor({0,0,0,175});
     context->drawString(VSTGUI::UTF8String(text_.c_str()),shadow,VSTGUI::kCenterText);
 
-    context->setFontColor(muted_?VSTGUI::CColor{147,154,164,255}:VSTGUI::CColor{229,226,217,255});
+    context->setFontColor(muted_?VSTGUI::CColor{151,158,168,245}:VSTGUI::CColor{218,217,211,250});
     context->drawString(VSTGUI::UTF8String(text_.c_str()),r,VSTGUI::kCenterText);
     setDirty(false);
 }
