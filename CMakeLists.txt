@@ -163,3 +163,6 @@ target_link_libraries(denormal-safety-diagnostic PRIVATE sdk)
 
 add_executable(tape-v3-research-diagnostic tests/tape_v3_model.cpp source/tape_v3_model.h source/oversampling.h)
 target_include_directories(tape-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
+
+add_executable(tape-v3-ja-oracle-diagnostic tests/tape_v3_ja_oracle.cpp source/tape_v3_ja_oracle.h)
+target_include_directories(tape-v3-ja-oracle-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
