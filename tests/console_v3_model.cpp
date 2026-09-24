@@ -90,35 +90,57 @@ std::vector<double> pairedTwoTone(int channels,double drive,int mode){
 }
 
 double fittedTwoToneResidual(const std::vector<double>& y){
-    // Fit only the original 997/1543 Hz components. Everything left is
-    // harmonic/intermodulation/nonlinear residual.
+    // Joint least-squares fit of sin/cos for both fundamentals. The four basis
+    // vectors are not exactly orthogonal over a finite arbitrary-length window,
+    // so independent projections create a false residual.
     constexpr std::array<double,2> freq{997.0,1543.0};
-    std::array<long double,4> proj{};
-    std::array<long double,4> norm{};
+    double A[4][4]{};
+    double b[4]{};
+
     for(int n=warm;n<nSamp;++n){
         const double t=double(n)/sr;
-        for(int k=0;k<2;++k){
-            const double s=std::sin(2*pi*freq[k]*t),c=std::cos(2*pi*freq[k]*t);
-            proj[2*k]+=y[static_cast<std::size_t>(n)]*s;
-            proj[2*k+1]+=y[static_cast<std::size_t>(n)]*c;
-            norm[2*k]+=s*s;
-            norm[2*k+1]+=c*c;
+        const double basis[4]={
+            std::sin(2*pi*freq[0]*t),std::cos(2*pi*freq[0]*t),
+            std::sin(2*pi*freq[1]*t),std::cos(2*pi*freq[1]*t)
+        };
+        const double yn=y[static_cast<std::size_t>(n)];
+        for(int r=0;r<4;++r){
+            b[r]+=basis[r]*yn;
+            for(int col=0;col<4;++col)A[r][col]+=basis[r]*basis[col];
         }
     }
-    std::array<double,4> coef{};
-    for(int i=0;i<4;++i)coef[i]=double(proj[i]/std::max<long double>(norm[i],1e-30L));
+
+    // Small deterministic Gaussian elimination with partial pivoting.
+    for(int col=0;col<4;++col){
+        int pivot=col;
+        for(int r=col+1;r<4;++r)
+            if(std::abs(A[r][col])>std::abs(A[pivot][col]))pivot=r;
+        if(std::abs(A[pivot][col])<1.0e-18)return 1.0e9;
+        if(pivot!=col){
+            for(int k=col;k<4;++k)std::swap(A[col][k],A[pivot][k]);
+            std::swap(b[col],b[pivot]);
+        }
+        const double inv=1.0/A[col][col];
+        for(int k=col;k<4;++k)A[col][k]*=inv;
+        b[col]*=inv;
+        for(int r=0;r<4;++r){
+            if(r==col)continue;
+            const double factor=A[r][col];
+            for(int k=col;k<4;++k)A[r][k]-=factor*A[col][k];
+            b[r]-=factor*b[col];
+        }
+    }
 
     long double e=0;long long count=0;
     for(int n=warm;n<nSamp;++n){
         const double t=double(n)/sr;
-        double fit=0.0;
-        for(int k=0;k<2;++k)
-            fit+=coef[2*k]*std::sin(2*pi*freq[k]*t)+coef[2*k+1]*std::cos(2*pi*freq[k]*t);
+        const double fit=
+            b[0]*std::sin(2*pi*freq[0]*t)+b[1]*std::cos(2*pi*freq[0]*t)+
+            b[2]*std::sin(2*pi*freq[1]*t)+b[3]*std::cos(2*pi*freq[1]*t);
         const double d=y[static_cast<std::size_t>(n)]-fit;
         e+=d*d;++count;
     }
     return std::sqrt(double(e/count));
-}
 }
 
 int main(){
