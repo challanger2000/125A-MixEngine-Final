@@ -46,7 +46,7 @@ jobs:
           $stableChannelFactory = git show origin/main:source/factory_channel.cpp
           if (-not $stableIds) { throw "V3 identity: could not read stable main plugin IDs" }
 
-          $uidPattern = 'FUID\\s+\\w+\\s*\\(([^\\)]+)\\)'
+          $uidPattern = 'FUID\s+\w+\s*\(([^\)]+)\)'
           $stableUidMatches = [regex]::Matches(($stableIds -join "`n"), $uidPattern)
           $v3UidMatches = [regex]::Matches($ids, $uidPattern)
           if ($stableUidMatches.Count -lt 4 -or $v3UidMatches.Count -lt 4) { throw "V3 identity: expected four class IDs in both stable and V3" }
