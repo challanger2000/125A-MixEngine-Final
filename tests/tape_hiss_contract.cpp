@@ -34,8 +34,11 @@ int main(){
   const double h25=rms(render(0.0,0.25));
   const double h50=rms(render(0.0,0.50));
   const double h100=rms(render(0.0,1.0));
-  std::cout<<"Tape Hiss Amount0 RMS off/25/50/100="<<silent<<"/"<<h25<<"/"<<h50<<"/"<<h100<<"\n";
-  bool ok=silent<1e-12 && h25>1e-7 && h50>h25*2.5 && h100>h50*2.5;
+  std::cout<<"Tape Hiss ON+Amount0 RMS hiss0/25/50/100="<<silent<<"/"<<h25<<"/"<<h50<<"/"<<h100<<"\n";
+  // Tape ON + Amount 0 now intentionally retains a subtle base character.
+  // On digital silence that base path may leave a tiny numerical residual; the
+  // Hiss contract is independence and progressive scaling, not bit-exact zero.
+  bool ok=silent<1e-8 && h25>1e-7 && h50>h25*2.5 && h100>h50*2.5;
   std::cout<<(ok?"PASS":"FAIL")<<": Tape Hiss independent-control contract\n";
   return ok?0:1;
  }catch(int c){std::cerr<<"Tape Hiss setup FAIL "<<c<<"\n";return c;}
