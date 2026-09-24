@@ -173,3 +173,6 @@ target_include_directories(tape-v3-sample-rate-diagnostic PRIVATE "${CMAKE_CURRE
 add_executable(tape-v3-autolevel-diagnostic tests/tape_v3_autolevel.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(tape-v3-autolevel-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(tape-v3-autolevel-diagnostic PRIVATE sdk)
+
+add_executable(console-v3-research-diagnostic tests/console_v3_model.cpp source/console_v3_model.h source/nonlinear_cores.h)
+target_include_directories(console-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
