@@ -126,6 +126,42 @@ inline bool consoleV3DecodeAdaaInterior(double summed,double drive,int mode) noe
     return std::abs(a*summed)<0.92*limit;
 }
 
+inline double consoleV3EncodeResidualPrimitivePrepared(double x,double a,double invA2) noexcept {
+    const double z=std::clamp(a*x,-1.45,1.45);
+    return -consoleV3CosFast(z)*invA2-0.5*x*x;
+}
+
+inline double consoleV3EncodeResidualAdaaPrepared(double x,double a,double invA,double invA2,
+                                                  ConsoleV3AdaaState& state) noexcept {
+    const double z=std::clamp(a*x,-1.45,1.45);
+    const double memoryless=consoleV3SinFast(z)*invA-x;
+    if(!state.encoderInitialised){
+        state.previousInput=x;
+        state.encoderInitialised=true;
+        return memoryless;
+    }
+
+    const double previous=state.previousInput;
+    state.previousInput=x;
+
+    // The closed-form primitive below is exact in the unclamped interior.
+    // If either sample reaches the safety clamp, fall back to the bounded
+    // memoryless residual rather than pretending a wrong antiderivative.
+    if(std::abs(a*x)>=1.44 || std::abs(a*previous)>=1.44)
+        return memoryless;
+
+    const double dx=x-previous;
+    if(std::abs(dx)<1.0e-8){
+        const double mid=0.5*(x+previous);
+        const double mz=std::clamp(a*mid,-1.45,1.45);
+        return consoleV3SinFast(mz)*invA-mid;
+    }
+
+    const double f1=consoleV3EncodeResidualPrimitivePrepared(x,a,invA2);
+    const double f0=consoleV3EncodeResidualPrimitivePrepared(previous,a,invA2);
+    return (f1-f0)/dx;
+}
+
 inline double consoleV3CorrectionPrimitiveInterior(double summed,double drive,int mode) noexcept {
     return consoleV3DecodePrimitiveInterior(summed,drive,mode)-0.5*summed*summed;
 }

@@ -25,7 +25,7 @@ jobs:
 
       - name: Build tape V3 diagnostics
         shell: pwsh
-        run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel zero-neutrality-diagnostic quality-switch-diagnostic tape-memory-diagnostic sonic-impact-diagnostic sample-rate-matrix-diagnostic denormal-safety-diagnostic tape-v3-autolevel-diagnostic console-v3-research-diagnostic mixfx-console-v3-diagnostic console-v3-alias-diagnostic console-v3-adaa-diagnostic console-v3-adaa-production-gate console-v3-prepared-adaa-diagnostic console-v3-prepared-cpu-diagnostic console-v3-correction-adaa-diagnostic console-v3-cpu-diagnostic mixfx-crosstalk-diagnostic mixfx-sample-accuracy-diagnostic tube-v3-research-diagnostic tube-v3-autolevel-diagnostic tape-v3-research-diagnostic tape-v3-ja-oracle-diagnostic tape-v3-sample-rate-diagnostic
+        run: cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel zero-neutrality-diagnostic quality-switch-diagnostic tape-memory-diagnostic sonic-impact-diagnostic sample-rate-matrix-diagnostic denormal-safety-diagnostic tape-v3-autolevel-diagnostic console-v3-research-diagnostic mixfx-console-v3-diagnostic console-v3-alias-diagnostic console-v3-adaa-diagnostic console-v3-adaa-production-gate console-v3-prepared-adaa-diagnostic console-v3-prepared-cpu-diagnostic console-v3-correction-adaa-diagnostic console-v3-residual-adaa-diagnostic console-v3-cpu-diagnostic mixfx-crosstalk-diagnostic mixfx-sample-accuracy-diagnostic tube-v3-research-diagnostic tube-v3-autolevel-diagnostic tape-v3-research-diagnostic tape-v3-ja-oracle-diagnostic tape-v3-sample-rate-diagnostic
 
       - name: Run tape V3 diagnostics
         shell: pwsh
@@ -45,7 +45,7 @@ jobs:
           & $matrix.FullName
           if($LASTEXITCODE -ne 0){throw "V3 tape sample-rate matrix failed with exit $LASTEXITCODE"}
 
-          $legacy=@("zero-neutrality-diagnostic","quality-switch-diagnostic","tape-memory-diagnostic","sonic-impact-diagnostic","sample-rate-matrix-diagnostic","denormal-safety-diagnostic","tape-v3-autolevel-diagnostic","console-v3-research-diagnostic","mixfx-console-v3-diagnostic","console-v3-alias-diagnostic","console-v3-adaa-diagnostic","console-v3-adaa-production-gate","console-v3-prepared-adaa-diagnostic","console-v3-prepared-cpu-diagnostic","console-v3-correction-adaa-diagnostic","console-v3-cpu-diagnostic","mixfx-crosstalk-diagnostic","mixfx-sample-accuracy-diagnostic","tube-v3-research-diagnostic","tube-v3-autolevel-diagnostic")
+          $legacy=@("zero-neutrality-diagnostic","quality-switch-diagnostic","tape-memory-diagnostic","sonic-impact-diagnostic","sample-rate-matrix-diagnostic","denormal-safety-diagnostic","tape-v3-autolevel-diagnostic","console-v3-research-diagnostic","mixfx-console-v3-diagnostic","console-v3-alias-diagnostic","console-v3-adaa-diagnostic","console-v3-adaa-production-gate","console-v3-prepared-adaa-diagnostic","console-v3-prepared-cpu-diagnostic","console-v3-correction-adaa-diagnostic","console-v3-residual-adaa-diagnostic","console-v3-cpu-diagnostic","mixfx-crosstalk-diagnostic","mixfx-sample-accuracy-diagnostic","tube-v3-research-diagnostic","tube-v3-autolevel-diagnostic")
           foreach($name in $legacy){
             $d=Get-ChildItem build -Recurse -File -Filter "$name.exe"|Select-Object -First 1
             if(-not $d){throw "$name.exe not found"}
