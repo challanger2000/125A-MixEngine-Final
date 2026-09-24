@@ -5,6 +5,7 @@
 #include "pluginids.h"
 #include "oversampling.h"
 #include "latency_alignment.h"
+#include "tape_v3_model.h"
 #include "metering.h"
 #include "meter_exchange.h"
 #include "stereo_field.h"
@@ -53,7 +54,7 @@ public:
     Steinberg::tresult PLUGIN_API disconnect(Steinberg::Vst::IConnectionPoint* other) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setBusArrangements(Steinberg::Vst::SpeakerArrangement* inputs, Steinberg::int32 numIns, Steinberg::Vst::SpeakerArrangement* outputs, Steinberg::int32 numOuts) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API canProcessSampleSize(Steinberg::int32 symbolicSampleSize) SMTG_OVERRIDE;
-    Steinberg::uint32 PLUGIN_API getLatencySamples() SMTG_OVERRIDE { return kFixedLatencySamples; }
+    Steinberg::uint32 PLUGIN_API getLatencySamples() SMTG_OVERRIDE { return static_cast<Steinberg::uint32>(reportedLatencySamples_); }
     Steinberg::tresult PLUGIN_API setupProcessing(Steinberg::Vst::ProcessSetup& setup) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setActive(Steinberg::TBool state) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setProcessing(Steinberg::TBool state) SMTG_OVERRIDE;
@@ -73,7 +74,7 @@ private:
     static constexpr int kMaxMixFxChannels = 128;
 #endif
     struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,transformerMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
-    struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; };
+    struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; V3Research::TapeV3State v3{}; };
     struct GlueChannelState { double envelope=0.0; };
     struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
     using StereoChannelState = StereoFieldState;
@@ -160,6 +161,7 @@ private:
     int meterExchangeCountdown_=0;
     std::atomic<double> mixFxBypass_{0.0},mixFxInput_{0.5},mixFxCalibration_{0.5},mixFxAutoGain_{1.0},mixFxConsoleOn_{1.0},mixFxConsoleMode_{1.0/3.0},mixFxConsoleDrive_{0.25},mixFxCrosstalk_{0.10},mixFxConsoleNoise_{0.0},mixFxTubeOn_{0.0},mixFxTubeAmount_{0.20},mixFxTubeType_{0.5},mixFxTapeOn_{0.0},mixFxTapeAmount_{0.20},mixFxTapeSpeed_{0.5},mixFxTapeStability_{0.90},mixFxTapeHiss_{0.0},mixFxGlueOn_{0.0},mixFxGlueAmount_{0.15},mixFxGlueCharacter_{0.50},mixFxVinylOn_{0.0},mixFxVinylCharacter_{0.25},mixFxVinylWear_{0.0},mixFxVinylNoise_{0.0},mixFxDepth_{0.5},mixFxWidth_{0.5},mixFxLowMono_{0.0},mixFxQuality_{0.5},mixFxOutput_{0.5},mixFxMeterSource_{1.0};
     double sampleRate_=44100.0,dcCoeff_=0.995,lowCoeff_=0.0;
+    int reportedLatencySamples_=kFixedLatencySamples;
     int clipHoldSamplesL_=0,clipHoldSamplesR_=0;
     bool lastMeterOutput_=true;
     bool processing_=false,mixFxEngaged_=false;

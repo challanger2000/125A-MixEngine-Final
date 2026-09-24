@@ -143,7 +143,7 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     const double bias=ch.bias*a;
 
     osFactor=OversamplingEngine::sanitiseFactor(osFactor);
-    if(s.oversamplingFactor!=osFactor){s.oversampler.reset();s.oversamplingFactor=osFactor;}
+    if(s.oversamplingFactor!=osFactor){s.oversampler.reset();s.dryAligner.reset();s.oversamplingFactor=osFactor;}
 
     // Convert the base-rate memory coefficient to an oversampled-rate
     // coefficient that preserves approximately the same time constant.

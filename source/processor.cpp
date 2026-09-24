@@ -152,7 +152,7 @@ tresult PLUGIN_API Processor::connect(IConnectionPoint* other){auto result=Audio
 tresult PLUGIN_API Processor::disconnect(IConnectionPoint* other){meterExchange_.onDisconnect(other);return AudioEffect::disconnect(other);}
 tresult PLUGIN_API Processor::setBusArrangements(SpeakerArrangement* inputs,int32 numIns,SpeakerArrangement* outputs,int32 numOuts){if(numIns!=1||numOuts!=1||!inputs||!outputs)return kResultFalse;if(inputs[0]!=SpeakerArr::kMono&&inputs[0]!=SpeakerArr::kStereo)return kResultFalse;if(outputs[0]!=inputs[0])return kResultFalse;return AudioEffect::setBusArrangements(inputs,numIns,outputs,numOuts);}
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 s){return s==kSample32||s==kSample64?kResultTrue:kResultFalse;}
-tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){sampleRate_=setup.sampleRate>0.0?setup.sampleRate:44100.0;dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
+tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){sampleRate_=setup.sampleRate>0.0?setup.sampleRate:44100.0;reportedLatencySamples_=v3ReportedLatencySamples(sampleRate_);dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
 #ifndef MIXENGINE_CHANNEL_BUILD
  mixFxSnapshotCapacity_=std::max<int32>(1,setup.maxSamplesPerBlock);
  prepareMixFxSnapshotBuffers();
@@ -240,72 +240,21 @@ double Processor::processTubeSample(double x,double typeMorph,double amount)cons
 double Processor::processTapeSample(double x,TapeChannelState& state,int sourceIndex,int lane,double speedMorph,double amount,double stability,int osFactor,double noiseAmount,double calibrationNorm){
  const double a=std::clamp(amount,0.0,1.0);
  if(a<=0.0)return x;
- const auto model=tapeCharacter(speedMorph);
- const double instability=1.0-std::clamp(stability,0.0,1.0);
- const double cutoff=std::min(model.cutoffHz,sampleRate_*0.45);
- const double bumpFreq=model.bumpFreqHz,bumpAmount=model.bumpAmount,wowHz=model.wowHz,flutterHz=model.flutterHz,speedTone=model.hissTone;
- const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bumpCoeff=1.0-std::exp(-2.0*kPi*bumpFreq/sampleRate_);
- state.wowPhase+=2.0*kPi*wowHz/sampleRate_;
- state.flutterPhase+=2.0*kPi*flutterHz/sampleRate_;
- if(state.wowPhase>=2.0*kPi)state.wowPhase-=2.0*kPi;
- if(state.flutterPhase>=2.0*kPi)state.flutterPhase-=2.0*kPi;
 
- const double derivative=x-state.previousInput;
- state.previousInput=x;
- const double zone=creativeZone(a);
- const double motion=0.75*std::sin(state.wowPhase)+0.25*std::sin(state.flutterPhase);
- const double transportDepth=1.20*std::pow(instability,1.5);
- const double transport=x+derivative*motion*transportDepth;
+ double y=V3Research::processTapeV3(x,state.v3,sampleRate_,speedMorph,a,stability,osFactor);
 
- // FINAL v1.1.0 program-dependent tape compression is retained.
- const double strength=a*(0.55+0.45*a);
- const double attack=std::exp(-1.0/(0.001*2.5*sampleRate_));
- const double release=std::exp(-1.0/(0.001*85.0*sampleRate_));
- const double level=std::abs(transport);
- const double envCoeff=level>state.compressionEnvelope?attack:release;
- state.compressionEnvelope=envCoeff*state.compressionEnvelope+(1.0-envCoeff)*level;
- const double over=std::max(0.0,state.compressionEnvelope-0.20);
- const double dynamicGain=1.0/(1.0+1.10*strength*over);
- const double compressedTransport=transport*dynamicGain;
-
- // V2 adds bounded magnetic memory/hysteresis after the FINAL compression stage.
- const double magneticDrive=1.4+0.9*a+0.4*zone;
- const double feedback=0.10+0.16*a+0.08*zone;
- const double targetMag=std::tanh(magneticDrive*compressedTransport+feedback*state.magneticMemory);
- const double memoryCoeff=0.32+0.20*a;
- state.magneticMemory+=memoryCoeff*(targetMag-state.magneticMemory);
- const double staticMag=std::tanh(magneticDrive*compressedTransport);
- const double hysteresis=state.magneticMemory-staticMag;
- const double magneticTransport=compressedTransport+0.10*a*hysteresis;
-
- const double shape=1.0+0.75*a+0.55*zone;
- OversamplingEngine* osEngine=nullptr;
- int* osCurrentFactor=nullptr;
- osFactor=OversamplingEngine::sanitiseFactor(osFactor);
- if(mixFxEngaged_){
-  osEngine=&mixFxTapeOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];
-  osCurrentFactor=&mixFxTapeOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];
- }else{
-  osEngine=&tapeOversampling_[static_cast<std::size_t>(lane)];
-  osCurrentFactor=&tapeOversamplingFactor_[static_cast<std::size_t>(lane)];
- }
- const double saturated=processTapeOversampledCore(*osEngine,*osCurrentFactor,osFactor,magneticTransport,shape);
- state.highMemory+=highCoeff*(saturated-state.highMemory);
- state.lowMemory+=bumpCoeff*(state.highMemory-state.lowMemory);
- const double tape=state.highMemory+(0.75+0.50*a+0.35*zone)*bumpAmount*a*state.lowMemory;
- const double wet=std::min(0.96,(0.22+0.58*a)*a+0.16*zone);
- LatencyAligner* dryAligner=mixFxEngaged_?&mixFxTapeDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&tapeDryAligner_[static_cast<std::size_t>(lane)];
- const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));
- double y=dry+(tape-dry)*wet;
-
+ // Preserve the user-facing V2 Hiss control/state contract while the signal
+ // coloration path is replaced by the V3 physical-informed architecture.
  noiseAmount=std::clamp(noiseAmount,0.0,1.0);
  if(noiseAmount>0.0){
   if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0x7A9E51A5u);
-  const double white=randomBipolar(state.noiseRng),hissCoeff=1.0-std::exp(-2.0*kPi*1200.0/sampleRate_);
+  const auto character=tapeCharacter(speedMorph);
+  const double white=randomBipolar(state.noiseRng);
+  const double hissCoeff=1.0-std::exp(-2.0*kPi*1200.0/sampleRate_);
   state.hissMemory+=hissCoeff*(white-state.hissMemory);
   const double hiss=white-0.78*state.hissMemory,n=noiseAmount*noiseAmount;
   const double sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0;
-  y+=hiss*0.0070*speedTone*n*sourceScale*calibrationNorm;
+  y+=hiss*0.0070*character.hissTone*n*sourceScale*calibrationNorm;
  }
  return y;
 }
@@ -507,7 +456,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
 
  bool bypass=false,consoleOn=false,tubeOn=false,tapeOn=false,glueOn=false,vinylOn=false,autoGainOn=false;
  double inputGain=1.0,outputGain=1.0,inputMatchGain=1.0,calibrationGain=1.0,calibrationReturn=1.0,drive=0.0,crosstalk=0.0;
- int mode=0,osFactor=1,latencyDelay=kFixedLatencySamples;
+ int mode=0,osFactor=1,latencyDelay=reportedLatencySamples_;
  double tubeTypeTarget=0.5,tapeSpeedTarget=0.5,tubeAmount=0.0,tapeAmount=0.0,tapeStability=1.0;
  double glueAmount=0.0,glueCharacter=0.5,vinylCharacter=0.0,vinylWear=0.0;
  double widthGain=1.0,depthBipolar=0.0,lowMono=0.0,autoGain=1.0,tubeGainTarget=1.0;
@@ -564,7 +513,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
        static_cast<int>(tubeOn&&tubeAmount>0.0)+
        static_cast<int>(tapeOn&&tapeAmount>0.0)+
        static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));
-  latencyDelay=latencyCompensation(osFactor,osIslands);
+  latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn&&tapeAmount>0.0);
  };
 
  applyAutomationAt(0);
@@ -586,8 +535,8 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
 
   if(bypass){
    auto& align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];
-   leftOut=align[0].process(leftIn,kFixedLatencySamples);
-   rightOut=stereo?align[1].process(rightIn,kFixedLatencySamples):leftOut;
+   leftOut=align[0].process(leftIn,reportedLatencySamples_);
+   rightOut=stereo?align[1].process(rightIn,reportedLatencySamples_):leftOut;
    outputMeter.push(leftOut,stereo?rightOut:leftOut);
    return;
   }
@@ -767,7 +716,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
 
     bool bypass=false,consoleOn=false,tubeOn=false,tapeOn=false,glueOn=false,vinylOn=false,autoGainOn=false;
     double inputGain=1.0,outputGain=1.0,inputMatchGain=1.0,calibrationGain=1.0,calibrationReturn=1.0,drive=0.0;
-    int mode=0,osFactor=1,latencyDelay=kFixedLatencySamples;
+    int mode=0,osFactor=1,latencyDelay=reportedLatencySamples_;
     double tubeTypeTarget=0.5,tapeSpeedTarget=0.5,tubeAmount=0.0,tapeAmount=0.0,tapeStability=1.0;
     double glueAmount=0.0,glueCharacter=0.5,vinylCharacter=0.0,vinylWear=0.0;
     double widthGain=1.0,depthBipolar=0.0,lowMono=0.0,autoGain=1.0,tubeGainTarget=1.0;
@@ -823,7 +772,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
              static_cast<int>(tubeOn&&tubeAmount>0.0)+
              static_cast<int>(tapeOn&&tapeAmount>0.0)+
              static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));
-        latencyDelay=latencyCompensation(osFactor,osIslands);
+        latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn&&tapeAmount>0.0);
     };
 
     applyAutomationAt(0);
@@ -842,8 +791,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         inputMeter_.push(meterL,stereo?meterR:meterL);
 
         if(bypass){
-            leftOut=latencyAligner_[0].process(leftIn,kFixedLatencySamples);
-            rightOut=stereo?latencyAligner_[1].process(rightIn,kFixedLatencySamples):leftOut;
+            leftOut=latencyAligner_[0].process(leftIn,reportedLatencySamples_);
+            rightOut=stereo?latencyAligner_[1].process(rightIn,reportedLatencySamples_):leftOut;
             outputMeter_.push(leftOut,stereo?rightOut:leftOut);
             return;
         }
