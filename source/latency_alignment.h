@@ -8,6 +8,14 @@ constexpr int kV3MaxLatencySamples=64;
 inline int v3TapeNominalDelaySamples(double sampleRate) noexcept {
  return std::max(0,static_cast<int>(std::ceil(0.00015*std::max(1.0,sampleRate))));
 }
+// readTransport() writes the current sample first, then performs a four-point
+// cubic read around floor(write-delay). The dominant impulse tap therefore
+// lands two samples earlier than ceil(centerDelaySamples). Keep the conservative
+// nominal value for the fixed host budget, but compensate the live path using
+// the actual cubic-interpolator peak position.
+inline int v3TapePeakDelaySamples(double sampleRate) noexcept {
+ return std::max(2,v3TapeNominalDelaySamples(sampleRate)-2);
+}
 inline int v3ReportedLatencySamples(double sampleRate) noexcept {
  return kFixedLatencySamples+v3TapeNominalDelaySamples(sampleRate);
 }
@@ -18,7 +26,7 @@ inline int oversamplingBulkDelay(int factor,int islands) noexcept {
 }
 inline int latencyCompensation(int factor,int islands) noexcept {return kFixedLatencySamples-oversamplingBulkDelay(factor,islands);}
 inline int v3LatencyCompensation(double sampleRate,int factor,int islands,bool tapeActive) noexcept {
- const int internal=oversamplingBulkDelay(factor,islands)+(tapeActive?v3TapeNominalDelaySamples(sampleRate):0);
+ const int internal=oversamplingBulkDelay(factor,islands)+(tapeActive?v3TapePeakDelaySamples(sampleRate):0);
  return std::clamp(v3ReportedLatencySamples(sampleRate)-internal,0,kV3MaxLatencySamples);
 }
 class LatencyAligner {
