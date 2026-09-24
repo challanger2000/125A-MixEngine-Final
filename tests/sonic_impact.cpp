@@ -124,22 +124,31 @@ int main(){
         };
         bool ok=true;
         for(const auto& m:modules){
-            double previous=-200.0;
+            const bool dynamic=std::string(m.name)=="Glue";
+            const auto& dryRef=dynamic?dryDynamic:dry;
+            auto baseCfg=m.extra; baseCfg.push_back({m.on,1.0}); baseCfg.push_back({m.amount,0.0});
+            const auto moduleBase=render(baseCfg,dynamic);
+            double previousAmountDelta=-200.0;
             for(double amount:{0.25,0.50,0.75,1.0}){
                 auto cfg=m.extra; cfg.push_back({m.on,1.0}); cfg.push_back({m.amount,amount});
-                const bool dynamic=std::string(m.name)=="Glue";
                 const auto wet=render(cfg,dynamic);
-                const auto& reference=dynamic?dryDynamic:dry;
-                const double delta=diffRmsDb(reference,wet);
-                const double wetRmsDb=20.0*std::log10(std::max(rms(wet),1e-15)/std::max(rms(reference),1e-15));
-                std::cout<<m.name<<" "<<int(amount*100)<<"% delta="<<delta<<" dBFSrel level="<<wetRmsDb<<" dB\n";
-                if(!std::isfinite(delta)||!std::isfinite(wetRmsDb))ok=false;
-                if(amount==0.25 && delta<-42.0) ok=false;
-                if(amount==0.50 && delta<-34.0) ok=false;
-                if(amount==0.75 && delta<-28.0) ok=false;
-                if(amount==1.00 && delta<-24.0) ok=false;
-                if(delta+0.25<previous) ok=false;
-                previous=delta;
+                const double absoluteDelta=diffRmsDb(dryRef,wet);
+                const double amountDelta=diffRmsDb(moduleBase,wet);
+                const double wetRmsDb=20.0*std::log10(std::max(rms(wet),1e-15)/std::max(rms(dryRef),1e-15));
+                std::cout<<m.name<<" "<<int(amount*100)
+                         <<"% absolute="<<absoluteDelta
+                         <<" dBFSrel amount-from-base="<<amountDelta
+                         <<" dBFSrel level="<<wetRmsDb<<" dB\n";
+                if(!std::isfinite(absoluteDelta)||!std::isfinite(amountDelta)||!std::isfinite(wetRmsDb))ok=false;
+                // Absolute impact remains measured against true module-OFF dry.
+                if(amount==0.25 && absoluteDelta<-42.0) ok=false;
+                if(amount==0.50 && absoluteDelta<-34.0) ok=false;
+                if(amount==0.75 && absoluteDelta<-28.0) ok=false;
+                if(amount==1.00 && absoluteDelta<-24.0) ok=false;
+                // Control travel itself must progress relative to the enabled
+                // module's deliberate 0 % base character.
+                if(amountDelta+0.25<previousAmountDelta) ok=false;
+                previousAmountDelta=amountDelta;
             }
         }
         // Character controls must not be cosmetic: their endpoints should create
