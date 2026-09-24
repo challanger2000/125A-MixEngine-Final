@@ -108,11 +108,16 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
 
     // Real causal variable-delay transport modulation. The base delay makes
     // the read position causal; V3 live integration must report/align it.
-    const double maxDepthMs=0.10+0.42*std::pow(instability,1.35);
-    const double baseMs=0.15+maxDepthMs;
+    // Keep the transport delay bounded to a fixed sample budget so the research
+    // model cannot silently exceed the plug-in's declared latency. The eventual
+    // live integration must align this explicitly with kFixedLatencySamples.
+    const double maxDelaySamples=std::min(18.0, sampleRate*0.000375);
+    const double minDelaySamples=2.0;
+    const double excursion=(1.0-std::exp(-2.2*instability))*(maxDelaySamples-minDelaySamples)*0.46;
+    const double center=minDelaySamples+excursion;
     const double modulation=0.78*std::sin(s.wowPhase)+0.22*std::sin(s.flutterPhase);
-    const double delayMs=baseMs+maxDepthMs*modulation;
-    const double transported=readTransport(s,delayMs*0.001*sampleRate);
+    const double delaySamples=std::clamp(center+excursion*modulation,minDelaySamples,maxDelaySamples);
+    const double transported=readTransport(s,delaySamples);
 
     // Program-dependent compression before magnetics.
     const double attack=std::exp(-1.0/(0.001*2.2*sampleRate));
@@ -124,26 +129,30 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     const double comp=1.0/(1.0+(0.85+0.55*a)*a*over);
     const double compressed=transported*comp;
 
-    // Bias + stateful magnetic memory. The current sample and slowly moving
-    // magnetic state both influence the nonlinear operating point.
+    // Bias + stateful magnetic stage. Crucially, the primary nonlinear
+    // operation itself lives inside the oversampling island.
     const double drive=1.0+(ch.saturationDrive-1.0)*(0.25+0.75*a)+0.35*creative;
     const double bias=ch.bias*a;
-    const double target=std::tanh(drive*compressed+bias+0.24*a*s.magnetic);
-    const double memoryRate=0.16+0.28*a;
-    s.magnetic+=memoryRate*(target-s.magnetic);
-    const double centered=std::tanh(bias);
-    const double slope=std::max(1.0e-9,drive*(1.0-centered*centered));
-    double magnetic=(target-centered)/slope;
-    magnetic+=ch.asymmetry*a*(compressed*std::abs(compressed))/(1.0+0.7*compressed*compressed);
-    magnetic+=0.12*a*(s.magnetic-target);
 
-    // Only the nonlinear magnetic stage is oversampled.
     osFactor=OversamplingEngine::sanitiseFactor(osFactor);
     if(s.oversamplingFactor!=osFactor){s.oversampler.reset();s.oversamplingFactor=osFactor;}
-    const double nonlinear=s.oversampler.process(magnetic,osFactor,[&](double v){
-        const double d=1.0+0.65*a+0.45*creative;
-        const double norm=std::tanh(d);
-        return norm>1.0e-12?std::tanh(v*d)/norm:v;
+
+    // Convert the base-rate memory coefficient to an oversampled-rate
+    // coefficient that preserves approximately the same time constant.
+    const double baseMemoryRate=0.16+0.28*a;
+    const double osMemoryRate=1.0-std::pow(std::max(1.0e-12,1.0-baseMemoryRate),1.0/static_cast<double>(osFactor));
+
+    const double nonlinear=s.oversampler.process(compressed,osFactor,[&](double v){
+        const double target=std::tanh(drive*v+bias+0.24*a*s.magnetic);
+        s.magnetic+=osMemoryRate*(target-s.magnetic);
+        const double centered=std::tanh(bias);
+        const double slope=std::max(1.0e-9,drive*(1.0-centered*centered));
+        double y=(target-centered)/slope;
+        y+=ch.asymmetry*a*(v*std::abs(v))/(1.0+0.7*v*v);
+        y+=0.10*a*(s.magnetic-target);
+        const double finalDrive=1.0+0.45*a+0.30*creative;
+        const double norm=std::tanh(finalDrive);
+        return norm>1.0e-12?std::tanh(y*finalDrive)/norm:y;
     });
 
     // Speed-dependent HF loss after the magnetic stage.
