@@ -83,14 +83,14 @@ jobs:
           Copy-Item $mix.FullName "$root/VST3/125A-MixEngine-V3.vst3" -Recurse
           Copy-Item $channel.FullName "$root/VST3/125A-MixEngine-V3-Channel.vst3" -Recurse
 
-          @"
-125A MixEngine V3 v3.0.0 Release Candidate
-Windows x64 / VST3
-
-This RC is intentionally package-only.
-Documentation is not included yet because V3 manuals and final release notes are still pending.
-The V3 bundles use distinct class IDs and bundle names so they can coexist with the stable version.
-"@ | Set-Content "$root/RC_README.txt" -Encoding UTF8
+          @(
+            "125A MixEngine V3 v3.0.0 Release Candidate",
+            "Windows x64 / VST3",
+            "",
+            "This RC is intentionally package-only.",
+            "Documentation is not included yet because V3 manuals and final release notes are still pending.",
+            "The V3 bundles use distinct class IDs and bundle names so they can coexist with the stable version."
+          ) | Set-Content "$root/RC_README.txt" -Encoding UTF8
 
           $checksums = Get-ChildItem "$root" -Recurse -File | Sort-Object FullName | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
