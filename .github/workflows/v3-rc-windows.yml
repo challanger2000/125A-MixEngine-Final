@@ -1,0 +1,119 @@
+name: V3 Windows RC
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rc:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
+
+      - name: Build V3 plugins and validator
+        shell: pwsh
+        run: cmake --build build --config Release --target 125A-MixEngine-V3 125A-MixEngine-V3-Channel validator
+
+      - name: Validate V3 Channel
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3" | Select-Object -First 1
+          if (-not $validator) { throw "validator.exe not found" }
+          if (-not $channel) { throw "125A-MixEngine-V3-Channel.vst3 not found" }
+          & $validator.FullName $channel.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg validator failed with exit $LASTEXITCODE" }
+
+      - name: Verify V3 RC identity against stable main
+        shell: pwsh
+        run: |
+          $ids = Get-Content "source/pluginids.h" -Raw
+          $stableIds = git show origin/main:source/pluginids.h
+          $stableMixFactory = git show origin/main:source/factory.cpp
+          $stableChannelFactory = git show origin/main:source/factory_channel.cpp
+          $mixFactory = Get-Content "source/factory.cpp" -Raw
+          $channelFactory = Get-Content "source/factory_channel.cpp" -Raw
+          $cmake = Get-Content "CMakeLists.txt" -Raw
+
+          if (-not $cmake.Contains("project(MixEngine VERSION 3.0.0")) { throw "RC project version is not 3.0.0" }
+          if (-not $mixFactory.Contains('"125A MixEngine V3"')) { throw "RC Mix FX class name is wrong" }
+          if (-not $channelFactory.Contains('"125A MixEngine V3 Channel"')) { throw "RC Channel class name is wrong" }
+
+          $uidPattern = 'FUID\s+\w+\s*\(([^\)]+)\)'
+          $stableUidMatches = [regex]::Matches(($stableIds -join "`n"), $uidPattern)
+          $v3UidMatches = [regex]::Matches($ids, $uidPattern)
+          if ($stableUidMatches.Count -lt 4 -or $v3UidMatches.Count -lt 4) { throw "Expected four class IDs in stable and V3" }
+          $stableUids = @($stableUidMatches | ForEach-Object { $_.Groups[1].Value.Replace(" ","") })
+          $v3Uids = @($v3UidMatches | ForEach-Object { $_.Groups[1].Value.Replace(" ","") })
+          foreach ($uid in $v3Uids) {
+            if ($stableUids -contains $uid) { throw "V3 UID collision with stable main: $uid" }
+          }
+
+          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3" | Select-Object -First 1
+          if (-not $mix -or -not $channel) { throw "V3 bundle names missing" }
+          Write-Host "V3 RC identity/coexistence PASS"
+
+      - name: Package exact V3 RC artifacts
+        shell: pwsh
+        run: |
+          $root = "dist/125A-MixEngine-V3-v3.0.0-Windows-x64-RC"
+          $zip = "dist/125A-MixEngine-V3-v3.0.0-Windows-x64-RC.zip"
+          if (Test-Path dist) { Remove-Item dist -Recurse -Force }
+          New-Item -ItemType Directory -Path "$root/VST3" -Force | Out-Null
+
+          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3" | Select-Object -First 1
+          if (-not $mix -or -not $channel) { throw "Built V3 bundles missing" }
+
+          Copy-Item $mix.FullName "$root/VST3/125A-MixEngine-V3.vst3" -Recurse
+          Copy-Item $channel.FullName "$root/VST3/125A-MixEngine-V3-Channel.vst3" -Recurse
+
+          @"
+125A MixEngine V3 v3.0.0 Release Candidate
+Windows x64 / VST3
+
+This RC is intentionally package-only.
+Documentation is not included yet because V3 manuals and final release notes are still pending.
+The V3 bundles use distinct class IDs and bundle names so they can coexist with the stable version.
+"@ | Set-Content "$root/RC_README.txt" -Encoding UTF8
+
+          $checksums = Get-ChildItem "$root" -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $relative = $_.FullName.Substring((Resolve-Path $root).Path.Length + 1).Replace('\','/')
+            "$hash  $relative"
+          }
+          $checksums | Set-Content "$root/CHECKSUMS_SHA256.txt" -Encoding ASCII
+
+          Compress-Archive -Path "$root/*" -DestinationPath $zip -CompressionLevel Optimal
+          Expand-Archive -Path $zip -DestinationPath "dist/extracted" -Force
+          foreach ($required in @(
+            "dist/extracted/VST3/125A-MixEngine-V3.vst3",
+            "dist/extracted/VST3/125A-MixEngine-V3-Channel.vst3",
+            "dist/extracted/RC_README.txt",
+            "dist/extracted/CHECKSUMS_SHA256.txt"
+          )) {
+            if (-not (Test-Path $required)) { throw "Extracted RC missing: $required" }
+          }
+          Write-Host "V3 RC package/extraction PASS"
+
+      - name: Upload V3 RC
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.0-Windows-x64-RC
+          path: dist/125A-MixEngine-V3-v3.0.0-Windows-x64-RC.zip
+          if-no-files-found: error
