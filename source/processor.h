@@ -6,6 +6,7 @@
 #include "oversampling.h"
 #include "latency_alignment.h"
 #include "tape_v3_model.h"
+#include "tube_v3_model.h"
 #include "metering.h"
 #include "meter_exchange.h"
 #include "stereo_field.h"
@@ -74,6 +75,7 @@ private:
     static constexpr int kMaxMixFxChannels = 128;
 #endif
     struct ConsoleChannelState { double dcX1=0.0,dcY1=0.0,lowMemory=0.0,transformerMemory=0.0,noiseMemory=0.0; std::uint32_t noiseRng=0; };
+    struct TubeChannelState { V3Research::TubeV3State v3{}; };
     struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; V3Research::TapeV3State v3{}; };
     struct GlueChannelState { double envelope=0.0; };
     struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; };
@@ -87,7 +89,7 @@ private:
     void sendMeterExchange(double vuL, double vuR, double clipL, double clipR,
                            Steinberg::int32 numSamples);
     double processConsoleSample(double x, ConsoleChannelState& state, int sourceIndex, int lane, int mode, double drive, int osFactor, double noiseAmount, double calibrationNorm);
-    double processTubeSample(double x, double typeMorph, double amount) const;
+    double processTubeSample(double x, TubeChannelState& state, double typeMorph, double amount, int osFactor);
     double processTapeSample(double x, TapeChannelState& state, int sourceIndex, int lane, double speedMorph, double amount, double stability, int osFactor, double noiseAmount, double calibrationNorm);
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
     double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear, int osFactor, double noiseAmount, double calibrationNorm);
@@ -108,7 +110,9 @@ private:
     std::array<double,kMaxMixFxChannels> mixFxTapeSpeedMorphState_{};
     std::array<double,kMaxMixFxChannels> mixFxTubeCompGainState_{};
     std::array<ConsoleChannelState,kMaxAudioChannels> consoleState_{};
+    std::array<TubeChannelState,kMaxAudioChannels> tubeState_{};
     std::array<std::array<ConsoleChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleState_{};
+    std::array<std::array<TubeChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxTubeState_{};
     std::array<TapeChannelState,kMaxAudioChannels> tapeState_{};
     std::array<std::array<TapeChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxTapeState_{};
     std::array<GlueChannelState,kMaxAudioChannels> glueState_{};

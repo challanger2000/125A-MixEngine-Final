@@ -179,7 +179,7 @@ tresult PLUGIN_API Processor::setActive(TBool state){
 tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;if(p&&!processing_)resetConsoleState();processing_=p;return kResultOk;}
 
 void Processor::resetConsoleState(){
- for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
+ for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s={};for(auto&source:mixFxTubeState_)for(auto&s:source)s={};for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
  for(auto&s:consoleOversampling_)s.reset();for(auto&source:mixFxConsoleOversampling_)for(auto&s:source)s.reset();
  consoleOversamplingFactor_.fill(1);for(auto&source:mixFxConsoleOversamplingFactor_)source.fill(1);
  for(auto&s:nonlinearOversampling_)s.reset();for(auto&source:mixFxNonlinearOversampling_)for(auto&s:source)s.reset();
@@ -243,7 +243,7 @@ void Processor::publishMeterParameters(IParameterChanges* changes,double vuL,dou
 }
 double Processor::dcBlock(double x,ConsoleChannelState& state){const double y=x-state.dcX1+dcCoeff_*state.dcY1;state.dcX1=x;state.dcY1=y;return y;}
 double Processor::processConsoleSample(double x,ConsoleChannelState& state,int sourceIndex,int lane,int mode,double drive,int osFactor,double noiseAmount,double calibrationNorm){const double d=std::clamp(drive,0.0,1.0),variation=stableVariation(sourceIndex,lane),tolerance=1.0+0.008*variation*d,bias=0.0015*variation;x=x*tolerance+bias*d;if(mode==2&&d>0.0){const double magneticDrive=1.35+0.95*d,target=std::tanh(magneticDrive*x+0.24*d*state.transformerMemory),memoryCoeff=0.20+0.16*d;state.transformerMemory+=memoryCoeff*(target-state.transformerMemory);const double staticMag=std::tanh(magneticDrive*x),hysteresis=state.transformerMemory-staticMag;x+=0.16*d*hysteresis;}else state.transformerMemory*=0.995;state.lowMemory+=lowCoeff_*(x-state.lowMemory);const double low=state.lowMemory,high=x-state.lowMemory;OversamplingEngine* engine=nullptr;int* currentFactor=nullptr;const int factor=OversamplingEngine::sanitiseFactor(osFactor);if(mixFxEngaged_){engine=&mixFxConsoleOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];currentFactor=&mixFxConsoleOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{engine=&consoleOversampling_[static_cast<std::size_t>(lane)];currentFactor=&consoleOversamplingFactor_[static_cast<std::size_t>(lane)];}double y=x;if(d>0.0){y=processConsoleOversampledCore(*engine,*currentFactor,factor,x,low,high,mode,drive);y=dcBlock(y,state);}else{state.dcX1=x;state.dcY1=x;}noiseAmount=std::clamp(noiseAmount,0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xC01150E1u);const double white=randomBipolar(state.noiseRng),coeff=1.0-std::exp(-2.0*kPi*6500.0/sampleRate_);state.noiseMemory+=coeff*(white-state.noiseMemory);const double colored=0.72*white+0.28*state.noiseMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0;y+=colored*0.00025*n*sourceScale*calibrationNorm;}return y;}
-double Processor::processTubeSample(double x,double typeMorph,double amount)const{return processTubeNonlinearCore(x,typeMorph,amount);}
+double Processor::processTubeSample(double x,TubeChannelState& state,double typeMorph,double amount,int osFactor){return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);}
 double Processor::processTapeSample(double x,TapeChannelState& state,int sourceIndex,int lane,double speedMorph,double amount,double stability,int osFactor,double noiseAmount,double calibrationNorm){
  const double a=std::clamp(amount,0.0,1.0);
  if(a<=0.0)return x;
@@ -561,18 +561,9 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
    l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;
   }
   if(tubeOn&&tubeAmount>0.0){
-   auto& engines=mixFxNonlinearOversampling_[static_cast<std::size_t>(index)];
-   auto& factors=mixFxNonlinearOversamplingFactor_[static_cast<std::size_t>(index)];
-   if(factors[0]!=osFactor){engines[0].reset();factors[0]=osFactor;}
-   l=engines[0].process(l*calibrationGain,osFactor,[&](double v){
-    return processTubeSample(v,tubeType,tubeAmount);
-   })*calibrationReturn*tubeGain;
-   if(stereo){
-    if(factors[1]!=osFactor){engines[1].reset();factors[1]=osFactor;}
-    r=engines[1].process(r*calibrationGain,osFactor,[&](double v){
-     return processTubeSample(v,tubeType,tubeAmount);
-    })*calibrationReturn*tubeGain;
-   }else r=l;
+   auto& states=mixFxTubeState_[static_cast<std::size_t>(index)];
+   l=processTubeSample(l*calibrationGain,states[0],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain;
+   r=stereo?processTubeSample(r*calibrationGain,states[1],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain:l;
   }
   if(tapeOn){
    auto& states=mixFxTapeState_[static_cast<std::size_t>(index)];
@@ -812,22 +803,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;
         }
         if(tubeOn&&tubeAmount>0.0){
-            if(nonlinearOversamplingFactor_[0]!=osFactor){
-                nonlinearOversampling_[0].reset();
-                nonlinearOversamplingFactor_[0]=osFactor;
-            }
-            l=nonlinearOversampling_[0].process(l*calibrationGain,osFactor,[&](double v){
-                return processTubeSample(v,tubeType,tubeAmount);
-            })*calibrationReturn*tubeGain;
-            if(stereo){
-                if(nonlinearOversamplingFactor_[1]!=osFactor){
-                    nonlinearOversampling_[1].reset();
-                    nonlinearOversamplingFactor_[1]=osFactor;
-                }
-                r=nonlinearOversampling_[1].process(r*calibrationGain,osFactor,[&](double v){
-                    return processTubeSample(v,tubeType,tubeAmount);
-                })*calibrationReturn*tubeGain;
-            }else r=l;
+            l=processTubeSample(l*calibrationGain,tubeState_[0],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain;
+            r=stereo?processTubeSample(r*calibrationGain,tubeState_[1],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain:l;
         }
         if(tapeOn){
             l=processTapeSample(l*calibrationGain,tapeState_[0],0,0,tapeSpeed,tapeAmount,tapeStability,osFactor,tapeHiss,calibrationGain)*calibrationReturn*tapeGain;
