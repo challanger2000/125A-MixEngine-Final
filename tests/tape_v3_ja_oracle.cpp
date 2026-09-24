@@ -1,5 +1,5 @@
 #include "tape_v3_ja_oracle.h"
-#include <algorithm>
+#include <algorithm>\n#include <array>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -16,15 +16,15 @@ OracleRender render(double baseRate,double freq,double amp,double biasGain,int o
     const double osRate=baseRate*os;
     MixEngine::V3Research::JilesAthertonOracle ja;
     const auto& p=ja.parameters();
-    const double hScale=2.5e5;
+    // Paper gives approximately 5e5 A/m peak-to-peak at the record head.\n    // With bias gain 5, 5e4 A/m per normalized input unit keeps the combined\n    // field in that documented order of magnitude.\n    const double hScale=5.0e4;
     const double biasFreq=55000.0;
     double phase=0.0;
     double previous=0.0;
-    double lp=0.0;
-    const double lpCoeff=1.0-std::exp(-2.0*pi*24000.0/osRate);
 
     const int baseSamples=32768;
-    OracleRender r; r.y.resize(baseSamples);
+    std::vector<double> osMag(static_cast<std::size_t>(baseSamples*os));
+    double maxAbsM=0.0;
+    std::size_t write=0;
     for(int n=0;n<baseSamples;++n){
         const double x=amp*std::sin(2.0*pi*freq*n/baseRate);
         for(int s=0;s<os;++s){
@@ -34,11 +34,50 @@ OracleRender render(double baseRate,double freq,double amp,double biasGain,int o
             phase+=2.0*pi*biasFreq/osRate;
             if(phase>=2.0*pi)phase-=2.0*pi;
             const double M=ja.processField(hScale*(audio+bias),osRate);
-            if(!std::isfinite(M)){r.finite=false;return r;}
-            lp+=lpCoeff*((M/p.Ms)-lp);
+            if(!std::isfinite(M)){OracleRender bad;bad.finite=false;return bad;}
+            maxAbsM=std::max(maxAbsM,std::abs(M));
+            osMag[write++]=M/p.Ms;
         }
         previous=x;
-        r.y[n]=lp;
+    }
+
+    // Physical plausibility gate: an integration that runs to enormous finite
+    // values is still a failed oracle. Allow modest dynamic overshoot, not runaway.
+    if(maxAbsM>2.0*p.Ms){OracleRender bad;bad.finite=false;return bad;}
+
+    // Offline Blackman-windowed sinc decimator. The oracle contains 55 kHz AC
+    // bias, so a one-pole followed by naive sample dropping is not a valid
+    // reference path. This FIR keeps the research oracle deliberately expensive
+    // and clean; it is not intended for the realtime plug-in.
+    constexpr int taps=513;
+    constexpr double cutoffHz=20000.0;
+    std::array<double,taps> h{};
+    const int mid=(taps-1)/2;
+    double hSum=0.0;
+    for(int i=0;i<taps;++i){
+        const int m=i-mid;
+        const double fc=cutoffHz/osRate;
+        const double sinc=(m==0)?(2.0*fc):(std::sin(2.0*pi*fc*m)/(pi*m));
+        const double w=0.42-0.5*std::cos(2.0*pi*i/(taps-1))
+                          +0.08*std::cos(4.0*pi*i/(taps-1));
+        h[static_cast<std::size_t>(i)]=sinc*w;
+        hSum+=h[static_cast<std::size_t>(i)];
+    }
+    for(auto& v:h)v/=hSum;
+
+    OracleRender r; r.y.assign(baseSamples,0.0);
+    for(int n=0;n<baseSamples;++n){
+        const long long center=static_cast<long long>(n*os)+mid;
+        long double acc=0.0;
+        for(int k=0;k<taps;++k){
+            const long long idx=center+k-mid;
+            if(idx>=0 && idx<static_cast<long long>(osMag.size()))
+                acc+=static_cast<long double>(osMag[static_cast<std::size_t>(idx)])*h[static_cast<std::size_t>(k)];
+        }
+        r.y[static_cast<std::size_t>(n)]=static_cast<double>(acc);
+        if(!std::isfinite(r.y[static_cast<std::size_t>(n)])||std::abs(r.y[static_cast<std::size_t>(n)])>2.0){
+            r.finite=false;return r;
+        }
     }
     return r;
 }
@@ -95,8 +134,8 @@ int main(){
              <<" bias5="<<rBias
              <<" hot residual="<<rHot<<"\n";
 
-    if(!(fLow>1.0e-6&&fHot>fLow)) ok=false;
-    if(!(rHot>rBias)) ok=false;
+    if(!(fLow>1.0e-5&&fHot>fLow*2.0)) ok=false;
+    if(!(rNoBias<0.01&&rBias<0.10&&rHot>rBias*2.0)) ok=false;
 
     // Direct hysteresis-loop area check without bias/playback filtering.
     MixEngine::V3Research::JilesAthertonOracle ja;
