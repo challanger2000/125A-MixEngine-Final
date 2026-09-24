@@ -218,3 +218,6 @@ target_include_directories(console-v3-correction-adaa-diagnostic PRIVATE "${CMAK
 
 add_executable(console-v3-residual-adaa-diagnostic tests/console_v3_residual_adaa.cpp source/console_v3_adaa.h source/console_v3_model.h)
 target_include_directories(console-v3-residual-adaa-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(console-v3-correction-adaa2-diagnostic tests/console_v3_correction_adaa2.cpp source/console_v3_adaa.h source/console_v3_model.h)
+target_include_directories(console-v3-correction-adaa2-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
