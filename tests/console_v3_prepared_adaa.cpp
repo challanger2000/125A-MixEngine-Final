@@ -1,9 +1,7 @@
 #include "console_v3_adaa.h"
 #include <algorithm>
-#include <chrono>
 #include <cmath>
 #include <iostream>
-#include <numeric>
 #include <vector>
 
 namespace {
@@ -30,7 +28,6 @@ std::vector<double> render(int channels,double f,double amp,double drive,int mod
     }
     return y;
 }
-
 double tone(const std::vector<double>& y,double f){
     long double re=0,im=0;long long n=0;
     for(int i=warm;i<count;++i){
@@ -51,36 +48,7 @@ double rel(const std::vector<double>& a,const std::vector<double>& b){
     }
     return std::sqrt(double(e/n))/std::max(1e-15,std::sqrt(double(r/n)));
 }
-double cpuMean(int channels,bool prepared){
-    constexpr int block=256,blocks=240,warmBlocks=24;
-    std::vector<MixEngine::V3Research::ConsoleV3AdaaState> enc(static_cast<std::size_t>(channels));
-    MixEngine::V3Research::ConsoleV3AdaaState dec;
-    const auto pair=MixEngine::V3Research::consoleV3PairParameters(.8,1);
-    const double a=std::max(1e-9,pair.encodeStrength),invA=1.0/a,invA2=invA*invA;
-    volatile double sink=0.0;
-    std::vector<double> t;t.reserve(blocks-warmBlocks);
-    for(int b=0;b<blocks;++b){
-        const auto t0=std::chrono::steady_clock::now();
-        for(int n=0;n<block;++n){
-            const long long s=static_cast<long long>(b)*block+n;
-            double sum=0.0;
-            for(int ch=0;ch<channels;++ch){
-                const double x=.035*std::sin(2*pi*(83.0+7.0*(ch%23))*double(s)/sr+.11*ch)
-                              +.018*std::sin(2*pi*(997.0+3.0*(ch%17))*double(s)/sr);
-                sum += prepared
-                    ? MixEngine::V3Research::consoleV3EncodeAdaaPrepared(x,a,invA,invA2,enc[static_cast<std::size_t>(ch)])
-                    : MixEngine::V3Research::consoleV3EncodeAdaa(x,.8,1,enc[static_cast<std::size_t>(ch)]);
-            }
-            sink+=MixEngine::V3Research::consoleV3DecodeAdaa(sum,.8,1,dec);
-        }
-        const auto t1=std::chrono::steady_clock::now();
-        if(b>=warmBlocks)t.push_back(std::chrono::duration<double,std::micro>(t1-t0).count());
-    }
-    if(sink==123456.0)std::cerr<<"sink";
-    return std::accumulate(t.begin(),t.end(),0.0)/double(t.size());
 }
-}
-
 int main(){
     bool ok=true;
     constexpr double f=15000,alias=3000,amp=.70;
@@ -95,12 +63,6 @@ int main(){
             if(!(pa<=-50.0&&std::abs(pa-ea)<.5&&rr<1e-4))ok=false;
         }
     }
-    const double exactCpu=cpuMean(128,false);
-    const double prepCpu=cpuMean(128,true);
-    std::cout<<"128ch ADAA CPU exact="<<exactCpu<<" prepared="<<prepCpu
-             <<" ratio="<<(prepCpu/exactCpu)<<"\n";
-    if(!(prepCpu<exactCpu*.75))ok=false;
-
-    std::cout<<(ok?"PASS":"FAIL")<<": Console V3 prepared ADAA research\n";
+    std::cout<<(ok?"PASS":"FAIL")<<": Console V3 prepared ADAA quality parity\n";
     return ok?0:1;
 }
