@@ -102,9 +102,25 @@ inline double consoleAutoGain(int mode, double drive) {
     return slopeComp * dbToGain(5.8 * d);
 }
 inline double tubeAutoGain(double typeMorph, double amount) {
-    const double a = std::clamp(amount,0.0,1.0); if (a<=0.0) return 1.0;
-    const double e=a*(1.35-0.35*a)+0.24*creativeZone(a);
-    return dbToGain(-tubeCharacter(typeMorph).autoGainDb*e*e);
+    const double a=std::clamp(amount,0.0,1.0);
+    if(a<=0.0)return 1.0;
+
+    struct C { double c1,c2,c3; };
+    // V3 measured live-engine fits. Each curve is constrained to 0 dB at
+    // Amount=0 and fitted from 25/50/75/100 % measurements. Coefficients are
+    // morphed using the same Soft -> Balanced -> Hot topology as Tube Voice.
+    static constexpr C soft{0.73901432,1.81851961,-1.21637206};
+    static constexpr C balanced{0.79828757,0.85257396,-0.86844441};
+    static constexpr C hot{0.92212008,-0.20015871,-0.40066607};
+    const double q=2.0*std::clamp(typeMorph,0.0,1.0);
+    const bool upper=q>=1.0;
+    const double m=upper?q-1.0:q;
+    const C& lo=upper?balanced:soft;
+    const C& hi=upper?hot:balanced;
+    const auto L=[m](double x,double y){return x+(y-x)*m;};
+    const double c1=L(lo.c1,hi.c1),c2=L(lo.c2,hi.c2),c3=L(lo.c3,hi.c3);
+    const double makeupDb=c1*a+c2*a*a+c3*a*a*a;
+    return dbToGain(makeupDb);
 }
 inline double tapeAutoGain(double amount){
     const double a=std::clamp(amount,0.0,1.0);

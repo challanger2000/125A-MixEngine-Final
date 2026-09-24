@@ -72,8 +72,18 @@ int main(){
    finiteAll&=std::isfinite(db);
   }
  }
- // Measurement pass: only finiteness is gated. The next commit replaces the
- // old V2 compensation and will tighten this to a level-match acceptance band.
- std::cout<<(finiteAll?"PASS":"FAIL")<<": Tube V3 auto-level measurement grid\n";
- return finiteAll?0:1;
+ // V3 acceptance: this fixed fixture must stay tightly level matched across
+ // all three voices and the complete musical Amount range.
+ // The processor is program-dependent, so this is a calibration regression,
+ // not a claim of mathematically exact loudness matching for every signal.
+ bool ok=finiteAll;
+ for(double type:{0.0,0.5,1.0}){
+  for(double amount:{0.25,0.5,0.75,1.0}){
+   const double r=rms(render(type,amount,true));
+   const double db=20.0*std::log10(std::max(r,1e-15)/std::max(dry,1e-15));
+   if(std::abs(db)>0.25)ok=false;
+  }
+ }
+ std::cout<<(ok?"PASS":"FAIL")<<": Tube V3 auto-level calibration\n";
+ return ok?0:1;
 }
