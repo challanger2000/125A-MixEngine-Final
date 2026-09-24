@@ -43,22 +43,16 @@ int main(){
             return 4;
         }
 
-        IPlugView* view=controller->createView(ViewType::kEditor);
-        if(!view){
-            std::cerr<<"Editor object creation failed at cycle "<<cycle<<"\n";
-            controller->terminate();
-            controller->release();
-            return 5;
-        }
-        view->release();
-
+        // Do not create/open the VSTGUI editor in this headless executable.
+        // VST3Editor requires a real host/frame context; forcing it here is an
+        // invalid harness and can crash independently of the plugin lifecycle.
         if(controller->terminate()!=kResultOk){
             std::cerr<<"Controller terminate failed at cycle "<<cycle<<"\n";
             controller->release();
-            return 6;
+            return 5;
         }
         controller->release();
     }
-    std::cout<<"PASS: controller/editor object lifecycle x32\n";
+    std::cout<<"PASS: controller lifecycle x32\n";
     return 0;
 }
