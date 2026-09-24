@@ -37,7 +37,7 @@ std::vector<double> render(bool mixFx,double quality,int mask){
     setup.sampleRate=kSr;
     if(processor->setupProcessing(setup)!=kResultOk)throw 20;
     if(processor->setProcessing(true)!=kResultOk)throw 21;
-    if(processor->getLatencySamples()!=MixEngine::kFixedLatencySamples)throw 22;
+    if(processor->getLatencySamples()!=MixEngine::v3ReportedLatencySamples(kSr))throw 22;
 
     if(mixFx){
         SpeakerArrangement arrangement=SpeakerArr::kMono;
@@ -205,7 +205,7 @@ int main(){
             return 1;
         }
         std::cout<<"Processor latency/phase matrix PASSED: 64 quality/path/module comparisons with exact Channel/MixFX parity, fixed host latency="
-                 <<MixEngine::kFixedLatencySamples
+                 <<MixEngine::v3ReportedLatencySamples(kSr)
                  <<" samples, residual minimum-phase correlation lag bounded to +/-2 samples\n";
         return 0;
     }catch(int code){

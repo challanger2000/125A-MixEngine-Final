@@ -36,7 +36,7 @@ int runBypassImpulse(bool mixFx, int32 sampleSize, int channels, int blockSize) 
     setup.sampleRate = 48000.0;
     if (processor->setupProcessing(setup) != kResultOk) throw 20;
     if (processor->setProcessing(true) != kResultOk) throw 21;
-    if (processor->getLatencySamples() != MixEngine::kFixedLatencySamples) throw 22;
+    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(48000.0)) throw 22;
     if (processor->canProcessSampleSize(sampleSize) != kResultTrue) throw 23;
 
     if (mixFx) {
@@ -246,8 +246,8 @@ int main(){
                     const int p64=runBypassImpulse<double>(mixFx,kSample64,channels,block);
                     std::cout<<(mixFx?"MixFX":"Channel")<<" bypass ch="<<channels
                              <<" block="<<block<<" peak32="<<p32<<" peak64="<<p64<<"\n";
-                    ok=ok && p32==MixEngine::kFixedLatencySamples
-                          && p64==MixEngine::kFixedLatencySamples;
+                    ok=ok && p32==MixEngine::v3ReportedLatencySamples(48000.0)
+                          && p64==MixEngine::v3ReportedLatencySamples(48000.0);
                 }
             }
         }
