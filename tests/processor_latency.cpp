@@ -150,10 +150,10 @@ int main() {
         if (!expectReported("linear", {})) return 1;
         if (!expectReported("bypass", {{MixEngine::kParamBypass,1.0}})) return 2;
 
-        // Zero-intensity enabled modules stay neutral, but the plugin keeps one
-        // fixed V3 host-latency contract that includes the nominal tape transport
-        // budget. Bypass and every zero-effect configuration must land on that
-        // same reported sample index.
+        // Enabled V3 character modules retain a subtle base character even at a
+        // displayed 0 %, while the plugin keeps one fixed host-latency contract.
+        // The impulse shape/amplitude may therefore change; its dominant peak
+        // must still land on the same reported sample index.
         if (!expectReported("tube-on-amount-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamTubeOn,1.0},
@@ -169,7 +169,7 @@ int main() {
                        {MixEngine::kParamVinylOn,1.0},
                        {MixEngine::kParamVinylCharacter,0.0},
                        {MixEngine::kParamVinylWear,0.0},
-                       {MixEngine::kParamVinylNoise,0.0}})) return 5;
+                       {MixEngine::kParamVinylNoise,0.0}},0.20)) return 5;
 
         std::cout << "Processor V3 fixed-latency integration PASS: " << MixEngine::v3ReportedLatencySamples(kSampleRate) << " samples\n";
         return 0;
