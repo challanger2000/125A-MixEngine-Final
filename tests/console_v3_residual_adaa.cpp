@@ -120,7 +120,10 @@ int main(){
     std::cout<<"128ch base mean/p99/max="<<baseCpu.mean<<"/"<<baseCpu.p99<<"/"<<baseCpu.max
              <<" residualADAA="<<adaaCpu.mean<<"/"<<adaaCpu.p99<<"/"<<adaaCpu.max
              <<" p99Ratio="<<(adaaCpu.p99/std::max(1e-9,baseCpu.p99))<<"\n";
-    if(!(adaaCpu.p99<baseCpu.p99*1.45))ok=false;
+    if(!(adaaCpu.p99<baseCpu.p99*1.45))productionQualified=false;
+    const double deadlineUs=1.0e6*256.0/48000.0;
+    if(!(std::isfinite(adaaCpu.mean)&&std::isfinite(adaaCpu.p99)&&std::isfinite(adaaCpu.max)
+         && adaaCpu.max<deadlineUs*0.50))ok=false;
     std::cout<<"Residual ADAA productionQualified="<<(productionQualified?"YES":"NO")
              <<" (expected NO unless quality exceeds the stronger candidate)\n";
     std::cout<<(ok?"PASS":"FAIL")<<": Console V3 residual ADAA measurement/stability diagnostic\n";
