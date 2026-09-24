@@ -377,16 +377,32 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
                           {cx+std::cos(a)*ro,cy+std::sin(a)*ro});
     }
 
-    // Thin champagne ring and deep graphite cap.
+    // Fine radial knurling around the skirt gives the knob a machined grip.
+    const int knurls=(style_==Style::Small)?18:28;
+    for(int i=0;i<knurls;++i){
+        const double a=2.0*kPi*static_cast<double>(i)/static_cast<double>(knurls);
+        const double r1=radius*0.83, r2=radius*0.94;
+        context->setFrameColor((i%2)==0?VSTGUI::CColor{205,209,214,44}:VSTGUI::CColor{4,5,7,80});
+        context->setLineWidth(0.8);
+        context->drawLine({cx+std::cos(a)*r1,cy+std::sin(a)*r1},
+                          {cx+std::cos(a)*r2,cy+std::sin(a)*r2});
+    }
+
+    // Champagne retaining ring and deep bakelite/graphite cap.
     const double ring=radius*0.67;
-    context->setFrameColor({188,153,87,220}); context->setLineWidth(1.4);
+    context->setFrameColor({176,145,89,205}); context->setLineWidth(1.5);
     context->drawEllipse({cx-ring,cy-ring,cx+ring,cy+ring},VSTGUI::kDrawStroked);
 
     const double cap=radius*0.58;
     const VSTGUI::CRect capRect(cx-cap,cy-cap,cx+cap,cy+cap);
-    fillRadialEllipse(context,capRect,{68,72,79,255},{12,14,17,255},{-cap*.32,-cap*.35});
+    fillRadialEllipse(context,capRect,
+                      style_==Style::Small?VSTGUI::CColor{58,61,67,255}:VSTGUI::CColor{66,69,75,255},
+                      {10,12,15,255},{-cap*.32,-cap*.35});
     context->setFrameColor({3,4,5,255}); context->setLineWidth(1.0);
     context->drawEllipse(capRect,VSTGUI::kDrawStroked);
+    VSTGUI::CRect capShoulder=capRect; capShoulder.inset(cap*.13,cap*.13);
+    context->setFrameColor({202,205,210,24}); context->setLineWidth(0.9);
+    context->drawEllipse(capShoulder,VSTGUI::kDrawStroked);
 
     // A restrained specular crescent prevents the cap from reading as a flat circle.
     context->setFrameColor({255,255,255,42}); context->setLineWidth(1.2);
@@ -451,10 +467,10 @@ void HardwareToggle::draw(VSTGUI::CDrawContext* context)
         const VSTGUI::CRect lr(x,y,x+d,y+d);
         if(on) {
             const auto c=lr.getCenter();
-            for(int n=3;n>=1;--n) {
-                const double grow=n*3.2;
-                context->setFillColor(blueLed_?VSTGUI::CColor{72,118,255,static_cast<uint8_t>(16*n)}
-                                                   :VSTGUI::CColor{68,220,104,static_cast<uint8_t>(14*n)});
+            for(int n=2;n>=1;--n) {
+                const double grow=n*2.6;
+                context->setFillColor(blueLed_?VSTGUI::CColor{72,118,255,static_cast<uint8_t>(13*n)}
+                                                   :VSTGUI::CColor{68,220,104,static_cast<uint8_t>(12*n)});
                 context->drawEllipse({lr.left-grow,lr.top-grow,lr.right+grow,lr.bottom+grow},VSTGUI::kDrawFilled);
             }
         }
@@ -464,19 +480,26 @@ void HardwareToggle::draw(VSTGUI::CDrawContext* context)
     };
 
     auto drawPush=[&](const VSTGUI::CRect& sw){
-        VSTGUI::CRect shadow=sw; shadow.offset(0.0,2.0);
-        fillRoundGradient(context,shadow,6.0,{3,4,6,230},{0,0,0,255});
-        fillRoundGradient(context,sw,6.0,
-                          on?VSTGUI::CColor{82,87,95,255}:VSTGUI::CColor{56,60,67,255},
-                          on?VSTGUI::CColor{28,31,36,255}:VSTGUI::CColor{18,21,25,255});
-        strokeRound(context,sw,6.0,on?VSTGUI::CColor{171,176,184,190}:VSTGUI::CColor{91,97,107,180},1.0);
-        VSTGUI::CRect inset=sw; inset.inset(4.0,4.0);
-        strokeRound(context,inset,4.0,{255,255,255,static_cast<uint8_t>(on?34:18)},1.0);
-        // Tiny centre datum, more like real hardware than printed I/O text.
-        const auto cc=sw.getCenter();
-        context->setFrameColor(on?kAccentGold:VSTGUI::CColor{94,98,104,170});
+        // Metal bezel + inset latching cap: visually closer to a studio hardware switch.
+        VSTGUI::CRect bezel=sw; bezel.inset(-2.0,-2.0);
+        VSTGUI::CRect shadow=bezel; shadow.offset(0.0,2.5);
+        fillRoundGradient(context,shadow,6.5,{2,3,4,210},{0,0,0,245});
+        fillRoundGradient(context,bezel,6.5,{96,101,109,255},{25,28,33,255});
+        strokeRound(context,bezel,6.5,{5,6,8,255},1.0);
+
+        VSTGUI::CRect cap=sw;
+        if(on) cap.offset(0.0,1.2);
+        fillRoundGradient(context,cap,5.0,
+                          on?VSTGUI::CColor{65,69,76,255}:VSTGUI::CColor{52,56,62,255},
+                          on?VSTGUI::CColor{22,25,30,255}:VSTGUI::CColor{16,19,23,255});
+        strokeRound(context,cap,5.0,on?VSTGUI::CColor{153,159,168,175}:VSTGUI::CColor{103,109,118,160},1.0);
+        VSTGUI::CRect inset=cap; inset.inset(4.0,4.0);
+        strokeRound(context,inset,3.5,{255,255,255,static_cast<uint8_t>(on?24:14)},1.0);
+
+        const auto cc=cap.getCenter();
+        context->setFrameColor(on?kAccentGold:VSTGUI::CColor{88,93,100,165});
         context->setLineWidth(1.5);
-        context->drawLine({cc.x-5.0,cc.y},{cc.x+5.0,cc.y});
+        context->drawLine({cc.x-5.5,cc.y},{cc.x+5.5,cc.y});
     };
 
     if(moduleLedAbove_){
@@ -518,12 +541,14 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
     VSTGUI::CRect shadow=r; shadow.offset(0.0,2.0);
-    fillRoundGradient(context,shadow,7.0,{2,3,5,220},{0,0,0,245});
-    fillRoundGradient(context,r,7.0,{38,42,48,255},{13,16,20,255});
-    strokeRound(context,r,7.0,{91,97,106,180},1.0);
+    fillRoundGradient(context,shadow,7.0,{2,3,5,200},{0,0,0,235});
+    fillRoundGradient(context,r,7.0,{83,88,96,255},{23,26,31,255});
+    strokeRound(context,r,7.0,{5,6,8,255},1.0);
 
     VSTGUI::CRect inner=r;
-    inner.inset(3.0,3.0);
+    inner.inset(3.5,3.5);
+    fillRoundGradient(context,inner,5.0,{16,19,23,255},{8,10,13,255});
+    strokeRound(context,inner,5.0,{116,122,131,78},1.0);
     const auto count=static_cast<int>(labels_.size());
     const auto selected=std::clamp(
         static_cast<int>(std::lround(getValueNormalized()*static_cast<double>(std::max(1,count-1)))),
@@ -549,10 +574,12 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
         face.inset(1.2,1.0);
 
         if(i==selected) {
-            fillRoundGradient(context,face,4.0,{88,70,44,255},{42,35,25,255});
-            strokeRound(context,face,4.0,{191,158,99,190},1.0);
+            VSTGUI::CRect selectedShadow=face; selectedShadow.offset(0.0,1.3);
+            fillRoundGradient(context,selectedShadow,4.0,{3,4,5,180},{0,0,0,220});
+            fillRoundGradient(context,face,4.0,{91,76,52,255},{47,39,28,255});
+            strokeRound(context,face,4.0,{181,151,97,180},1.0);
             VSTGUI::CRect glint=face; glint.inset(2.0,2.0); glint.bottom=glint.top+1.0;
-            context->setFillColor({255,237,190,55});
+            context->setFillColor({255,237,190,38});
             context->drawRect(glint,VSTGUI::kDrawFilled);
         } else {
             fillRoundGradient(context,face,4.0,{42,46,52,255},{23,26,31,255});
