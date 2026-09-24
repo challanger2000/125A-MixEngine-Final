@@ -234,3 +234,11 @@ target_include_directories(vinyl-v3-alias-diagnostic PRIVATE "${CMAKE_CURRENT_SO
 add_executable(vinyl-v3-live-diagnostic tests/vinyl_v3_live.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(vinyl-v3-live-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(vinyl-v3-live-diagnostic PRIVATE sdk)
+
+add_executable(vinyl-v3-autolevel-diagnostic tests/vinyl_v3_autolevel.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(vinyl-v3-autolevel-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(vinyl-v3-autolevel-diagnostic PRIVATE sdk)
+
+add_executable(vinyl-v3-cpu-diagnostic tests/vinyl_v3_cpu.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(vinyl-v3-cpu-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(vinyl-v3-cpu-diagnostic PRIVATE sdk)
