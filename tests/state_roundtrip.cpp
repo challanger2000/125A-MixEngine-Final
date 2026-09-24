@@ -69,17 +69,17 @@ int main(){
         expected[MixEngine::kParamTubeType]=0.5;
         expected[MixEngine::kParamMeterSource]=0.0;
 
-        MixEngine::Processor source;
-        applyAll(source,expected);
-        const auto saved=readState(source);
+        auto source=std::make_unique<MixEngine::Processor>();
+        applyAll(*source,expected);
+        const auto saved=readState(*source);
 
         MemoryStream transfer;
-        if(source.getState(&transfer)!=kResultOk)throw 40;
+        if(source->getState(&transfer)!=kResultOk)throw 40;
         if(transfer.seek(0,IBStream::kIBSeekSet,nullptr)!=kResultOk)throw 41;
 
-        MixEngine::Processor restored;
-        if(restored.setState(&transfer)!=kResultOk)throw 42;
-        const auto roundtrip=readState(restored);
+        auto restored=std::make_unique<MixEngine::Processor>();
+        if(restored->setState(&transfer)!=kResultOk)throw 42;
+        const auto roundtrip=readState(*restored);
 
         bool ok=true;
         double maxDiff=0.0;
