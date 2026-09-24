@@ -111,11 +111,13 @@ int main(){
         bool ok=true;
         for(const auto& m:modules){
             std::array<double,4> delta{};
+            const bool dynamic=std::string(m.name)=="Glue";
+            auto baseCfg=m.extra; baseCfg.push_back({m.on,1.0}); baseCfg.push_back({m.amount,0.0});
+            const auto moduleBase=render(baseCfg,dynamic);
             const std::array<double,4> amounts{{0.25,0.50,0.75,1.00}};
             for(std::size_t i=0;i<amounts.size();++i){
                 auto cfg=m.extra; cfg.push_back({m.on,1.0}); cfg.push_back({m.amount,amounts[i]});
-                const bool dynamic=std::string(m.name)=="Glue";
-                delta[i]=diffRmsDb(dynamic?dryDynamic:dry,render(cfg,dynamic));
+                delta[i]=diffRmsDb(moduleBase,render(cfg,dynamic));
             }
             const double midToMax=delta[3]-delta[1];
             const double upperStep=delta[3]-delta[2];
@@ -141,15 +143,19 @@ int main(){
             if(!std::isfinite(delta[3]) || delta[3] < -24.0) ok=false;
         }
 
-        // Fine-grained continuity scan: the audible change per 10% control
-        // movement may grow toward the top, but adjacent steps must not explode.
+        // Fine-grained continuity scan of the Amount control itself. Enabled
+        // modules have a deliberate base character at displayed 0 %, so all
+        // Amount-range measurements are relative to that ON+0 % reference,
+        // not to module OFF. This separates base character from control travel.
         for(const auto& m:modules){
             std::vector<double> fine;
+            const bool dynamic=std::string(m.name)=="Glue";
+            auto baseCfg=m.extra; baseCfg.push_back({m.on,1.0}); baseCfg.push_back({m.amount,0.0});
+            const auto moduleBase=render(baseCfg,dynamic);
             for(int step=1;step<=10;++step){
                 const double amount=0.1*step;
                 auto cfg=m.extra; cfg.push_back({m.on,1.0}); cfg.push_back({m.amount,amount});
-                const bool dynamic=std::string(m.name)=="Glue";
-                fine.push_back(diffRmsDb(dynamic?dryDynamic:dry,render(cfg,dynamic)));
+                fine.push_back(diffRmsDb(moduleBase,render(cfg,dynamic)));
             }
             std::cout<<m.name<<" fine steps:";
             for(double v:fine)std::cout<<" "<<v;
