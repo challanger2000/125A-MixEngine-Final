@@ -84,6 +84,11 @@ inline int qualityFactor(double normalized) {
     if (normalized < 0.75) return 2;
     return 4;
 }
+inline double characterControl(double normalized,double base,double exponent=1.15) {
+    const double u=std::clamp(normalized,0.0,1.0);
+    const double b=std::clamp(base,0.0,0.25);
+    return b+(1.0-b)*std::pow(u,exponent);
+}
 inline double consoleAutoGain(int mode, double drive) {
     const double d = std::clamp(drive, 0.0, 1.0);
     const double e = d * (1.40 - 0.40 * d) + 0.32 * creativeZone(d);
@@ -687,19 +692,19 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   const double calibrationDb=calibrationReferenceDb(localParams[kParamCalibration]);
   calibrationGain=dbToGain(-calibrationDb);
   calibrationReturn=1.0/calibrationGain;
-  drive=localParams[kParamConsoleDrive];
+  drive=characterControl(localParams[kParamConsoleDrive],0.05,1.12);
   crosstalk=std::clamp(localParams[kParamConsoleCrosstalk],0.0,1.0)*0.018;
 
   mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
   osFactor=qualityFactor(localParams[kParamQuality]);
   tubeTypeTarget=std::clamp(localParams[kParamTubeType],0.0,1.0);
   tapeSpeedTarget=std::clamp(localParams[kParamTapeSpeed],0.0,1.0);
-  tubeAmount=std::clamp(localParams[kParamTubeAmount],0.0,1.0);
-  tapeAmount=std::clamp(localParams[kParamTapeAmount],0.0,1.0);
+  tubeAmount=characterControl(localParams[kParamTubeAmount],0.06);
+  tapeAmount=characterControl(localParams[kParamTapeAmount],0.07);
   tapeStability=std::clamp(localParams[kParamTapeStability],0.0,1.0);
-  glueAmount=std::clamp(localParams[kParamGlueAmount],0.0,1.0);
+  glueAmount=characterControl(localParams[kParamGlueAmount],0.05);
   glueCharacter=std::clamp(localParams[kParamGlueCharacter],0.0,1.0);
-  vinylCharacter=std::clamp(localParams[kParamVinylCharacter],0.0,1.0);
+  vinylCharacter=characterControl(localParams[kParamVinylCharacter],0.05);
   vinylWear=std::clamp(localParams[kParamVinylWear],0.0,1.0);
   consoleNoise=std::clamp(localParams[kParamConsoleNoise],0.0,1.0);
   tapeHiss=std::clamp(localParams[kParamTapeHiss],0.0,1.0);
@@ -718,11 +723,11 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   depthGain=stereoDepthGain(depthBipolar);
 
   const int osIslands=bypass?0:
-      (static_cast<int>(consoleOn&&drive>0.0)+
-       static_cast<int>(tubeOn&&tubeAmount>0.0)+
-       static_cast<int>(tapeOn&&tapeAmount>0.0)+
-       static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));
-  latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn&&tapeAmount>0.0);
+      (static_cast<int>(consoleOn)+
+       static_cast<int>(tubeOn)+
+       static_cast<int>(tapeOn)+
+       static_cast<int>(vinylOn));
+  latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn);
  };
 
  applyAutomationAt(0);
@@ -766,7 +771,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
    r=stereo?processConsoleSample(r,states[1],index,1,mode,drive,osFactor,consoleNoise,calibrationGain)+coupledR:l;
    l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;
   }
-  if(tubeOn&&tubeAmount>0.0){
+  if(tubeOn){
    auto& states=mixFxTubeState_[static_cast<std::size_t>(index)];
    l=processTubeSample(l*calibrationGain,states[0],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain;
    r=stereo?processTubeSample(r*calibrationGain,states[1],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain:l;
@@ -942,18 +947,18 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         const double calibrationDb=calibrationReferenceDb(params_[kParamCalibration]);
         calibrationGain=dbToGain(-calibrationDb);
         calibrationReturn=1.0/calibrationGain;
-        drive=params_[kParamConsoleDrive];
+        drive=characterControl(params_[kParamConsoleDrive],0.05,1.12);
 
         mode=std::clamp(static_cast<int>(std::lround(params_[kParamConsoleMode]*3.0)),0,3);
         osFactor=qualityFactor(params_[kParamQuality]);
         tubeTypeTarget=std::clamp(params_[kParamTubeType],0.0,1.0);
         tapeSpeedTarget=std::clamp(params_[kParamTapeSpeed],0.0,1.0);
-        tubeAmount=std::clamp(params_[kParamTubeAmount],0.0,1.0);
-        tapeAmount=std::clamp(params_[kParamTapeAmount],0.0,1.0);
+        tubeAmount=characterControl(params_[kParamTubeAmount],0.06);
+        tapeAmount=characterControl(params_[kParamTapeAmount],0.07);
         tapeStability=std::clamp(params_[kParamTapeStability],0.0,1.0);
-        glueAmount=std::clamp(params_[kParamGlueAmount],0.0,1.0);
+        glueAmount=characterControl(params_[kParamGlueAmount],0.05);
         glueCharacter=std::clamp(params_[kParamGlueCharacter],0.0,1.0);
-        vinylCharacter=std::clamp(params_[kParamVinylCharacter],0.0,1.0);
+        vinylCharacter=characterControl(params_[kParamVinylCharacter],0.05);
         vinylWear=std::clamp(params_[kParamVinylWear],0.0,1.0);
         consoleNoise=std::clamp(params_[kParamConsoleNoise],0.0,1.0);
         tapeHiss=std::clamp(params_[kParamTapeHiss],0.0,1.0);
@@ -972,11 +977,11 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         depthGain=stereoDepthGain(depthBipolar);
 
         const int osIslands=bypass?0:
-            (static_cast<int>(consoleOn&&drive>0.0)+
-             static_cast<int>(tubeOn&&tubeAmount>0.0)+
-             static_cast<int>(tapeOn&&tapeAmount>0.0)+
-             static_cast<int>(vinylOn&&(vinylCharacter>0.0||vinylWear>0.0)));
-        latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn&&tapeAmount>0.0);
+            (static_cast<int>(consoleOn)+
+             static_cast<int>(tubeOn)+
+             static_cast<int>(tapeOn)+
+             static_cast<int>(vinylOn));
+        latencyDelay=v3LatencyCompensation(sampleRate_,osFactor,osIslands,tapeOn);
     };
 
     applyAutomationAt(0);
@@ -1010,7 +1015,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             r=stereo?processConsoleSample(r,consoleState_[1],0,1,mode,drive,osFactor,consoleNoise,calibrationGain):l;
             l*=calibrationReturn*autoGain;r*=calibrationReturn*autoGain;
         }
-        if(tubeOn&&tubeAmount>0.0){
+        if(tubeOn){
             l=processTubeSample(l*calibrationGain,tubeState_[0],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain;
             r=stereo?processTubeSample(r*calibrationGain,tubeState_[1],tubeType,tubeAmount,osFactor)*calibrationReturn*tubeGain:l;
         }
