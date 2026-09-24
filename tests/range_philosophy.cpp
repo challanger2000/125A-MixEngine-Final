@@ -103,7 +103,7 @@ int main(){
         const std::vector<Module> modules={
             {"Console",MixEngine::kParamConsoleOn,MixEngine::kParamConsoleDrive,{{MixEngine::kParamConsoleMode,1.0/3.0}}},
             {"Tube",MixEngine::kParamTubeOn,MixEngine::kParamTubeAmount,{{MixEngine::kParamTubeType,0.5}}},
-            {"Tape",MixEngine::kParamTapeOn,MixEngine::kParamTapeAmount,{{MixEngine::kParamTapeSpeed,0.5},{MixEngine::kParamTapeStability,0.75}}},
+            {"Tape",MixEngine::kParamTapeOn,MixEngine::kParamTapeAmount,{{MixEngine::kParamTapeSpeed,0.5},{MixEngine::kParamTapeStability,1.0}}},
             {"Glue",MixEngine::kParamGlueOn,MixEngine::kParamGlueAmount,{{MixEngine::kParamGlueCharacter,0.5}}},
             {"Vinyl",MixEngine::kParamVinylOn,MixEngine::kParamVinylCharacter,{{MixEngine::kParamVinylWear,0.25}}}
         };
