@@ -176,3 +176,6 @@ target_link_libraries(tape-v3-autolevel-diagnostic PRIVATE sdk)
 
 add_executable(console-v3-research-diagnostic tests/console_v3_model.cpp source/console_v3_model.h source/nonlinear_cores.h)
 target_include_directories(console-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(tube-v3-research-diagnostic tests/tube_v3_model.cpp source/tube_v3_model.h source/oversampling.h source/latency_alignment.h)
+target_include_directories(tube-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
