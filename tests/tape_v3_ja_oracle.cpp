@@ -136,8 +136,7 @@ int main(){
              <<" hot fundamental="<<fHot
              <<" low residual noBias="<<rNoBias
              <<" bias5="<<rBias
-             <<" hot residual="<<rHot<<"
-";
+             <<" hot residual="<<rHot<<"\\n";
 
     if(!(fLow>1.0e-5&&fHot>fLow*2.0)) ok=false;
     if(!(rNoBias<0.01&&rBias<0.10&&rHot>rBias*2.0)) ok=false;
@@ -154,11 +153,9 @@ int main(){
         if(n>0) area+=0.5L*(M+prevM)*(H-prevH);
         prevH=H;prevM=M;
     }
-    std::cout<<"JA hysteresis loop signed area="<<double(area)<<"
-";
+    std::cout<<"JA hysteresis loop signed area="<<double(area)<<"\\n";
     if(std::abs(double(area))<1.0e6) ok=false;
 
-    std::cout<<(ok?"PASS":"FAIL")<<": Jiles-Atherton physical tape oracle
-";
+    std::cout<<(ok?"PASS":"FAIL")<<": Jiles-Atherton physical tape oracle\\n";
     return ok?0:1;
 }
