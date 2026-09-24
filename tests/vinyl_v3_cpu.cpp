@@ -104,7 +104,10 @@ int main(){
     // sustained throughput and bounded tail behavior rather than requiring
     // every shared-runner block to beat a hard realtime deadline.
     const double overrunFraction=double(on.overruns)/double(measuredBlocks);
-    if(on.mean>=deadline||on.p99>=deadline*1.10||overrunFraction>0.10)ok=false;
+    // For the 128-channel stress ceiling, use p95 rather than p99 because
+    // isolated shared-runner scheduling stalls can dominate the top 1% even
+    // when sustained DSP throughput remains realtime-capable.
+    if(on.mean>=deadline||on.p95>=deadline||overrunFraction>0.05)ok=false;
    }
   }
   std::cout<<(ok?"PASS":"FAIL")<<": Vinyl V3 end-to-end CPU scaling measurement\n";
