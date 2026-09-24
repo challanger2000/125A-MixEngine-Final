@@ -91,12 +91,17 @@ int main(){
     std::cout<<"tube voice endpoint delta="<<voice<<"\n";
     if(!(finite(soft)&&finite(hard)&&voice>1.0e-3))ok=false;
 
-    // Miller behavior: Hot voice should attenuate 15 kHz more than Soft.
-    const auto soft15=renderSine(15000.0,0.20,0.0,0.70,4);
-    const auto hot15=renderSine(15000.0,0.20,1.0,0.70,4);
-    const double soft15F=fundamental(soft15,15000.0),hot15F=fundamental(hot15,15000.0);
-    std::cout<<"tube HF soft="<<soft15F<<" hot="<<hot15F<<" ratio="<<hot15F/std::max(1e-12,soft15F)<<"\n";
-    if(!(hot15F<soft15F*0.97))ok=false;
+    // Miller behavior must be measured relative to each voice's own low-
+    // frequency gain. Hot intentionally has more stage gain, so comparing the
+    // absolute 15 kHz outputs would confound gain with bandwidth.
+    const auto soft1=renderSine(1000.0,0.03,0.0,0.70,4);
+    const auto hot1=renderSine(1000.0,0.03,1.0,0.70,4);
+    const auto soft15=renderSine(15000.0,0.03,0.0,0.70,4);
+    const auto hot15=renderSine(15000.0,0.03,1.0,0.70,4);
+    const double softRatio=fundamental(soft15,15000.0)/std::max(1e-12,fundamental(soft1,1000.0));
+    const double hotRatio=fundamental(hot15,15000.0)/std::max(1e-12,fundamental(hot1,1000.0));
+    std::cout<<"tube HF normalized soft="<<softRatio<<" hot="<<hotRatio<<"\n";
+    if(!(hotRatio<softRatio*0.97))ok=false;
 
     // Blocking/recovery: same low-level probe after a hot burst must initially
     // differ from a never-overdriven reference, then decay toward it.
