@@ -1,5 +1,6 @@
 #include "tape_v3_ja_oracle.h"
-#include <algorithm>\n#include <array>
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -16,7 +17,10 @@ OracleRender render(double baseRate,double freq,double amp,double biasGain,int o
     const double osRate=baseRate*os;
     MixEngine::V3Research::JilesAthertonOracle ja;
     const auto& p=ja.parameters();
-    // Paper gives approximately 5e5 A/m peak-to-peak at the record head.\n    // With bias gain 5, 5e4 A/m per normalized input unit keeps the combined\n    // field in that documented order of magnitude.\n    const double hScale=5.0e4;
+    // Paper gives approximately 5e5 A/m peak-to-peak at the record head.
+    // With bias gain 5, 5e4 A/m per normalized input unit keeps the combined
+    // field in that documented order of magnitude.
+    const double hScale=5.0e4;
     const double biasFreq=55000.0;
     double phase=0.0;
     double previous=0.0;
@@ -132,7 +136,8 @@ int main(){
              <<" hot fundamental="<<fHot
              <<" low residual noBias="<<rNoBias
              <<" bias5="<<rBias
-             <<" hot residual="<<rHot<<"\n";
+             <<" hot residual="<<rHot<<"
+";
 
     if(!(fLow>1.0e-5&&fHot>fLow*2.0)) ok=false;
     if(!(rNoBias<0.01&&rBias<0.10&&rHot>rBias*2.0)) ok=false;
@@ -149,9 +154,11 @@ int main(){
         if(n>0) area+=0.5L*(M+prevM)*(H-prevH);
         prevH=H;prevM=M;
     }
-    std::cout<<"JA hysteresis loop signed area="<<double(area)<<"\n";
+    std::cout<<"JA hysteresis loop signed area="<<double(area)<<"
+";
     if(std::abs(double(area))<1.0e6) ok=false;
 
-    std::cout<<(ok?"PASS":"FAIL")<<": Jiles-Atherton physical tape oracle\n";
+    std::cout<<(ok?"PASS":"FAIL")<<": Jiles-Atherton physical tape oracle
+";
     return ok?0:1;
 }
