@@ -2,6 +2,10 @@ name: V3 Windows RC
 
 on:
   workflow_dispatch:
+  push:
+    branches: [v3.0.0-development]
+    paths:
+      - ".github/v3-rc-trigger"
 
 jobs:
   rc:
