@@ -126,6 +126,41 @@ inline bool consoleV3DecodeAdaaInterior(double summed,double drive,int mode) noe
     return std::abs(a*summed)<0.92*limit;
 }
 
+inline double consoleV3CorrectionPrimitiveInterior(double summed,double drive,int mode) noexcept {
+    return consoleV3DecodePrimitiveInterior(summed,drive,mode)-0.5*summed*summed;
+}
+
+inline double consoleV3CorrectionAdaa(double encodedSum,double drive,int mode,ConsoleV3AdaaState& state) noexcept {
+    if(drive<=0.0){
+        state.previousEncodedSum=encodedSum;
+        state.decoderInitialised=true;
+        return 0.0;
+    }
+    const double currentMemoryless=consoleV3Decode(encodedSum,drive,mode)-encodedSum;
+    if(!state.decoderInitialised){
+        state.previousEncodedSum=encodedSum;
+        state.decoderInitialised=true;
+        return currentMemoryless;
+    }
+
+    const double previous=state.previousEncodedSum;
+    state.previousEncodedSum=encodedSum;
+
+    if(!consoleV3DecodeAdaaInterior(encodedSum,drive,mode) ||
+       !consoleV3DecodeAdaaInterior(previous,drive,mode))
+        return currentMemoryless;
+
+    const double dx=encodedSum-previous;
+    if(std::abs(dx)<1.0e-8){
+        const double mid=0.5*(encodedSum+previous);
+        return consoleV3Decode(mid,drive,mode)-mid;
+    }
+
+    const double f1=consoleV3CorrectionPrimitiveInterior(encodedSum,drive,mode);
+    const double f0=consoleV3CorrectionPrimitiveInterior(previous,drive,mode);
+    return (f1-f0)/dx;
+}
+
 inline double consoleV3DecodeAdaa(double encodedSum,double drive,int mode,ConsoleV3AdaaState& state) noexcept {
     if(drive<=0.0){
         state.previousEncodedSum=encodedSum;
