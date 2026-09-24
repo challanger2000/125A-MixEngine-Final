@@ -5,7 +5,7 @@
 #include "public.sdk/source/main/pluginfactory.h"
 #include "pluginterfaces/vst/ivstaudioprocessor.h"
 
-#define stringPluginName "125A MixEngine V2"
+#define stringPluginName "125A MixEngine V3"
 
 using namespace Steinberg;
 using namespace Steinberg::Vst;
