@@ -18,7 +18,7 @@ void addPoint(ParameterChanges& c,ParamID id,double v){
     int32 pi=0; if(q->addPoint(0,std::clamp(v,0.0,1.0),pi)!=kResultTrue)throw 11;
 }
 
-void applyAll(Processor& p,const std::array<double,MixEngine::kParamCount>& values){
+void applyAll(MixEngine::Processor& p,const std::array<double,MixEngine::kParamCount>& values){
     ProcessSetup setup{}; setup.processMode=kRealtime; setup.symbolicSampleSize=kSample64;
     setup.maxSamplesPerBlock=16; setup.sampleRate=48000.0;
     if(p.setupProcessing(setup)!=kResultOk)throw 20;
@@ -36,7 +36,7 @@ void applyAll(Processor& p,const std::array<double,MixEngine::kParamCount>& valu
     if(p.process(d)!=kResultOk)throw 22;
 }
 
-std::array<double,MixEngine::kParamCount> readState(Processor& p){
+std::array<double,MixEngine::kParamCount> readState(MixEngine::Processor& p){
     MemoryStream stream;
     if(p.getState(&stream)!=kResultOk)throw 30;
     if(stream.getSize()!=static_cast<TSize>(MixEngine::kParamCount*sizeof(double)))throw 31;
@@ -69,7 +69,7 @@ int main(){
         expected[MixEngine::kParamTubeType]=0.5;
         expected[MixEngine::kParamMeterSource]=0.0;
 
-        Processor source;
+        MixEngine::Processor source;
         applyAll(source,expected);
         const auto saved=readState(source);
 
@@ -77,7 +77,7 @@ int main(){
         if(source.getState(&transfer)!=kResultOk)throw 40;
         if(transfer.seek(0,IBStream::kIBSeekSet,nullptr)!=kResultOk)throw 41;
 
-        Processor restored;
+        MixEngine::Processor restored;
         if(restored.setState(&transfer)!=kResultOk)throw 42;
         const auto roundtrip=readState(restored);
 

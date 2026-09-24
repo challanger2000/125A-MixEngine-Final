@@ -34,7 +34,7 @@ int impulsePeak(const std::vector<std::pair<ParamID,double>>& params, double min
     setup.sampleRate = kSampleRate;
     if (processor->setupProcessing(setup) != kResultOk) throw 20;
     if (processor->setProcessing(true) != kResultOk) throw 21;
-    if (processor->getLatencySamples() != MixEngine::kFixedLatencySamples) throw 22;
+    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(kSampleRate)) throw 22;
 
     std::array<float,kBlockSize> inL{}, inR{}, outL{}, outR{};
     inL[0] = 1.0f;
@@ -136,42 +136,42 @@ int mixFxImpulsePeak(const std::vector<std::pair<ParamID,double>>& params, doubl
     return peakIndex;
 }
 
-bool expect21(const char* name,const std::vector<std::pair<ParamID,double>>& params,double minPeak=0.99) {
+bool expectReported(const char* name,const std::vector<std::pair<ParamID,double>>& params,double minPeak=0.99) {
     const int peak=impulsePeak(params,minPeak);
     const int mixPeak=mixFxImpulsePeak(params,minPeak);
     std::cout << name << ": VST3 peak=" << peak << " MixFX peak=" << mixPeak << " samples\n";
-    return peak == MixEngine::kFixedLatencySamples &&
-           mixPeak == MixEngine::kFixedLatencySamples;
+    const int expected=MixEngine::v3ReportedLatencySamples(kSampleRate);
+    return peak == expected && mixPeak == expected;
 }
 }
 
 int main() {
     try {
-        if (!expect21("linear", {})) return 1;
-        if (!expect21("bypass", {{MixEngine::kParamBypass,1.0}})) return 2;
+        if (!expectReported("linear", {})) return 1;
+        if (!expectReported("bypass", {{MixEngine::kParamBypass,1.0}})) return 2;
 
-        // Tube/Tape Amount=0 now intentionally retains a subtle enabled-stage
-        // character, so these are real oversampling islands. Their impulse can
-        // be attenuated by the nonlinear/filtered path, but the reported and
-        // compensated host latency must remain exactly 21 samples.
-        if (!expect21("tube-on-amount-zero-high",
+        // Zero-intensity enabled modules stay neutral, but the plugin keeps one
+        // fixed V3 host-latency contract that includes the nominal tape transport
+        // budget. Bypass and every zero-effect configuration must land on that
+        // same reported sample index.
+        if (!expectReported("tube-on-amount-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamTubeOn,1.0},
                        {MixEngine::kParamTubeAmount,0.0}},0.20)) return 3;
 
-        if (!expect21("tape-on-amount-zero-high",
+        if (!expectReported("tape-on-amount-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamTapeOn,1.0},
                        {MixEngine::kParamTapeAmount,0.0}},0.20)) return 4;
 
-        if (!expect21("vinyl-on-color-wear-zero-high",
+        if (!expectReported("vinyl-on-color-wear-zero-high",
                       {{MixEngine::kParamQuality,1.0},
                        {MixEngine::kParamVinylOn,1.0},
                        {MixEngine::kParamVinylCharacter,0.0},
                        {MixEngine::kParamVinylWear,0.0},
                        {MixEngine::kParamVinylNoise,0.0}})) return 5;
 
-        std::cout << "Processor fixed-latency integration PASS\n";
+        std::cout << "Processor V3 fixed-latency integration PASS: " << MixEngine::v3ReportedLatencySamples(kSampleRate) << " samples\n";
         return 0;
     } catch (int code) {
         std::cerr << "Processor latency setup FAIL: " << code << "\n";
