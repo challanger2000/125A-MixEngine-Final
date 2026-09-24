@@ -160,3 +160,6 @@ target_include_directories(character-morph-diagnostic PRIVATE "${CMAKE_CURRENT_S
 add_executable(denormal-safety-diagnostic tests/denormal_safety.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(denormal-safety-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(denormal-safety-diagnostic PRIVATE sdk)
+
+add_executable(tape-v3-research-diagnostic tests/tape_v3_model.cpp source/tape_v3_model.h source/oversampling.h)
+target_include_directories(tape-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
