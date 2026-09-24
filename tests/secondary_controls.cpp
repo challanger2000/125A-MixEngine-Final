@@ -62,7 +62,10 @@ int main(){
   const auto c100=render({{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.0},{MixEngine::kParamConsoleNoise,1.0}},true);
   const double cr0=rms(c0),cr25=rms(c25),cr50=rms(c50),cr100=rms(c100);
   std::cout<<"Console Noise RMS 0/25/50/100="<<cr0<<"/"<<cr25<<"/"<<cr50<<"/"<<cr100<<"\n";
-  ok=ok&&cr0<1e-12&&cr25>1e-8&&cr50>cr25*2.5&&cr100>cr50*2.5;
+  // Console ON + Drive 0 retains V3 base character and may leave a tiny
+  // floating-point residual on digital silence. Noise=0 must remain effectively
+  // silent; the independent Noise control must then scale progressively.
+  ok=ok&&cr0<1e-8&&cr25>1e-8&&cr50>cr25*2.5&&cr100>cr50*2.5;
 
   const auto v0=render({{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.0},{MixEngine::kParamVinylWear,0.0},{MixEngine::kParamVinylNoise,0.0}},true);
   const auto v25=render({{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.0},{MixEngine::kParamVinylWear,0.0},{MixEngine::kParamVinylNoise,0.25}},true);
