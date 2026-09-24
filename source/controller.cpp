@@ -152,8 +152,8 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state){
     for(ParamID id=0;id<kParamCount;++id){
         double v=0.;
         if(!s.readDouble(v)){
-            if(id==kParamTubeType){setParamNormalized(kParamTubeType,.5);setParamNormalized(kParamMeterSource,1.0);break;}
-            if(id==kParamMeterSource){setParamNormalized(kParamMeterSource,1.0);break;}
+            if(id==kParamTubeType){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTubeType,.5);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
+            if(id==kParamMeterSource){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
             if(id==kParamTapeHiss){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
             if(id==kParamVinylNoise){setParamNormalized(kParamVinylNoise,getParamNormalized(kParamConsoleNoise));break;}
             return kResultFalse;

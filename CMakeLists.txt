@@ -90,6 +90,10 @@ add_executable(state-roundtrip-diagnostic tests/state_roundtrip.cpp source/proce
 target_include_directories(state-roundtrip-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(state-roundtrip-diagnostic PRIVATE sdk)
 
+add_executable(state-migration-diagnostic tests/state_migration.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/common/memorystream.cpp)
+target_include_directories(state-migration-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(state-migration-diagnostic PRIVATE sdk)
+
 add_executable(release-robustness-diagnostic tests/release_robustness.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(release-robustness-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(release-robustness-diagnostic PRIVATE sdk)
