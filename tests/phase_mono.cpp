@@ -48,7 +48,7 @@ RenderResult render(double sampleRate,
     setup.sampleRate = sampleRate;
     if (processor->setupProcessing(setup) != kResultOk) throw 20;
     if (processor->setProcessing(true) != kResultOk) throw 21;
-    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(kSampleRate)) throw 22;
+    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(sampleRate)) throw 22;
 
     std::array<double, MixEngine::kParamCount> values{};
     std::array<bool, MixEngine::kParamCount> set{};
@@ -138,7 +138,7 @@ RenderResult renderMixFx(double sampleRate,
     setup.sampleRate = sampleRate;
     if (processor->setupProcessing(setup) != kResultOk) throw 120;
     if (processor->setProcessing(true) != kResultOk) throw 121;
-    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(kSampleRate)) throw 122;
+    if (processor->getLatencySamples() != MixEngine::v3ReportedLatencySamples(sampleRate)) throw 122;
 
     SpeakerArrangement arrangement = SpeakerArr::kStereo;
     if (processor->setMixChannelArrangements(&arrangement, 1) != kResultOk) throw 123;
@@ -230,8 +230,8 @@ std::vector<float> makeSignal(double sampleRate,double phaseOffset=0.0) {
 }
 
 double maxMonoSumError(const std::vector<float>& inL,const std::vector<float>& inR,
-                       const RenderResult& out) {
-    const int d=MixEngine::v3ReportedLatencySamples(kSampleRate);
+                       const RenderResult& out,double sampleRate) {
+    const int d=MixEngine::v3ReportedLatencySamples(sampleRate);
     double maxErr=0.0;
     for(int n=kWarmup;n<kTotal;++n){
         const int src=n-d;
@@ -292,8 +292,8 @@ bool stereoStageChecks(double sr) {
     for(std::size_t i=0;i<configs.size();++i){
         const auto out=render(sr,l,r,configs[i]);
         const auto mix=renderMixFx(sr,l,r,configs[i]);
-        const double monoErr=maxMonoSumError(l,r,out);
-        const double mixMonoErr=maxMonoSumError(l,r,mix);
+        const double monoErr=maxMonoSumError(l,r,out,sr);
+        const double mixMonoErr=maxMonoSumError(l,r,mix,sr);
         std::cout<<"sr="<<sr<<" stereo-config="<<i
                  <<" channel mono-sum max error="<<monoErr
                  <<" mixfx mono-sum max error="<<mixMonoErr<<"\n";
