@@ -8,6 +8,7 @@
 #include "tape_v3_model.h"
 #include "tube_v3_model.h"
 #include "vinyl_v3_model.h"
+#include "media_oversampling_live.h"
 #include "metering.h"
 #include "meter_exchange.h"
 #include "stereo_field.h"
@@ -79,7 +80,16 @@ private:
     struct TubeChannelState { V3Research::TubeV3State v3{}; };
     struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; V3Research::TapeV3State v3{}; };
     struct GlueChannelState { double envelope=0.0; };
-    struct VinylChannelState { double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0; std::uint32_t noiseRng=0; V3Research::VinylV3State v3{}; };
+    struct VinylChannelState {
+        double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0;
+        std::uint32_t noiseRng=0;
+        V3Research::VinylV3State v3{};
+        double preparedCharacter=-1.0,preparedWear=-1.0,preparedSampleRate=0.0;
+        int preparedFactor=0;
+        double highCoeff=0.0,bodyCoeff=0.0,stylusCoeff=0.0,compliance=0.0,bodyBoost=0.0,drive=1.0,wet=0.0;
+        double tracingInternalRate=0.0,tracingCoefficient=4.72e-6,tracingDcCoeff=0.0;
+        VinylStaticShapePrepared shape{};
+    };
     using StereoChannelState = StereoFieldState;
     void readParameterChanges(Steinberg::Vst::IParameterChanges* changes);
     void syncMixFxTargets();

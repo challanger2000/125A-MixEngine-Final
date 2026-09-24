@@ -342,7 +342,83 @@ double Processor::processGlueGain(double detector,GlueChannelState& state,double
  const double compressedGain=dbToGain(-gr);
  return 1.0+(compressedGain-1.0)*blend;
 }
-double Processor::processVinylSample(double x,VinylChannelState& state,int sourceIndex,int lane,double character,double wear,int osFactor,double noiseAmount,double calibrationNorm){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);double y=x;if(c>0.0||w>0.0){const double colorZone=creativeZone(c),wearCurve=w*(0.70+0.30*w);double cutoff=20000.0-1400.0*c-10800.0*wearCurve-700.0*colorZone;cutoff=std::clamp(cutoff,5200.0,sampleRate_*0.45);const double highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_),bodyCoeff=1.0-std::exp(-2.0*kPi*190.0/sampleRate_);state.highMemory+=highCoeff*(x-state.highMemory);state.lowMemory+=bodyCoeff*(state.highMemory-state.lowMemory);const double stylusCutoff=6500.0-3000.0*wearCurve,stylusCoeff=1.0-std::exp(-2.0*kPi*stylusCutoff/sampleRate_);state.stylusMemory+=stylusCoeff*(state.highMemory-state.stylusMemory);const double compliance=0.20*wearCurve*wearCurve,worn=state.highMemory+compliance*(state.stylusMemory-state.highMemory);const double bodyBoost=0.052*c+0.002*w+0.024*colorZone,colored=worn+bodyBoost*state.lowMemory,drive=1.0+0.66*c+0.025*w+0.58*colorZone;OversamplingEngine* osEngine=nullptr;int* osCurrentFactor=nullptr;osFactor=OversamplingEngine::sanitiseFactor(osFactor);if(mixFxEngaged_){osEngine=&mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];osCurrentFactor=&mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{osEngine=&vinylOversampling_[static_cast<std::size_t>(lane)];osCurrentFactor=&vinylOversamplingFactor_[static_cast<std::size_t>(lane)];}const bool tracingEnabled=osFactor>=2&&c>0.0;const double shaped=tracingEnabled?processVinylV3OversampledCore(*osEngine,*osCurrentFactor,osFactor,colored,state.v3,sampleRate_,c,drive,c):processVinylOversampledCore(*osEngine,*osCurrentFactor,osFactor,colored,drive,c),wet=std::clamp(0.08+0.52*c+0.34*wearCurve+0.12*colorZone,0.0,0.98);LatencyAligner* dryAligner=mixFxEngaged_?&mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]:&vinylDryAligner_[static_cast<std::size_t>(lane)];const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));y=dry+(shaped-dry)*wet;}noiseAmount=std::clamp(noiseAmount,0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xB17E4A11u);const double white=randomBipolar(state.noiseRng),surfaceCoeff=1.0-std::exp(-2.0*kPi*7000.0/sampleRate_);state.surfaceMemory+=surfaceCoeff*(white-state.surfaceMemory);const double surface=0.52*white+0.48*state.surfaceMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0,surfaceLevel=0.0070*(0.75+0.75*w);y+=surface*surfaceLevel*n*sourceScale*calibrationNorm;const double clickRateHz=(0.12+2.2*w*w)*noiseAmount,eventProbe=0.5*(randomBipolar(state.noiseRng)+1.0);if(eventProbe<clickRateHz/sampleRate_){const double randomLevel=0.5*(randomBipolar(state.noiseRng)+1.0);state.clickEnvelope=0.018+0.055*randomLevel*(0.35+0.65*w);state.clickPolarity=randomBipolar(state.noiseRng)>=0.0?1.0:-1.0;}const double clickDecayMs=0.7+1.8*w,clickDecay=std::exp(-1.0/(0.001*clickDecayMs*sampleRate_));y+=state.clickPolarity*state.clickEnvelope*n*sourceScale*calibrationNorm;state.clickEnvelope*=clickDecay;if(state.clickEnvelope<1.0e-10)state.clickEnvelope=0.0;}return y;}
+double Processor::processVinylSample(double x,VinylChannelState& state,int sourceIndex,int lane,
+                                    double character,double wear,int osFactor,double noiseAmount,double calibrationNorm){
+ const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);
+ double y=x;
+ if(c>0.0||w>0.0){
+  osFactor=OversamplingEngine::sanitiseFactor(osFactor);
+  if(state.preparedCharacter!=c||state.preparedWear!=w||state.preparedSampleRate!=sampleRate_||state.preparedFactor!=osFactor){
+   const double colorZone=creativeZone(c),wearCurve=w*(0.70+0.30*w);
+   double cutoff=20000.0-1400.0*c-10800.0*wearCurve-700.0*colorZone;
+   cutoff=std::clamp(cutoff,5200.0,sampleRate_*0.45);
+   state.highCoeff=1.0-std::exp(-2.0*kPi*cutoff/sampleRate_);
+   state.bodyCoeff=1.0-std::exp(-2.0*kPi*190.0/sampleRate_);
+   const double stylusCutoff=6500.0-3000.0*wearCurve;
+   state.stylusCoeff=1.0-std::exp(-2.0*kPi*stylusCutoff/sampleRate_);
+   state.compliance=0.20*wearCurve*wearCurve;
+   state.bodyBoost=0.052*c+0.002*w+0.024*colorZone;
+   state.drive=1.0+0.66*c+0.025*w+0.58*colorZone;
+   state.wet=std::clamp(0.08+0.52*c+0.34*wearCurve+0.12*colorZone,0.0,0.98);
+   state.shape=prepareVinylStaticShape(state.drive,c);
+   state.tracingInternalRate=sampleRate_*static_cast<double>(osFactor);
+   state.tracingCoefficient=4.72e-6; // nominal oracle-fit physical condition
+   state.tracingDcCoeff=std::exp(-2.0*V3Research::kVinylModelPi*7.0/std::max(1.0,state.tracingInternalRate));
+   state.preparedCharacter=c;
+   state.preparedWear=w;
+   state.preparedSampleRate=sampleRate_;
+   state.preparedFactor=osFactor;
+  }
+  state.highMemory+=state.highCoeff*(x-state.highMemory);
+  state.lowMemory+=state.bodyCoeff*(state.highMemory-state.lowMemory);
+  state.stylusMemory+=state.stylusCoeff*(state.highMemory-state.stylusMemory);
+  const double worn=state.highMemory+state.compliance*(state.stylusMemory-state.highMemory);
+  const double colored=worn+state.bodyBoost*state.lowMemory;
+
+  OversamplingEngine* osEngine=nullptr;
+  int* osCurrentFactor=nullptr;
+  if(mixFxEngaged_){
+   osEngine=&mixFxVinylOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];
+   osCurrentFactor=&mixFxVinylOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];
+  }else{
+   osEngine=&vinylOversampling_[static_cast<std::size_t>(lane)];
+   osCurrentFactor=&vinylOversamplingFactor_[static_cast<std::size_t>(lane)];
+  }
+  const bool tracingEnabled=osFactor>=2&&c>0.0;
+  const double shaped=tracingEnabled
+      ?processVinylV3OversampledPreparedCore(*osEngine,*osCurrentFactor,osFactor,colored,state.v3,
+                                            state.tracingInternalRate,state.tracingCoefficient,state.tracingDcCoeff,
+                                            c,state.shape)
+      :osEngine->process(colored,osFactor,[&](double v){return vinylStaticShapePrepared(v,state.shape);});
+  if(*osCurrentFactor!=osFactor)*osCurrentFactor=osFactor;
+  LatencyAligner* dryAligner=mixFxEngaged_
+      ?&mixFxVinylDryAligner_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)]
+      :&vinylDryAligner_[static_cast<std::size_t>(lane)];
+  const double dry=dryAligner->process(x,oversamplingBulkDelay(osFactor,1));
+  y=dry+(shaped-dry)*state.wet;
+ }
+ noiseAmount=std::clamp(noiseAmount,0.0,1.0);
+ if(noiseAmount>0.0){
+  if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xB17E4A11u);
+  const double white=randomBipolar(state.noiseRng),surfaceCoeff=1.0-std::exp(-2.0*kPi*7000.0/sampleRate_);
+  state.surfaceMemory+=surfaceCoeff*(white-state.surfaceMemory);
+  const double surface=0.52*white+0.48*state.surfaceMemory,n=noiseAmount*noiseAmount;
+  const double sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0;
+  const double surfaceLevel=0.0070*(0.75+0.75*w);
+  y+=surface*surfaceLevel*n*sourceScale*calibrationNorm;
+  const double clickRateHz=(0.12+2.2*w*w)*noiseAmount,eventProbe=0.5*(randomBipolar(state.noiseRng)+1.0);
+  if(eventProbe<clickRateHz/sampleRate_){
+   const double randomLevel=0.5*(randomBipolar(state.noiseRng)+1.0);
+   state.clickEnvelope=0.018+0.055*randomLevel*(0.35+0.65*w);
+   state.clickPolarity=randomBipolar(state.noiseRng)>=0.0?1.0:-1.0;
+  }
+  const double clickDecayMs=0.7+1.8*w,clickDecay=std::exp(-1.0/(0.001*clickDecayMs*sampleRate_));
+  y+=state.clickPolarity*state.clickEnvelope*n*sourceScale*calibrationNorm;
+  state.clickEnvelope*=clickDecay;
+  if(state.clickEnvelope<1.0e-10)state.clickEnvelope=0.0;
+ }
+ return y;
+}
 void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
 #ifndef MIXENGINE_CHANNEL_BUILD
 void Processor::prepareMixFxSnapshotBuffers(){

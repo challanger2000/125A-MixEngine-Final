@@ -93,6 +93,7 @@ int main(){
             <<" deadline="<<deadline
             <<" overruns="<<on.overruns<<"\n";
    if(!(std::isfinite(on.mean)&&std::isfinite(on.p99)&&std::isfinite(on.max)))ok=false;
+   if(on.overruns!=0||on.p99>=deadline)ok=false;
   }
   std::cout<<(ok?"PASS":"FAIL")<<": Vinyl V3 end-to-end CPU scaling measurement\n";
   return ok?0:1;

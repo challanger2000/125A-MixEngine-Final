@@ -47,6 +47,28 @@ inline double vinylV3DcBlock(double x,VinylV3State& s,double sampleRate) noexcep
     return y;
 }
 
+inline double processVinylV3TracingPrepared(double x,VinylV3State& s,double internalRate,
+                                            double coefficient,double dcCoeff,double amount) noexcept {
+    const double a=std::clamp(amount,0.0,1.0);
+    if(!s.primed){
+        s.previousInput=x;
+        s.dcX=x;
+        s.dcY=x;
+        s.primed=true;
+        return x;
+    }
+    if(a<=0.0){s.previousInput=x;return x;}
+    const double derivative=(x-s.previousInput)*internalRate;
+    s.previousInput=x;
+    const double tracing=coefficient*x*derivative;
+    const double bounded=std::tanh(tracing*1.35)/1.35;
+    const double y=x+a*bounded;
+    const double dc=y-s.dcX+dcCoeff*s.dcY;
+    s.dcX=y;
+    s.dcY=dc;
+    return dc;
+}
+
 inline double processVinylV3Tracing(double x,VinylV3State& s,double sampleRate,
                                     const VinylV3Physical& p,double amount) noexcept {
     const double a=std::clamp(amount,0.0,1.0);
