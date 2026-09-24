@@ -275,12 +275,15 @@ double Processor::processConsoleSample(double x,ConsoleChannelState& state,int s
 double Processor::processTubeSample(double x,TubeChannelState& state,double typeMorph,double amount,int osFactor){return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);}
 double Processor::processTapeSample(double x,TapeChannelState& state,int sourceIndex,int lane,double speedMorph,double amount,double stability,int osFactor,double noiseAmount,double calibrationNorm){
  const double a=std::clamp(amount,0.0,1.0);
- if(a<=0.0)return x;
 
- double y=V3Research::processTapeV3(x,state.v3,sampleRate_,speedMorph,a,stability,osFactor);
+ // Amount controls tape coloration/dynamics, while Hiss is an independent
+ // module-owned control (matching Console Noise and Vinyl Surface semantics).
+ // At Amount=0 the coloration path is exactly neutral, but Hiss must remain
+ // available when the Tape module itself is enabled.
+ double y=a>0.0
+     ?V3Research::processTapeV3(x,state.v3,sampleRate_,speedMorph,a,stability,osFactor)
+     :x;
 
- // Preserve the user-facing V2 Hiss control/state contract while the signal
- // coloration path is replaced by the V3 physical-informed architecture.
  noiseAmount=std::clamp(noiseAmount,0.0,1.0);
  if(noiseAmount>0.0){
   if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0x7A9E51A5u);

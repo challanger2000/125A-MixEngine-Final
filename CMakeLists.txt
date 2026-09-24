@@ -114,6 +114,10 @@ add_executable(tape-memory-diagnostic tests/tape_memory.cpp source/processor.cpp
 target_include_directories(tape-memory-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(tape-memory-diagnostic PRIVATE sdk)
 
+add_executable(tape-hiss-contract-diagnostic tests/tape_hiss_contract.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(tape-hiss-contract-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(tape-hiss-contract-diagnostic PRIVATE sdk)
+
 add_executable(glue-transient-diagnostic tests/glue_transient.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(glue-transient-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(glue-transient-diagnostic PRIVATE sdk)
