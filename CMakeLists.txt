@@ -267,6 +267,9 @@ add_executable(vinyl-v3-cpu-diagnostic tests/vinyl_v3_cpu.cpp source/processor.c
 target_include_directories(vinyl-v3-cpu-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(vinyl-v3-cpu-diagnostic PRIVATE sdk)
 
+add_executable(vinyl-v3-fast-tanh-diagnostic tests/vinyl_v3_fast_tanh.cpp source/media_oversampling_live.h source/vinyl_v3_model.h source/oversampling.h)
+target_include_directories(vinyl-v3-fast-tanh-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
+
 add_executable(v3-autolevel-level-sweep tests/v3_autolevel_level_sweep.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(v3-autolevel-level-sweep PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(v3-autolevel-level-sweep PRIVATE sdk)
