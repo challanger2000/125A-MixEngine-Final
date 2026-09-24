@@ -61,7 +61,17 @@ inline double processVinylV3TracingPrepared(double x,VinylV3State& s,double inte
     const double derivative=(x-s.previousInput)*internalRate;
     s.previousInput=x;
     const double tracing=coefficient*x*derivative;
-    const double bounded=std::tanh(tracing*1.35)/1.35;
+    const double z=tracing*1.35;
+    // The oracle-fit operating region normally stays well below |z|=0.5.
+    // Use the fifth-order tanh series there to avoid a transcendental call in
+    // the realtime hot path; fall back to exact tanh for strong/pathological
+    // excursions so the original bounded-safety behaviour is preserved.
+    const double az=std::abs(z);
+    const double z2=z*z;
+    const double tanhLike=az<=0.5
+        ?z*(1.0-z2/3.0+(2.0/15.0)*z2*z2)
+        :std::tanh(z);
+    const double bounded=tanhLike/1.35;
     const double y=x+a*bounded;
     const double dc=y-s.dcX+dcCoeff*s.dcY;
     s.dcX=y;
@@ -93,7 +103,15 @@ inline double processVinylV3Tracing(double x,VinylV3State& s,double sampleRate,
     const double tracing=coefficient*x*derivative;
 
     // Keep the geometric term bounded under pathological host/test signals.
-    const double bounded=std::tanh(tracing*1.35)/1.35;
+    // Match the prepared realtime path so oracle/regression measurements cover
+    // the exact production transfer in its normal operating region.
+    const double z=tracing*1.35;
+    const double az=std::abs(z);
+    const double z2=z*z;
+    const double tanhLike=az<=0.5
+        ?z*(1.0-z2/3.0+(2.0/15.0)*z2*z2)
+        :std::tanh(z);
+    const double bounded=tanhLike/1.35;
     const double y=x+a*bounded;
     return vinylV3DcBlock(y,s,sampleRate);
 }
