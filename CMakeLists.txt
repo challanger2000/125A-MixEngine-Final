@@ -221,3 +221,6 @@ target_include_directories(console-v3-residual-adaa-diagnostic PRIVATE "${CMAKE_
 
 add_executable(console-v3-correction-adaa2-diagnostic tests/console_v3_correction_adaa2.cpp source/console_v3_adaa.h source/console_v3_model.h)
 target_include_directories(console-v3-correction-adaa2-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(vinyl-v3-tracing-oracle-diagnostic tests/vinyl_v3_tracing_oracle.cpp source/vinyl_v3_tracing_oracle.h)
+target_include_directories(vinyl-v3-tracing-oracle-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
