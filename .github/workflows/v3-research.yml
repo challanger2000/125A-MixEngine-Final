@@ -54,6 +54,33 @@ jobs:
           if (-not $channel) { throw "V3 identity: 125A-MixEngine-V3-Channel.vst3 bundle missing" }
           Write-Host "V3 side-by-side identity PASS"
 
+      - name: Verify Ctrl-click knob reset contract
+        shell: pwsh
+        run: |
+          $control = Get-Content "vst3sdk/vstgui4/vstgui/lib/controls/ccontrol.cpp" -Raw
+          $editor = Get-Content "vst3sdk/vstgui4/vstgui/plugin-bindings/vst3editor.cpp" -Raw
+          $controller = Get-Content "source/controller.cpp" -Raw
+
+          if (-not $control.Contains("event.modifiers.is (ModifierKey::Control)")) { throw "VSTGUI control-reset modifier is not Ctrl" }
+          if (-not $control.Contains("control->setValue (defValue)")) { throw "VSTGUI default-reset value path missing" }
+          if (-not $editor.Contains("defaultValue = parameter->getInfo ().defaultNormalizedValue")) { throw "VST3 parameter default is not propagated to controls" }
+          if (-not $editor.Contains("c->setDefaultValue ((float)defaultValue)")) { throw "VSTGUI control default assignment missing" }
+
+          foreach ($expected in @(
+            'addRange(parameters,STR16("Input Gain"),STR16("dB"),kParamInput,-12.0,12.0,0.0,1);',
+            'addRange(parameters,STR16("Console Drive"),STR16("%"),kParamConsoleDrive,0.0,100.0,25.0,0);',
+            'addRange(parameters,STR16("Tube Amount"),STR16("%"),kParamTubeAmount,0.0,100.0,20.0,0);',
+            'addRange(parameters,STR16("Tape Amount"),STR16("%"),kParamTapeAmount,0.0,100.0,20.0,0);',
+            'addRange(parameters,STR16("Glue Amount"),STR16("%"),kParamGlueAmount,0.0,100.0,15.0,0);',
+            'addRange(parameters,STR16("Vinyl Color"),STR16("%"),kParamVinylCharacter,0.0,100.0,25.0,0);',
+            'addRange(parameters,STR16("Depth"),STR16("%"),kParamDepth,-100.0,100.0,0.0,0);',
+            'addRange(parameters,STR16("Width"),STR16("%"),kParamWidth,0.0,200.0,100.0,0);',
+            'addRange(parameters,STR16("Output Gain"),STR16("dB"),kParamOutput,-12.0,12.0,0.0,1);'
+          )) {
+            if (-not $controller.Contains($expected)) { throw "125A knob default contract missing: $expected" }
+          }
+          Write-Host "125A Ctrl-click knob reset contract PASS"
+
       - name: Run tape V3 diagnostics
         shell: pwsh
         run: |

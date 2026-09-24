@@ -59,6 +59,11 @@ double deriv(const std::vector<double>&y,int a,int b){double m=0;a=std::max(a,1)
 int main(){try{
  const std::vector<C> cases={
   {"Input",MixEngine::kParamInput,0.45,0.60,{}},{"Output",MixEngine::kParamOutput,0.45,0.60,{}},
+  {"ConsoleOn",MixEngine::kParamConsoleOn,0.0,1.0,{}},
+  {"TubeOn",MixEngine::kParamTubeOn,0.0,1.0,{{MixEngine::kParamTubeAmount,0.35}}},
+  {"TapeOn",MixEngine::kParamTapeOn,0.0,1.0,{{MixEngine::kParamTapeAmount,0.35},{MixEngine::kParamTapeStability,0.9}}},
+  {"GlueOn",MixEngine::kParamGlueOn,0.0,1.0,{{MixEngine::kParamGlueAmount,0.35}}},
+  {"VinylOn",MixEngine::kParamVinylOn,0.0,1.0,{{MixEngine::kParamVinylCharacter,0.35},{MixEngine::kParamVinylWear,0.2}}},
   {"ConsoleDrive",MixEngine::kParamConsoleDrive,0.25,0.75,{{MixEngine::kParamConsoleOn,1.0}}},
   {"TubeAmount",MixEngine::kParamTubeAmount,0.25,0.75,{{MixEngine::kParamTubeOn,1.0}}},
   {"TapeAmount",MixEngine::kParamTapeAmount,0.25,0.75,{{MixEngine::kParamTapeOn,1.0}}},

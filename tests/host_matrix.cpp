@@ -238,7 +238,7 @@ bool activeParity(bool mixFx,int channels,int blockSize){
 int main(){
     try{
         bool ok=true;
-        const std::array<int,7> blocks{{1,7,31,64,127,256,511}};
+        const std::array<int,9> blocks{{1,7,31,64,127,256,511,1024,2048}};
         for(bool mixFx:{false,true}){
             for(int channels:{1,2}){
                 for(int block:blocks){
@@ -256,6 +256,8 @@ int main(){
             ok=activeParity(mixFx,1,31)&&ok;
             ok=activeParity(mixFx,2,127)&&ok;
             ok=activeParity(mixFx,2,511)&&ok;
+            ok=activeParity(mixFx,2,1024)&&ok;
+            ok=activeParity(mixFx,2,2048)&&ok;
         }
 
         if(!ok){
