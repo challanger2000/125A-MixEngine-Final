@@ -84,10 +84,22 @@ inline int qualityFactor(double normalized) {
     if (normalized < 0.75) return 2;
     return 4;
 }
-inline double characterControl(double normalized,double base,double exponent=1.15) {
+inline double characterControl(double normalized,double base,double knee=0.25) {
     const double u=std::clamp(normalized,0.0,1.0);
-    const double b=std::clamp(base,0.0,0.25);
-    return b+(1.0-b)*std::pow(u,exponent);
+    const double k=std::clamp(knee,0.05,0.50);
+    const double b=std::clamp(base,0.0,k*0.95);
+    if(u>=k)return u;
+    const double t=u/k;
+    // Cubic Hermite segment: starts at the module's base character and rejoins
+    // the displayed control exactly at 25 %, including a unit slope at the join.
+    // This confines the hidden base character to the lowest control region and
+    // preserves the established 25/50/75/100 % tuning above it.
+    const double h00=2.0*t*t*t-3.0*t*t+1.0;
+    const double h10=t*t*t-2.0*t*t+t;
+    const double h01=-2.0*t*t*t+3.0*t*t;
+    const double h11=t*t*t-t*t;
+    constexpr double startSlope=0.25;
+    return h00*b+h10*k*startSlope+h01*k+h11*k;
 }
 inline double consoleAutoGain(int mode, double drive) {
     const double d = std::clamp(drive, 0.0, 1.0);
@@ -505,7 +517,7 @@ void Processor::prepareMixFxConsoleCoupling(){
 
   const bool bypass=localParams[kParamBypass]>=0.5;
   const bool consoleOn=localParams[kParamConsoleOn]>=0.5;
-  const double drive=characterControl(localParams[kParamConsoleDrive],0.05,1.12);
+  const double drive=characterControl(localParams[kParamConsoleDrive],0.015);
   if(bypass||!consoleOn)continue;
 
   const int mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
@@ -692,7 +704,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   const double calibrationDb=calibrationReferenceDb(localParams[kParamCalibration]);
   calibrationGain=dbToGain(-calibrationDb);
   calibrationReturn=1.0/calibrationGain;
-  drive=characterControl(localParams[kParamConsoleDrive],0.05,1.12);
+  drive=characterControl(localParams[kParamConsoleDrive],0.015);
   crosstalk=std::clamp(localParams[kParamConsoleCrosstalk],0.0,1.0)*0.018;
 
   mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
@@ -702,7 +714,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   tubeAmount=characterControl(localParams[kParamTubeAmount],0.06);
   tapeAmount=characterControl(localParams[kParamTapeAmount],0.07);
   tapeStability=std::clamp(localParams[kParamTapeStability],0.0,1.0);
-  glueAmount=characterControl(localParams[kParamGlueAmount],0.05);
+  glueAmount=characterControl(localParams[kParamGlueAmount],0.15);
   glueCharacter=std::clamp(localParams[kParamGlueCharacter],0.0,1.0);
   vinylCharacter=characterControl(localParams[kParamVinylCharacter],0.05);
   vinylWear=std::clamp(localParams[kParamVinylWear],0.0,1.0);
@@ -947,7 +959,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         const double calibrationDb=calibrationReferenceDb(params_[kParamCalibration]);
         calibrationGain=dbToGain(-calibrationDb);
         calibrationReturn=1.0/calibrationGain;
-        drive=characterControl(params_[kParamConsoleDrive],0.05,1.12);
+        drive=characterControl(params_[kParamConsoleDrive],0.015);
 
         mode=std::clamp(static_cast<int>(std::lround(params_[kParamConsoleMode]*3.0)),0,3);
         osFactor=qualityFactor(params_[kParamQuality]);
@@ -956,7 +968,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         tubeAmount=characterControl(params_[kParamTubeAmount],0.06);
         tapeAmount=characterControl(params_[kParamTapeAmount],0.07);
         tapeStability=std::clamp(params_[kParamTapeStability],0.0,1.0);
-        glueAmount=characterControl(params_[kParamGlueAmount],0.05);
+        glueAmount=characterControl(params_[kParamGlueAmount],0.15);
         glueCharacter=std::clamp(params_[kParamGlueCharacter],0.0,1.0);
         vinylCharacter=characterControl(params_[kParamVinylCharacter],0.05);
         vinylWear=std::clamp(params_[kParamVinylWear],0.0,1.0);
