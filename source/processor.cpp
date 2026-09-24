@@ -106,7 +106,14 @@ inline double tubeAutoGain(double typeMorph, double amount) {
     const double e=a*(1.35-0.35*a)+0.24*creativeZone(a);
     return dbToGain(-tubeCharacter(typeMorph).autoGainDb*e*e);
 }
-inline double tapeAutoGain(double amount){const double a=std::clamp(amount,0.0,1.0);return a<=0.0?1.0:dbToGain(3.00*a*a);}
+inline double tapeAutoGain(double amount){
+    const double a=std::clamp(amount,0.0,1.0);
+    if(a<=0.0)return 1.0;
+    // V3 measured level-match fit from the integrated tape engine at
+    // Amount 25/50/75/100 %. Constrained to 0 dB at Amount=0.
+    const double makeupDb=0.75497043*a+1.78609461*a*a+2.04638887*a*a*a;
+    return dbToGain(makeupDb);
+}
 inline double glueAutoGain(double amount,double character){const double a=std::clamp(amount,0.0,1.0);if(a<=0.0)return 1.0;const double c=std::clamp(character,0.0,1.0),strength=a*(0.55+0.45*a),s2=strength*strength;const double makeupDb=(2.0+1.0*c)*s2*s2;return dbToGain(makeupDb);}
 inline double vinylAutoGain(double character,double wear){const double c=std::clamp(character,0.0,1.0),w=std::clamp(wear,0.0,1.0);return dbToGain(1.05*c+0.48*w);}
 inline double stableVariation(int sourceIndex,int lane){std::uint32_t x=0x9E3779B9u*static_cast<std::uint32_t>(sourceIndex+1);x^=0x7F4A7C15u*static_cast<std::uint32_t>(lane+1);x^=x>>16;x*=0x7FEB352Du;x^=x>>15;x*=0x846CA68Bu;x^=x>>16;return(static_cast<double>(x&0xFFFFu)/32767.5)-1.0;}
