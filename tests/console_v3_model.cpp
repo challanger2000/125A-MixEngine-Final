@@ -142,6 +142,7 @@ double fittedTwoToneResidual(const std::vector<double>& y){
     }
     return std::sqrt(double(e/count));
 }
+}
 
 int main(){
     bool ok=true;
