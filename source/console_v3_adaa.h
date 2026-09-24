@@ -90,6 +90,28 @@ inline double consoleV3EncodeAdaaFast(double x,double drive,int mode,ConsoleV3Ad
     return (f1-f0)/dx;
 }
 
+inline double consoleV3EncodeAdaaPrepared(double x,double a,double invA,double invA2,
+                                          ConsoleV3AdaaState& state) noexcept {
+    if(!state.encoderInitialised){
+        state.previousInput=x;
+        state.encoderInitialised=true;
+        const double z=std::clamp(a*x,-1.45,1.45);
+        return consoleV3SinFast(z)*invA;
+    }
+
+    const double previous=state.previousInput;
+    state.previousInput=x;
+    const double dx=x-previous;
+    if(std::abs(dx)<1.0e-8){
+        const double z=std::clamp(a*0.5*(x+previous),-1.45,1.45);
+        return consoleV3SinFast(z)*invA;
+    }
+
+    const double z1=std::clamp(a*x,-1.45,1.45);
+    const double z0=std::clamp(a*previous,-1.45,1.45);
+    return (consoleV3CosFast(z0)-consoleV3CosFast(z1))*invA2/dx;
+}
+
 inline double consoleV3DecodePrimitiveInterior(double summed,double drive,int mode) noexcept {
     const auto p=consoleV3PairParameters(drive,mode);
     const double a=std::max(1.0e-9,p.encodeStrength);
