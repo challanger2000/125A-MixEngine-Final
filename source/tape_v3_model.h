@@ -122,7 +122,7 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     // latency budget rather than inheriting V2's fixed 21-sample contract.
     const double centerSeconds=tapeV3TransportCenterSeconds();
     const double maxExcursionSeconds=tapeV3TransportMaxExcursionSeconds();
-    const double excursionSeconds=(1.0-std::exp(-2.2*instability))*maxExcursionSeconds;
+    const double excursionSeconds=std::pow(instability,1.70)*maxExcursionSeconds;
     const double modulation=0.78*std::sin(s.wowPhase)+0.22*std::sin(s.flutterPhase);
     const double delaySeconds=std::max(2.0/sampleRate,centerSeconds+excursionSeconds*modulation);
     const double transported=readTransport(s,delaySeconds*sampleRate);
