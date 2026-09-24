@@ -17,7 +17,8 @@ struct VinylV3State {
     double hfMemory=0.0;
     double dcX=0.0;
     double dcY=0.0;
-    void reset() noexcept { previousInput=hfMemory=dcX=dcY=0.0; }
+    bool primed=false;
+    void reset() noexcept { previousInput=hfMemory=dcX=dcY=0.0; primed=false; }
 };
 
 inline double vinylV3GrooveSpeed(const VinylV3Physical& p) noexcept {
@@ -49,6 +50,15 @@ inline double vinylV3DcBlock(double x,VinylV3State& s,double sampleRate) noexcep
 inline double processVinylV3Tracing(double x,VinylV3State& s,double sampleRate,
                                     const VinylV3Physical& p,double amount) noexcept {
     const double a=std::clamp(amount,0.0,1.0);
+    if(!s.primed){
+        // Prime from the first actual sample so activation/reset never creates
+        // a derivative impulse merely because previousInput started at zero.
+        s.previousInput=x;
+        s.dcX=x;
+        s.dcY=x;
+        s.primed=true;
+        return x;
+    }
     if(a<=0.0){s.previousInput=x;return x;}
 
     // x * dx/dt is the first compact term of the tracing-error surrogate.

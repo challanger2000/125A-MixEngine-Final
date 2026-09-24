@@ -230,3 +230,7 @@ target_include_directories(vinyl-v3-surrogate-diagnostic PRIVATE "${CMAKE_CURREN
 
 add_executable(vinyl-v3-alias-diagnostic tests/vinyl_v3_alias.cpp source/vinyl_v3_model.h source/oversampling.h)
 target_include_directories(vinyl-v3-alias-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
+
+add_executable(vinyl-v3-live-diagnostic tests/vinyl_v3_live.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
+target_include_directories(vinyl-v3-live-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(vinyl-v3-live-diagnostic PRIVATE sdk)
