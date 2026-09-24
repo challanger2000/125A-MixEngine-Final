@@ -197,3 +197,6 @@ target_link_libraries(console-v3-cpu-diagnostic PRIVATE sdk)
 
 add_executable(console-v3-adaa-diagnostic tests/console_v3_adaa.cpp source/console_v3_adaa.h source/console_v3_model.h)
 target_include_directories(console-v3-adaa-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(console-v3-adaa-production-gate tests/console_v3_adaa_production.cpp source/console_v3_adaa.h source/console_v3_model.h)
+target_include_directories(console-v3-adaa-production-gate PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
