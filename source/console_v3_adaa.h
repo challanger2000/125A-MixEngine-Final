@@ -25,6 +25,25 @@ inline double consoleV3EncodePrimitive(double x,double drive,int mode) noexcept 
     return -std::cos(z)/(a*a);
 }
 
+inline double consoleV3CosFast(double z) noexcept {
+    // 12th-order even Taylor polynomial. |z| is guaranteed <= 1.45 by the
+    // console encoder domain; the next omitted term is only a few e-9.
+    const double z2=z*z;
+    const double z4=z2*z2;
+    const double z6=z4*z2;
+    const double z8=z4*z4;
+    const double z10=z8*z2;
+    const double z12=z6*z6;
+    return 1.0-z2/2.0+z4/24.0-z6/720.0+z8/40320.0-z10/3628800.0+z12/479001600.0;
+}
+
+inline double consoleV3EncodePrimitiveFast(double x,double drive,int mode) noexcept {
+    const auto p=consoleV3PairParameters(drive,mode);
+    const double a=std::max(1.0e-9,p.encodeStrength);
+    const double z=std::clamp(a*x,-1.45,1.45);
+    return -consoleV3CosFast(z)/(a*a);
+}
+
 inline double consoleV3EncodeAdaa(double x,double drive,int mode,ConsoleV3AdaaState& state) noexcept {
     if(drive<=0.0){
         state.previousInput=x;
@@ -45,6 +64,29 @@ inline double consoleV3EncodeAdaa(double x,double drive,int mode,ConsoleV3AdaaSt
 
     const double f1=consoleV3EncodePrimitive(x,drive,mode);
     const double f0=consoleV3EncodePrimitive(previous,drive,mode);
+    return (f1-f0)/dx;
+}
+
+inline double consoleV3EncodeAdaaFast(double x,double drive,int mode,ConsoleV3AdaaState& state) noexcept {
+    if(drive<=0.0){
+        state.previousInput=x;
+        state.encoderInitialised=true;
+        return x;
+    }
+    if(!state.encoderInitialised){
+        state.previousInput=x;
+        state.encoderInitialised=true;
+        return consoleV3EncodeFast(x,drive,mode);
+    }
+
+    const double previous=state.previousInput;
+    state.previousInput=x;
+    const double dx=x-previous;
+    if(std::abs(dx)<1.0e-8)
+        return consoleV3EncodeFast(0.5*(x+previous),drive,mode);
+
+    const double f1=consoleV3EncodePrimitiveFast(x,drive,mode);
+    const double f0=consoleV3EncodePrimitiveFast(previous,drive,mode);
     return (f1-f0)/dx;
 }
 
