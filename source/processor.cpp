@@ -448,10 +448,18 @@ void Processor::captureMixFxInputSnapshot(const ProcessData& data){
   if(static_cast<int32>(left.size())<data.numSamples||static_cast<int32>(right.size())<data.numSamples){mixFxSnapshotSamples_.store(0,std::memory_order_release);return;}
   if(data.symbolicSampleSize==kSample32&&bus.channelBuffers32&&lanes>0&&bus.channelBuffers32[0]){
    const float* l=bus.channelBuffers32[0];const float* r=lanes>1&&bus.channelBuffers32[1]?bus.channelBuffers32[1]:l;
-   for(int32 i=0;i<data.numSamples;++i){left[static_cast<std::size_t>(i)]=l[i];right[static_cast<std::size_t>(i)]=r[i];}
+   for(int32 i=0;i<data.numSamples;++i){
+    const double lv=static_cast<double>(l[i]),rv=static_cast<double>(r[i]);
+    left[static_cast<std::size_t>(i)]=std::isfinite(lv)?lv:0.0;
+    right[static_cast<std::size_t>(i)]=std::isfinite(rv)?rv:0.0;
+   }
   }else if(data.symbolicSampleSize==kSample64&&bus.channelBuffers64&&lanes>0&&bus.channelBuffers64[0]){
    const double* l=bus.channelBuffers64[0];const double* r=lanes>1&&bus.channelBuffers64[1]?bus.channelBuffers64[1]:l;
-   for(int32 i=0;i<data.numSamples;++i){left[static_cast<std::size_t>(i)]=l[i];right[static_cast<std::size_t>(i)]=r[i];}
+   for(int32 i=0;i<data.numSamples;++i){
+    const double lv=static_cast<double>(l[i]),rv=static_cast<double>(r[i]);
+    left[static_cast<std::size_t>(i)]=std::isfinite(lv)?lv:0.0;
+    right[static_cast<std::size_t>(i)]=std::isfinite(rv)?rv:0.0;
+   }
   }else{
    mixFxSnapshotChannels_[static_cast<std::size_t>(channel)]=0;
    std::fill_n(left.begin(),data.numSamples,0.0);std::fill_n(right.begin(),data.numSamples,0.0);
@@ -725,6 +733,8 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
  auto& tubeGainState=mixFxTubeCompGainState_[static_cast<std::size_t>(index)];
 
  const auto processFrame=[&](int32 sampleIndex,double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){
+  if(!std::isfinite(leftIn))leftIn=0.0;
+  if(!std::isfinite(rightIn))rightIn=0.0;
   tubeTypeState+=characterRamp*(tubeTypeTarget-tubeTypeState);
   tapeSpeedState+=characterRamp*(tapeSpeedTarget-tapeSpeedState);
   tubeGainState+=characterRamp*(tubeGainTarget-tubeGainState);
@@ -973,6 +983,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     refreshDerived();
 
     const auto processFrame=[&](double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){
+        if(!std::isfinite(leftIn))leftIn=0.0;
+        if(!std::isfinite(rightIn))rightIn=0.0;
         tubeTypeMorphState_+=characterRamp*(tubeTypeTarget-tubeTypeMorphState_);
         tapeSpeedMorphState_+=characterRamp*(tapeSpeedTarget-tapeSpeedMorphState_);
         tubeCompGainState_+=characterRamp*(tubeGainTarget-tubeCompGainState_);
