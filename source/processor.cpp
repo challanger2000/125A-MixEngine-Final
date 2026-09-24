@@ -505,8 +505,8 @@ void Processor::prepareMixFxConsoleCoupling(){
 
   const bool bypass=localParams[kParamBypass]>=0.5;
   const bool consoleOn=localParams[kParamConsoleOn]>=0.5;
-  const double drive=std::clamp(localParams[kParamConsoleDrive],0.0,1.0);
-  if(bypass||!consoleOn||drive<=0.0)continue;
+  const double drive=characterControl(localParams[kParamConsoleDrive],0.05,1.12);
+  if(bypass||!consoleOn)continue;
 
   const int mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
   const double inputGain=dbToGain((localParams[kParamInput]-0.5)*24.0);

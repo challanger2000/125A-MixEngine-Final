@@ -89,11 +89,11 @@ int main(){
  try{
   struct C{const char*name;std::vector<Setting> cfg;};
   const std::vector<C> cases={
-   {"Console zero",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.0},{MixEngine::kParamConsoleNoise,0.0}}},
-   {"Tube zero",{{MixEngine::kParamTubeOn,1.0},{MixEngine::kParamTubeAmount,0.0}}},
-   {"Tape zero",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeAmount,0.0},{MixEngine::kParamTapeHiss,0.0}}},
-   {"Glue zero",{{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueAmount,0.0}}},
-   {"Vinyl zero",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.0},{MixEngine::kParamVinylWear,0.0},{MixEngine::kParamVinylNoise,0.0}}}
+   {"Console base",{{MixEngine::kParamConsoleOn,1.0},{MixEngine::kParamConsoleDrive,0.0},{MixEngine::kParamConsoleNoise,0.0}}},
+   {"Tube base",{{MixEngine::kParamTubeOn,1.0},{MixEngine::kParamTubeAmount,0.0}}},
+   {"Tape base",{{MixEngine::kParamTapeOn,1.0},{MixEngine::kParamTapeAmount,0.0},{MixEngine::kParamTapeHiss,0.0}}},
+   {"Glue base",{{MixEngine::kParamGlueOn,1.0},{MixEngine::kParamGlueAmount,0.0}}},
+   {"Vinyl base",{{MixEngine::kParamVinylOn,1.0},{MixEngine::kParamVinylCharacter,0.0},{MixEngine::kParamVinylWear,0.0},{MixEngine::kParamVinylNoise,0.0}}}
   };
   bool ok=true;
   for(bool mixfx:{false,true}){
@@ -102,10 +102,13 @@ int main(){
     const auto wet=render(mixfx,tc.cfg);
     const double d=diffRms(dry,wet);
     std::cout<<(mixfx?"MixFX ":"Channel ")<<tc.name<<" residual="<<d<<" dBFSrel\n";
-    if(d>-120.0)ok=false;
+    // Enabled character modules must already do something at a displayed 0 %,
+    // but the base character should remain subtle rather than becoming a second
+    // hidden high-intensity setting.
+    if(d<-60.0 || d>-6.0)ok=false;
    }
   }
-  std::cout<<(ok?"PASS":"FAIL")<<": zero-intensity neutrality audit\n";
+  std::cout<<(ok?"PASS":"FAIL")<<": enabled-module base-character audit\n";
   return ok?0:1;
  }catch(int c){std::cerr<<"Neutrality setup FAIL "<<c<<"\n";return c;}
  catch(...){std::cerr<<"Neutrality unknown exception\n";return 90;}
