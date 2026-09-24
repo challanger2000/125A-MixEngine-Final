@@ -166,3 +166,6 @@ target_include_directories(tape-v3-research-diagnostic PRIVATE "${CMAKE_CURRENT_
 
 add_executable(tape-v3-ja-oracle-diagnostic tests/tape_v3_ja_oracle.cpp source/tape_v3_ja_oracle.h)
 target_include_directories(tape-v3-ja-oracle-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(tape-v3-sample-rate-diagnostic tests/tape_v3_sample_rate.cpp source/tape_v3_model.h source/oversampling.h)
+target_include_directories(tape-v3-sample-rate-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
