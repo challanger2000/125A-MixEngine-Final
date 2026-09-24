@@ -103,7 +103,11 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     if(a<=0.0) return x;
 
     const auto ch=tapeV3Character(speed);
+    // Keep the normal working range conservative while opening a genuinely
+    // stronger creative zone above ~70 %. This is a DSP-intensity term, not
+    // makeup gain: it only increases nonlinear/magnetic behaviour.
     const double creative=a*a*a*a;
+    const double upper=creative*creative;
     const double instability=1.0-std::clamp(stability,0.0,1.0);
 
     s.transport[s.write]=x;
@@ -134,13 +138,13 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     const double ec=level>s.envelope?attack:release;
     s.envelope=ec*s.envelope+(1.0-ec)*level;
     const double over=std::max(0.0,s.envelope-0.18);
-    const double comp=1.0/(1.0+(0.85+0.55*a)*a*over);
+    const double comp=1.0/(1.0+(0.85+0.55*a+1.35*upper)*a*over);
     const double compressed=transported*comp;
 
     // Bias + stateful magnetic stage. Crucially, the primary nonlinear
     // operation itself lives inside the oversampling island.
-    const double drive=1.0+(ch.saturationDrive-1.0)*(0.25+0.75*a)+0.35*creative;
-    const double bias=ch.bias*a;
+    const double drive=1.0+(ch.saturationDrive-1.0)*(0.25+0.75*a)+0.35*creative+1.15*upper;
+    const double bias=ch.bias*a*(1.0+0.85*upper);
 
     osFactor=OversamplingEngine::sanitiseFactor(osFactor);
     if(s.oversamplingFactor!=osFactor){s.oversampler.reset();s.dryAligner.reset();s.oversamplingFactor=osFactor;}
@@ -156,9 +160,9 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
         const double centered=std::tanh(bias);
         const double slope=std::max(1.0e-9,drive*(1.0-centered*centered));
         double y=(target-centered)/slope;
-        y+=ch.asymmetry*a*(v*std::abs(v))/(1.0+0.7*v*v);
-        y+=0.10*a*(s.magnetic-target);
-        const double finalDrive=1.0+0.45*a+0.30*creative;
+        y+=ch.asymmetry*a*(1.0+1.40*upper)*(v*std::abs(v))/(1.0+0.7*v*v);
+        y+=(0.10*a+0.11*upper)*(s.magnetic-target);
+        const double finalDrive=1.0+0.45*a+0.30*creative+1.10*upper;
         const double norm=std::tanh(finalDrive);
         return norm>1.0e-12?std::tanh(y*finalDrive)/norm:y;
     });
@@ -173,7 +177,7 @@ inline double processTapeV3(double x,TapeV3State& s,double sampleRate,
     s.bumpLp1+=bc*(s.hfMemory-s.bumpLp1);
     s.bumpLp2+=bc*(s.bumpLp1-s.bumpLp2);
     const double bumpBand=s.bumpLp1-s.bumpLp2;
-    double wet=s.hfMemory+bumpBand*ch.headBumpGain*a*(1.0+0.75*creative);
+    double wet=s.hfMemory+bumpBand*ch.headBumpGain*a*(1.0+0.75*creative+0.55*upper);
 
     wet=dcBlockTape(wet,s,sampleRate);
     const double mix=std::clamp(a*(0.30+0.62*a)+0.08*creative,0.0,1.0);
