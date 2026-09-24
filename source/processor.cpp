@@ -663,7 +663,10 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
  else localParams=params_;
 
  std::array<std::size_t,kParamCount> automationIndex{};
- const bool haveAutomation=mixFxAutomationSamples_==data.numSamples;
+ const bool haveAutomation=
+     mixFxAutomationSamples_==data.numSamples &&
+     std::any_of(mixFxAutomation_.begin(),mixFxAutomation_.end(),
+                 [](const auto& lane){return !lane.empty();});
 
  const auto applyAutomationAt=[&](int32 sampleOffset){
   if(!haveAutomation)return false;
