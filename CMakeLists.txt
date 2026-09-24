@@ -227,3 +227,6 @@ target_include_directories(vinyl-v3-tracing-oracle-diagnostic PRIVATE "${CMAKE_C
 
 add_executable(vinyl-v3-surrogate-diagnostic tests/vinyl_v3_surrogate.cpp source/vinyl_v3_model.h source/vinyl_v3_tracing_oracle.h)
 target_include_directories(vinyl-v3-surrogate-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source")
+
+add_executable(vinyl-v3-alias-diagnostic tests/vinyl_v3_alias.cpp source/vinyl_v3_model.h source/oversampling.h)
+target_include_directories(vinyl-v3-alias-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
