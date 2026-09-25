@@ -8,6 +8,7 @@
 #include <cmath>
 #include <iostream>
 #include <memory>
+#include <limits>
 
 using namespace Steinberg;
 using namespace Steinberg::Vst;
@@ -87,6 +88,26 @@ int main(){
             const double a=saved[id],b=roundtrip[id];
             maxDiff=std::max(maxDiff,std::abs(a-b));
             if(std::abs(a-b)>1.0e-15)ok=false;
+        }
+
+        // Corrupt/non-finite state values must never enter the live parameter
+        // array. A malformed slot falls back to that parameter's documented
+        // normalized default while all other finite slots remain intact.
+        MemoryStream malformed;
+        IBStreamer malformedWriter(&malformed,kLittleEndian);
+        for(ParamID id=0;id<MixEngine::kParamCount;++id){
+            double v=expected[id];
+            if(id==MixEngine::kParamConsoleDrive)v=std::numeric_limits<double>::quiet_NaN();
+            if(!malformedWriter.writeDouble(v))throw 50;
+        }
+        if(malformed.seek(0,IBStream::kIBSeekSet,nullptr)!=kResultOk)throw 51;
+        auto hardened=std::make_unique<MixEngine::Processor>();
+        if(hardened->setState(&malformed)!=kResultOk)throw 52;
+        const auto hardenedState=readState(*hardened);
+        if(!std::isfinite(hardenedState[MixEngine::kParamConsoleDrive])||
+           std::abs(hardenedState[MixEngine::kParamConsoleDrive]-0.25)>1.0e-15){
+            std::cerr<<"Non-finite state sanitisation FAILED\n";
+            ok=false;
         }
 
         std::cout<<"State roundtrip parameters="<<MixEngine::kParamCount
