@@ -685,60 +685,60 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
-    VSTGUI::CRect shadow=r; shadow.offset(0.0,2.0);
-    fillRoundGradient(context,shadow,7.0,{2,3,5,200},{0,0,0,235});
-    fillRoundGradient(context,r,7.0,{75,91,105,255},{20,29,38,255});
-    strokeRound(context,r,7.0,{4,8,12,255},1.0);
-
-    VSTGUI::CRect inner=r;
-    inner.inset(3.5,3.5);
-    fillRoundGradient(context,inner,5.0,{13,21,29,255},{7,12,18,255});
-    strokeRound(context,inner,5.0,{105,134,157,92},1.0);
     const auto count=static_cast<int>(labels_.size());
     const auto selected=std::clamp(
         static_cast<int>(std::lround(getValueNormalized()*static_cast<double>(std::max(1,count-1)))),
         0,count-1);
-    const double segW=inner.getWidth()/static_cast<double>(count);
 
-    double fontSize=count>=4?8.2:9.4;
-    while(fontSize>6.6) {
+    // One visual language for the whole instrument: every selector is a row of
+    // compact push-buttons derived from the Console/Tube/Tape power-button material.
+    // No separate "digital selector" housing remains.
+    const double gap=2.0;
+    const double segW=(r.getWidth()-gap*static_cast<double>(count-1))/static_cast<double>(count);
+
+    double fontSize=count>=4?7.2:8.6;
+    while(fontSize>6.2) {
         context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
         bool fits=true;
         for(const auto& label:labels_) {
             if(context->getStringWidth(label.c_str())>segW-5.0) { fits=false; break; }
         }
         if(fits) break;
-        fontSize-=0.35;
+        fontSize-=0.25;
     }
     context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
 
     for(int i=0;i<count;++i) {
-        VSTGUI::CRect seg(inner.left+i*segW,inner.top,
-                          i==count-1?inner.right:inner.left+(i+1)*segW,inner.bottom);
-        VSTGUI::CRect face=seg;
-        face.inset(1.2,1.0);
+        const double left=r.left+i*(segW+gap);
+        VSTGUI::CRect sw(left,r.top,left+segW,r.bottom);
+        if(i==count-1) sw.right=r.right;
 
+        VSTGUI::CRect bezel=sw;
+        VSTGUI::CRect shadow=bezel; shadow.offset(0.0,1.8);
+        fillRoundGradient(context,shadow,5.0,{2,3,4,185},{0,0,0,225});
+        fillRoundGradient(context,bezel,5.0,{92,99,107,255},{25,30,35,255});
+        strokeRound(context,bezel,5.0,{5,7,9,255},1.0);
+
+        VSTGUI::CRect cap=bezel; cap.inset(2.0,2.0);
+        if(i==selected) cap.offset(0.0,0.8);
+        fillRoundGradient(context,cap,3.5,
+                          i==selected?VSTGUI::CColor{64,75,84,255}:VSTGUI::CColor{48,55,62,255},
+                          i==selected?VSTGUI::CColor{18,25,31,255}:VSTGUI::CColor{13,19,24,255});
+        strokeRound(context,cap,3.5,
+                    i==selected?VSTGUI::CColor{142,159,172,185}:VSTGUI::CColor{91,108,121,155},1.0);
+
+        VSTGUI::CRect inset=cap; inset.inset(2.0,2.0);
+        strokeRound(context,inset,2.5,{255,255,255,static_cast<uint8_t>(i==selected?28:14)},1.0);
+
+        // Same restrained blue hardware cue already used on the module push buttons.
         if(i==selected) {
-            VSTGUI::CRect selectedShadow=face; selectedShadow.offset(0.0,1.3);
-            fillRoundGradient(context,selectedShadow,4.0,{3,4,5,180},{0,0,0,220});
-            fillRoundGradient(context,face,4.0,{55,84,106,255},{25,48,66,255});
-            strokeRound(context,face,4.0,{118,168,201,190},1.0);
-            VSTGUI::CRect glint=face; glint.inset(2.0,2.0); glint.bottom=glint.top+1.0;
-            context->setFillColor({218,240,255,42});
+            VSTGUI::CRect glint=cap; glint.inset(3.0,2.0); glint.bottom=glint.top+1.0;
+            context->setFillColor({190,220,240,38});
             context->drawRect(glint,VSTGUI::kDrawFilled);
-        } else {
-            fillRoundGradient(context,face,4.0,{38,49,59,255},{18,26,34,255});
-            strokeRound(context,face,4.0,{69,91,108,175},1.0);
         }
 
-        if(i>0) {
-            context->setFrameColor({0,0,0,145});
-            context->setLineWidth(1.0);
-            context->drawLine({seg.left,inner.top+5.0},{seg.left,inner.bottom-5.0});
-        }
-
-        context->setFontColor(i==selected?VSTGUI::CColor{226,241,250,255}:VSTGUI::CColor{177,194,207,245});
-        context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),face,VSTGUI::kCenterText);
+        context->setFontColor(i==selected?VSTGUI::CColor{231,240,246,255}:VSTGUI::CColor{169,181,190,245});
+        context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),cap,VSTGUI::kCenterText);
     }
 
     setDirty(false);

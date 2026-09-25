@@ -232,7 +232,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium,"MixKnobGunmetalMAtlas"))return v;
-    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobGunmetalMAtlas"))return v;
     if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
 

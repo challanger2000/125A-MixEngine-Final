@@ -1,4 +1,4 @@
 V3 RC trigger
-source=aee2bbf759c862f21abd0ad9f46e8b8e1d9839b7
-reason=final-gui-masters-static-vu-runtime-asset-whitelist
+source=8c84b7fbd1c07066cfcd286e8e51bee35ab48529
+reason=fix-bitmap-scaling-vu-and-unify-selector-button-language
 retry=0
