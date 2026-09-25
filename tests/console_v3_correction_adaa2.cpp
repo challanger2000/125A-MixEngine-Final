@@ -97,6 +97,6 @@ int main(){
     std::cout<<"128ch CPU mean base="<<baseCpu<<" first="<<firstCpu<<" second="<<secondCpu
              <<" second/base="<<(secondCpu/std::max(1e-9,baseCpu))<<"\n";
     if(!(secondCpu<baseCpu*1.15))ok=false;
-    std::cout<<(ok?"PASS":"FAIL")<<": Console V3 second-order correction ADAA research\n";
+    std::cout<<(ok?"PASS":"REJECTED (non-gating research)")<<": Console V3 second-order correction ADAA research\n";
     return ok?0:1;
 }
