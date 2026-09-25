@@ -42,7 +42,7 @@ inline double processConsoleNonlinearCore(double x,double low,double high,int mo
             y+=0.018*e*high*std::abs(x);
             // Once the soft-clip amount reaches its natural ceiling, keep the
             // final quarter meaningful with a bounded parallel asymmetry/density term.
-            y+=0.032*zone*(x*std::abs(x))/(1.0+0.75*x*x);
+            y+=0.180*zone*(x*std::abs(x))/(1.0+0.75*x*x);
             break;
         case 2:
             y=consoleSoftClip((x+0.135*e*low
