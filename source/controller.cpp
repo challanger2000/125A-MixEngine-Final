@@ -7,6 +7,7 @@
 #include "public.sdk/source/vst/vstparameters.h"
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
 namespace MixEngine {
 using namespace Steinberg;
@@ -158,7 +159,9 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state){
             if(id==kParamVinylNoise){setParamNormalized(kParamVinylNoise,getParamNormalized(kParamConsoleNoise));break;}
             return kResultFalse;
         }
-        setParamNormalized(id,v);
+        if(std::isfinite(v))setParamNormalized(id,std::clamp(v,0.0,1.0));
+        else if(auto* parameter=parameters.getParameter(id))
+            setParamNormalized(id,parameter->getInfo().defaultNormalizedValue);
     }
     return kResultOk;
 }
