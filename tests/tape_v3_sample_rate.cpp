@@ -60,7 +60,7 @@ double diffRms(const std::vector<double>& a,const std::vector<double>& b){
 
 int main(){
     bool ok=true;
-    for(double sr:{44100.0,48000.0,96000.0,192000.0}){
+    for(double sr:{44100.0,48000.0,96000.0,192000.0,384000.0}){
         bool local=true;
 
         // 0% must be sample-exact neutral at every supported rate.
