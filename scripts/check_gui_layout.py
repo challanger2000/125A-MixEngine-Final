@@ -71,6 +71,26 @@ for path in FILES:
         if views[name] != expected_box:
             raise SystemExit(f"{path}: {name} box {views[name]} != exact {expected_box}")
 
+
+    # All 64px secondary knobs share one exact lower baseline. This uses the
+    # available vertical space and prevents Glue/Vinyl from visually floating.
+    secondary_knobs = ["ConsoleNoise", "TapeStability", "TapeHiss",
+                       "GlueCharacter", "VinylWear", "VinylNoise", "LowMono"]
+    if path.endswith("mixengine.uidesc"):
+        secondary_knobs.insert(0, "Crosstalk")
+    for name in secondary_knobs:
+        x, y, w, h = views[name]
+        if (y, w, h) != (633.0, 64.0, 64.0):
+            raise SystemExit(f"{path}: {name} must use exact lower row y=633, size=64x64; got {views[name]}")
+
+    secondary_labels = ["LabelConsoleNoise", "LabelStability", "LabelHiss",
+                        "LabelResponse", "LabelWear", "LabelSurface", "LabelLowMono"]
+    if path.endswith("mixengine.uidesc"):
+        secondary_labels.insert(0, "LabelCrosstalk")
+    for name in secondary_labels:
+        if views[name][1] != 706.0:
+            raise SystemExit(f"{path}: {name} must use exact lower label baseline y=706; got y={views[name][1]}")
+
     # Exact bilateral placement inside two-control module rows.
     pairs = {
         "Tape": ("TapeStability", "TapeHiss", 38.0),
