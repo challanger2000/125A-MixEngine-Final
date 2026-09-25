@@ -7,17 +7,14 @@ include(FetchContent)
 FetchContent_Declare(hiir GIT_REPOSITORY https://github.com/unevens/hiir.git GIT_TAG 4589fedb4d08b899514cb605ccd7418bf262ab18 SOURCE_DIR "${CMAKE_BINARY_DIR}/hiir")
 FetchContent_MakeAvailable(hiir)
 
-# Approved 125A Knob Designer asset set. Pin the exact successful generated-assets
-# commit so GUI builds remain reproducible and never silently pick up a newer export.
-FetchContent_Declare(knob_assets
- GIT_REPOSITORY https://github.com/challanger2000/125A-Knob-Designer.git
- GIT_TAG generated-assets-v0.1.0
- GIT_SHALLOW FALSE)
-FetchContent_GetProperties(knob_assets)
-if(NOT knob_assets_POPULATED)
- FetchContent_Populate(knob_assets)
+# Approved 125A Knob Designer assets are checked out by CI (or supplied locally)
+# and passed in explicitly. This keeps binary GUI resources deterministic and avoids
+# configuring a second repository through FetchContent.
+set(MIXENGINE_KNOB_ASSET_ROOT "" CACHE PATH "Path to approved MixEngine knob assets")
+if(NOT MIXENGINE_KNOB_ASSET_ROOT)
+ message(FATAL_ERROR "Set MIXENGINE_KNOB_ASSET_ROOT to the approved assets/mixengine directory.")
 endif()
-set(MIXENGINE_KNOB_RESOURCE_DIR "${knob_assets_SOURCE_DIR}/assets/mixengine")
+file(TO_CMAKE_PATH "${MIXENGINE_KNOB_ASSET_ROOT}" MIXENGINE_KNOB_RESOURCE_DIR)
 set(MIXENGINE_KNOB_RESOURCES
  "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_128px_100pct_128f.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_192px_150pct_128f.png"
@@ -31,6 +28,11 @@ set(MIXENGINE_KNOB_RESOURCES
  "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_96px_150pct_128f.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_128px_200pct_128f.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_192px_300pct_128f.png")
+foreach(MIXENGINE_KNOB_RESOURCE IN LISTS MIXENGINE_KNOB_RESOURCES)
+ if(NOT EXISTS "${MIXENGINE_KNOB_RESOURCE}")
+  message(FATAL_ERROR "Missing approved MixEngine knob asset: ${MIXENGINE_KNOB_RESOURCE}")
+ endif()
+endforeach()
 set(SMTG_CREATE_PLUGIN_LINK 0 CACHE BOOL "Disable automatic VST3 install links" FORCE)
 if(NOT DEFINED VST3_SDK_ROOT)
  if(DEFINED ENV{VST3_SDK_ROOT})

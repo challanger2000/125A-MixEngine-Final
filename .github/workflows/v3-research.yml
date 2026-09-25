@@ -17,6 +17,39 @@ jobs:
         with:
           fetch-depth: 0
 
+
+      - name: Checkout approved MixEngine GUI assets
+        uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Knob-Designer
+          ref: generated-assets-v0.1.0
+          path: knob-assets
+          fetch-depth: 1
+
+      - name: Verify approved MixEngine GUI assets
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+          $required = @(
+            "125A_MixEngine_Analog_L_128px_100pct_128f.png",
+            "125A_MixEngine_Analog_L_192px_150pct_128f.png",
+            "125A_MixEngine_Analog_L_256px_200pct_128f.png",
+            "125A_MixEngine_Analog_L_384px_300pct_128f.png",
+            "125A_MixEngine_Analog_M_96px_100pct_128f.png",
+            "125A_MixEngine_Analog_M_144px_150pct_128f.png",
+            "125A_MixEngine_Analog_M_192px_200pct_128f.png",
+            "125A_MixEngine_Analog_M_288px_300pct_128f.png",
+            "125A_MixEngine_Analog_S_64px_100pct_128f.png",
+            "125A_MixEngine_Analog_S_96px_150pct_128f.png",
+            "125A_MixEngine_Analog_S_128px_200pct_128f.png",
+            "125A_MixEngine_Analog_S_192px_300pct_128f.png"
+          )
+          foreach ($name in $required) {
+            $path = Join-Path $root $name
+            if (-not (Test-Path $path -PathType Leaf)) { throw "Missing approved GUI asset: $path" }
+          }
+          Write-Host "Approved MixEngine GUI assets: 12/12 present"
+
       - name: Checkout Steinberg VST3 SDK
         uses: actions/checkout@v4
         with:
@@ -27,7 +60,7 @@ jobs:
 
       - name: Configure
         shell: pwsh
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DMIXENGINE_KNOB_ASSET_ROOT="$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine" -DSMTG_CREATE_PLUGIN_LINK=0
 
       - name: Build tape V3 diagnostics
         shell: pwsh
