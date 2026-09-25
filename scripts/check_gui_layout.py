@@ -72,16 +72,16 @@ for path in FILES:
             raise SystemExit(f"{path}: {name} box {views[name]} != exact {expected_box}")
 
 
-    # All 64px secondary knobs share one exact lower baseline. This uses the
-    # available vertical space and prevents Glue/Vinyl from visually floating.
+    # Secondary controls use 72px view boxes around an unchanged 64px hardware
+    # body, leaving real room for contact shadow and scale ticks without clipping.
     secondary_knobs = ["ConsoleNoise", "TapeStability", "TapeHiss",
                        "GlueCharacter", "VinylWear", "VinylNoise", "LowMono"]
     if path.endswith("mixengine.uidesc"):
         secondary_knobs.insert(0, "Crosstalk")
     for name in secondary_knobs:
         x, y, w, h = views[name]
-        if (y, w, h) != (633.0, 64.0, 64.0):
-            raise SystemExit(f"{path}: {name} must use exact lower row y=633, size=64x64; got {views[name]}")
+        if (y, w, h) != (629.0, 72.0, 72.0):
+            raise SystemExit(f"{path}: {name} must use exact lower row view y=629, size=72x72; got {views[name]}")
 
     secondary_labels = ["LabelConsoleNoise", "LabelStability", "LabelHiss",
                         "LabelResponse", "LabelWear", "LabelSurface", "LabelLowMono"]

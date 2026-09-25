@@ -12,12 +12,8 @@
     <bitmap name="MixPush#1.5x" path="125A_MixEngine_Push_Button_96px_150pct_3states.png" scale-factor="1.5"/>
     <bitmap name="MixPush#2.0x" path="125A_MixEngine_Push_Button_128px_200pct_3states.png" scale-factor="2"/>
     <bitmap name="MixPush#3.0x" path="125A_MixEngine_Push_Button_192px_300pct_3states.png" scale-factor="3"/>
-    <bitmap name="MixVUFace" path="125A_MixEngine_VU_Original_Face_320x184.png"/>
-    <bitmap name="MixVUFace#3.0x" path="125A_MixEngine_VU_Original_Face_960x552.png" scale-factor="3"/>
-    <bitmap name="MixVUNeedleAtlas" path="125A_MixEngine_VU_Original_Needle_224x168_8x16_128f.png"/>
-    <bitmap name="MixVUNeedleAtlas#3.0x" path="125A_MixEngine_VU_Original_Needle_672x504_8x16_128f.png" scale-factor="3"/>
-    <bitmap name="MixVUOverlay" path="125A_MixEngine_VU_Original_Cover_320x184.png"/>
-    <bitmap name="MixVUOverlay#3.0x" path="125A_MixEngine_VU_Original_Cover_960x552.png" scale-factor="3"/>
+    <bitmap name="MixVUAtlas" path="125A_MixEngine_VU_320x184_16x8_128f.png"/>
+    <bitmap name="MixVUAtlas#1.5x" path="125A_MixEngine_VU_480x276_16x8_128f.png" scale-factor="1.5"/>
   </bitmaps>
   <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
@@ -72,25 +68,25 @@
     <view class="CView" custom-view-name="ConsolePower" origin="236,340" size="64,64"/>
     <view class="CView" custom-view-name="ConsoleDrive" origin="204,406" size="128,128"/>
     <view class="CView" custom-view-name="ConsoleModeSelector" origin="188,578" size="160,42"/>
-    <view class="CView" custom-view-name="ConsoleNoise" origin="236,633" size="64,64"/>
+    <view class="CView" custom-view-name="ConsoleNoise" origin="232,629" size="72,72"/>
     <view class="CView" custom-view-name="TubePower" origin="412,340" size="64,64"/>
     <view class="CView" custom-view-name="TubeAmount" origin="380,406" size="128,128"/>
     <view class="CView" custom-view-name="TubeVoiceSelector" origin="372,578" size="144,42"/>
     <view class="CView" custom-view-name="TapePower" origin="588,340" size="64,64"/>
     <view class="CView" custom-view-name="TapeAmount" origin="556,406" size="128,128"/>
     <view class="CView" custom-view-name="TapeSpeedSelector" origin="548,578" size="144,42"/>
-    <view class="CView" custom-view-name="TapeStability" origin="550,633" size="64,64"/>
-    <view class="CView" custom-view-name="TapeHiss" origin="626,633" size="64,64"/>
+    <view class="CView" custom-view-name="TapeStability" origin="546,629" size="72,72"/>
+    <view class="CView" custom-view-name="TapeHiss" origin="622,629" size="72,72"/>
     <view class="CView" custom-view-name="GluePower" origin="764,340" size="64,64"/>
     <view class="CView" custom-view-name="GlueAmount" origin="732,406" size="128,128"/>
-    <view class="CView" custom-view-name="GlueCharacter" origin="764,633" size="64,64"/>
+    <view class="CView" custom-view-name="GlueCharacter" origin="760,629" size="72,72"/>
     <view class="CView" custom-view-name="VinylPower" origin="940,340" size="64,64"/>
     <view class="CView" custom-view-name="VinylCharacter" origin="908,406" size="128,128"/>
-    <view class="CView" custom-view-name="VinylWear" origin="902,633" size="64,64"/>
-    <view class="CView" custom-view-name="VinylNoise" origin="978,633" size="64,64"/>
-    <view class="CView" custom-view-name="Depth" origin="1103,373" size="96,96"/>
-    <view class="CView" custom-view-name="Width" origin="1103,500" size="96,96"/>
-    <view class="CView" custom-view-name="LowMono" origin="1119,633" size="64,64"/>
+    <view class="CView" custom-view-name="VinylWear" origin="898,629" size="72,72"/>
+    <view class="CView" custom-view-name="VinylNoise" origin="974,629" size="72,72"/>
+    <view class="CView" custom-view-name="Depth" origin="1099,369" size="104,104"/>
+    <view class="CView" custom-view-name="Width" origin="1099,496" size="104,104"/>
+    <view class="CView" custom-view-name="LowMono" origin="1115,629" size="72,72"/>
     <view class="CView" custom-view-name="Output" origin="1269,388" size="128,128"/>
     <view class="CView" custom-view-name="LevelMatch" origin="1301,578" size="64,64"/>
   </template>

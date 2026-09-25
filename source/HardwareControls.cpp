@@ -221,6 +221,13 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         context->drawEllipse(sr,VSTGUI::kDrawStroked);
         line(x-2.2,y,x+2.2,y,{6,7,9,230},1.0);
     };
+    const auto moduleScrew=[&](double x,double y){
+        const auto sr=rect(x-3.5,y-3.5,7,7);
+        fillRadialEllipse(context,sr,{126,132,139,235},{25,28,33,255},{-1.4,-1.5});
+        context->setFrameColor({5,7,9,240}); context->setLineWidth(0.9);
+        context->drawEllipse(sr,VSTGUI::kDrawStroked);
+        line(x-1.7,y,x+1.7,y,{7,9,11,220},0.9);
+    };
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
@@ -272,10 +279,25 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     // Selectors and utility buttons now mount directly on the blue plates.
     // Their own hardware bezels provide depth; no extra black background boxes.
 
-    // One mechanically consistent fastener system: chassis corners only.
+    // Chassis screws carry the enclosure. Smaller module screws then repeat the
+    // same two-point diagonal mounting logic on every blue sub-panel.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
                   VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782}})
         screw(p.x,p.y);
+
+    for(auto p : {
+        VSTGUI::CPoint{30,36},   VSTGUI::CPoint{204,250},
+        VSTGUI::CPoint{234,36},  VSTGUI::CPoint{1206,250},
+        VSTGUI::CPoint{1236,36}, VSTGUI::CPoint{1410,250},
+        VSTGUI::CPoint{30,310},  VSTGUI::CPoint{162,754},
+        VSTGUI::CPoint{194,310}, VSTGUI::CPoint{342,754},
+        VSTGUI::CPoint{370,310}, VSTGUI::CPoint{518,754},
+        VSTGUI::CPoint{546,310}, VSTGUI::CPoint{694,754},
+        VSTGUI::CPoint{722,310}, VSTGUI::CPoint{870,754},
+        VSTGUI::CPoint{898,310}, VSTGUI::CPoint{1046,754},
+        VSTGUI::CPoint{1078,310},VSTGUI::CPoint{1224,754},
+        VSTGUI::CPoint{1256,310},VSTGUI::CPoint{1410,754}})
+        moduleScrew(p.x,p.y);
 
     context->setFont(VSTGUI::kNormalFont,8.8,0);
     context->setFontColor({139,151,161,225});
@@ -352,8 +374,11 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto v=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
     const auto cx=r.getCenter().x, cy=r.getCenter().y;
-    const double radius=std::min(r.getWidth(),r.getHeight())*0.40;
+    const double visualSize=style_==Style::Large?128.0:(style_==Style::Medium?96.0:64.0);
+    const double radius=visualSize*0.40;
     const double angle=(135.0+270.0*v)*kPi/180.0;
+    const VSTGUI::CRect knobRect(cx-visualSize*0.5,cy-visualSize*0.5,
+                                 cx+visualSize*0.5,cy+visualSize*0.5);
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
@@ -387,20 +412,20 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
         const int row=frame/kColumns;
         const VSTGUI::CRect src(kSourceFrame*col,kSourceFrame*row,
                                 kSourceFrame*(col+1),kSourceFrame*(row+1));
-        context->fillRectWithBitmap(filmstrip_,src,r,1.f);
+        context->fillRectWithBitmap(filmstrip_,src,knobRect,1.f);
 
         // Scale is drawn after the bitmap but only in its transparent outer margin.
         // This keeps it crisp without painting across the metal knob cap.
         if(style_!=Style::Large) {
             constexpr int kTicks=9;
-            const double outer=std::min(r.getWidth(),r.getHeight())*0.492;
-            const double inner=outer-(style_==Style::Small?4.2:5.2);
+            const double outer=visualSize*0.5+(style_==Style::Small?3.0:4.0);
+            const double inner=outer-(style_==Style::Small?5.0:6.5);
             for(int i=0;i<kTicks;++i) {
                 const double t=static_cast<double>(i)/static_cast<double>(kTicks-1);
                 const double a=(135.0+270.0*t)*kPi/180.0;
                 const bool datum=(i==0||i==kTicks-1||i==kTicks/2);
-                context->setFrameColor(datum?VSTGUI::CColor{218,226,231,190}:VSTGUI::CColor{158,176,188,132});
-                context->setLineWidth(datum?1.25:0.90);
+                context->setFrameColor(datum?VSTGUI::CColor{226,233,238,215}:VSTGUI::CColor{166,184,196,155});
+                context->setLineWidth(datum?1.35:1.0);
                 context->drawLine({cx+std::cos(a)*inner,cy+std::sin(a)*inner},
                                   {cx+std::cos(a)*outer,cy+std::sin(a)*outer});
             }
@@ -781,29 +806,23 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* face,VSTGUI::CBitmap* needle,VSTGUI::CBitmap* cover)
-: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(face),needle_(needle),cover_(cover)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* atlas)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(atlas)
 {
     if(filmstrip_) filmstrip_->remember();
-    if(needle_) needle_->remember();
-    if(cover_) cover_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),needle_(other.needle_),cover_(other.cover_)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_)
 {
     if(filmstrip_) filmstrip_->remember();
-    if(needle_) needle_->remember();
-    if(cover_) cover_->remember();
 }
 
 HardwareVUMeter::~HardwareVUMeter()
 {
     if(filmstrip_) filmstrip_->forget();
-    if(needle_) needle_->forget();
-    if(cover_) cover_->forget();
 }
 
 HardwareUIScale::HardwareUIScale(const VSTGUI::CRect& size,VSTGUI::VST3Editor* editor)
@@ -865,25 +884,26 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto value=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
 
-    // Exact original meter motion: face and needle frames come from the same
-    // 480x276/128-frame KnobMan source. No production pivot/angle estimation.
-    if(filmstrip_ && filmstrip_->isLoaded() && needle_ && needle_->isLoaded()) {
-        context->fillRectWithBitmap(filmstrip_,{0.0,0.0,320.0,184.0},r,1.f);
-
+    // Production meter: one exact original KnobMan frame per telemetry value.
+    // The original face, printed scale, pivot, needle length and needle angle are
+    // never reconstructed or estimated.
+    if(filmstrip_ && filmstrip_->isLoaded()) {
         constexpr int kFrames=128;
-        constexpr int kColumns=8;
-        constexpr double kTileW=224.0;
-        constexpr double kTileH=168.0;
+        constexpr int kColumns=16;
+        constexpr double kFrameW=320.0;
+        constexpr double kFrameH=184.0;
         const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
         const int col=frame%kColumns;
         const int row=frame/kColumns;
-        const VSTGUI::CRect src(kTileW*col,kTileH*row,kTileW*(col+1),kTileH*(row+1));
-        const VSTGUI::CRect dst(r.left+48.0,r.top+12.0,r.left+272.0,r.top+180.0);
-        context->fillRectWithBitmap(needle_,src,dst,1.f);
+        const VSTGUI::CRect src(kFrameW*col,kFrameH*row,kFrameW*(col+1),kFrameH*(row+1));
 
-        if(cover_ && cover_->isLoaded())
-            context->fillRectWithBitmap(cover_,{0.0,0.0,320.0,184.0},r,1.f);
-
+        // A compact contact shadow remains behind the transparent exterior of
+        // the original meter housing, with no rectangular black backing panel.
+        VSTGUI::CRect shadow=r;
+        shadow.offset(0.0,3.0);
+        shadow.inset(4.0,2.0);
+        fillRoundGradient(context,shadow,8.0,{0,0,0,82},{0,0,0,150});
+        context->fillRectWithBitmap(filmstrip_,src,r,1.f);
         setDirty(false);
         return;
     }

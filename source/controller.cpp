@@ -211,8 +211,8 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(std::strcmp(name,"HardwareFaceplate")==0)return new HardwareFaceplate(r);
     if(std::strcmp(name,"BrandLogo")==0)return new HardwareLogo(r);
     if(std::strcmp(name,"UIScale")==0)return new HardwareUIScale(r,e);
-    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUNeedleAtlas"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
-    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUNeedleAtlas"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
+    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUAtlas"):nullptr);
+    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUAtlas"):nullptr);
     if(std::strcmp(name,"ClipL")==0)return new HardwareClipLed(r,e,kParamClipL);
     if(std::strcmp(name,"ClipR")==0)return new HardwareClipLed(r,e,kParamClipR);
 
