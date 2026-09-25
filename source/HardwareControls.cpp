@@ -274,11 +274,11 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         screw(p.x,p.y);
 
     // Quiet hierarchy labels are part of the chassis, not additional controls.
-    context->setFont(VSTGUI::kNormalFont,7.6,VSTGUI::kBoldFace);
-    context->setFontColor({126,133,143,210});
-    context->drawString(VSTGUI::UTF8String("ANALOG ENGINE"),rect(466,301,308,12),VSTGUI::kCenterText);
-    context->setFont(VSTGUI::kNormalFont,8.0,0);
-    context->setFontColor({137,143,151,220});
+    context->setFont(VSTGUI::kNormalFont,8.8,VSTGUI::kBoldFace);
+    context->setFontColor({132,139,148,220});
+    context->drawString(VSTGUI::UTF8String("ANALOG ENGINE"),rect(466,288,308,12),VSTGUI::kCenterText);
+    context->setFont(VSTGUI::kNormalFont,8.8,0);
+    context->setFontColor({142,148,156,225});
     context->drawString(VSTGUI::UTF8String("v3.0.0"),rect(1260,74,128,12),VSTGUI::kCenterText);
 
     setDirty(false);
@@ -1010,10 +1010,9 @@ void HardwareClipLed::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     context->setDrawMode(VSTGUI::kAntiAliasing);
     if(on) {
-        const auto c=r.getCenter();
-        for(int n=3;n>=1;--n) {
-            const double g=n*3.0;
-            context->setFillColor({246,62,52,static_cast<uint8_t>(16*n)});
+        for(int n=2;n>=1;--n) {
+            const double g=n*2.5;
+            context->setFillColor({246,62,52,static_cast<uint8_t>(13*n)});
             context->drawEllipse({r.left-g,r.top-g,r.right+g,r.bottom+g},VSTGUI::kDrawFilled);
         }
     }

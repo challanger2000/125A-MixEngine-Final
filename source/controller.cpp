@@ -250,7 +250,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
 
     if(auto* v=label("LabelInputGain","INPUT GAIN",10.5,true,false))return v;
     if(auto* v=label("LabelRefLevel","REF LEVEL",9.5,true,true))return v;
-    if(auto* v=label("LabelDbfs","dBFS",8.5,false,true))return v;
+    if(auto* v=label("LabelDbfs","dBFS",8.8,false,true))return v;
     if(auto* v=label("LabelDrive","DRIVE",10.5,true,false))return v;
     if(auto* v=label("LabelMode","MODE",9.5,true,true))return v;
 #ifndef MIXENGINE_CHANNEL_BUILD
@@ -261,7 +261,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=label("LabelVoice","VOICE",9.5,true,true))return v;
     if(auto* v=label("LabelTapeAmount","AMOUNT",10.5,true,false))return v;
     if(auto* v=label("LabelSpeed","SPEED",9.5,true,true))return v;
-    if(auto* v=label("LabelIps","ips",8.5,false,true))return v;
+    if(auto* v=label("LabelIps","ips",8.8,false,true))return v;
     if(auto* v=label("LabelStability","STABILITY",8.8,true,false))return v;
     if(auto* v=label("LabelHiss","HISS",8.8,true,false))return v;
     if(auto* v=label("LabelGlueAmount","AMOUNT",10.5,true,false))return v;
@@ -272,7 +272,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=label("LabelDepth","DEPTH",9.5,true,false))return v;
     if(auto* v=label("LabelWidth","WIDTH",9.5,true,false))return v;
     if(auto* v=label("LabelLowMono","LOW MONO",9.0,true,false))return v;
-    if(auto* v=label("LabelFixed120","FIXED 120 Hz",8.0,false,true))return v;
+    if(auto* v=label("LabelFixed120","FIXED 120 Hz",8.6,false,true))return v;
     if(auto* v=label("LabelOutputGain","OUTPUT GAIN",10.5,true,false))return v;
     if(auto* v=label("LabelLevelMatch","LEVEL MATCH",9.5,true,true))return v;
 
