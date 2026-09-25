@@ -187,19 +187,6 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         context->setFrameColor(c); context->setLineWidth(w);
         context->drawLine({ox+x1,oy+y1},{ox+x2,oy+y2});
     };
-    const auto meterShadow=[&](double x,double y,double w,double h){
-        // Exact meter footprint shadow only: no enclosing black well.
-        // VU bitmap itself remains the visible hardware object.
-        for(int i=4;i>=1;--i) {
-            const double grow=static_cast<double>(i);
-            const auto sr=rect(x+2.0-grow*0.35,y+3.0-grow*0.20,w+grow*0.70,h+grow*0.55);
-            fillRoundGradient(context,sr,7.0+grow,
-                              {0,0,0,static_cast<uint8_t>(18*i)},
-                              {0,0,0,static_cast<uint8_t>(28*i)});
-        }
-        const auto contact=rect(x+1.0,y+2.0,w,h);
-        fillRoundGradient(context,contact,7.0,{0,0,0,88},{0,0,0,145});
-    };
     const auto plate=[&](double x,double y,double w,double h,double radius,bool header=false){
         // Raised blue anodised sub-panel sitting on the near-black chassis.
         // The shadow is deliberately outside the plate, like the blue modules in Ugly Reverb,
@@ -259,11 +246,7 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     plate(224,26,992,234,14.0,false);
     plate(1226,26,194,234,12.0,false);
 
-    // VUs sit directly on the blue meter plate. Only their exact 320x216 footprints
-    // receive shadow, so no unrelated black rectangle remains visible.
-    meterShadow(258,41,320,216);
-    meterShadow(862,41,320,216);
-
+    // VUs sit directly on the blue meter plate with transparent exterior.
     // Meter bridge datum and deliberate chassis gap before the lower modules.
     line(226,267,1214,267,{205,42,46,58},1.25);
     line(20,279,1420,279,{0,0,0,230},2.0);
@@ -289,11 +272,9 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     // Selectors and utility buttons now mount directly on the blue plates.
     // Their own hardware bezels provide depth; no extra black background boxes.
 
-    // Structural fasteners only at the chassis corners and the analogue module bank.
+    // One mechanically consistent fastener system: chassis corners only.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
-                  VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782},
-                  VSTGUI::CPoint{196,314},VSTGUI::CPoint{1044,314},
-                  VSTGUI::CPoint{196,750},VSTGUI::CPoint{1044,750}})
+                  VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782}})
         screw(p.x,p.y);
 
     context->setFont(VSTGUI::kNormalFont,8.8,0);
@@ -387,17 +368,17 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
 
         // Exact contact shadow inside the transparent bitmap margin. Small controls need
         // more local occlusion than the large Vernier controls to read as mounted hardware.
-        const double shadowRx=style_==Style::Small?20.5:(style_==Style::Medium?32.0:42.0);
-        const double shadowRy=style_==Style::Small?17.5:(style_==Style::Medium?27.0:34.0);
-        const double shadowDy=style_==Style::Small?6.0:(style_==Style::Medium?7.0:8.0);
+        const double shadowRx=style_==Style::Small?22.5:(style_==Style::Medium?34.0:42.0);
+        const double shadowRy=style_==Style::Small?19.0:(style_==Style::Medium?29.0:34.0);
+        const double shadowDy=style_==Style::Small?7.5:(style_==Style::Medium?8.5:8.0);
         for(int n=3;n>=1;--n) {
             const double grow=static_cast<double>(n)*1.6;
-            context->setFillColor({0,0,0,static_cast<uint8_t>(style_==Style::Small?18*n:12*n)});
+            context->setFillColor({0,0,0,static_cast<uint8_t>(style_==Style::Small?24*n:(style_==Style::Medium?17*n:12*n))});
             context->drawEllipse({cx-shadowRx-grow,cy-shadowRy+shadowDy-grow*0.25,
                                   cx+shadowRx+grow,cy+shadowRy+shadowDy+grow*0.50},
                                  VSTGUI::kDrawFilled);
         }
-        context->setFillColor({0,0,0,style_==Style::Small?105u:78u});
+        context->setFillColor({0,0,0,style_==Style::Small?142u:(style_==Style::Medium?108u:78u)});
         context->drawEllipse({cx-shadowRx,cy-shadowRy+shadowDy,
                               cx+shadowRx,cy+shadowRy+shadowDy},
                              VSTGUI::kDrawFilled);
@@ -413,13 +394,13 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
         if(style_!=Style::Large) {
             constexpr int kTicks=9;
             const double outer=std::min(r.getWidth(),r.getHeight())*0.492;
-            const double inner=outer-(style_==Style::Small?3.2:4.2);
+            const double inner=outer-(style_==Style::Small?4.2:5.2);
             for(int i=0;i<kTicks;++i) {
                 const double t=static_cast<double>(i)/static_cast<double>(kTicks-1);
                 const double a=(135.0+270.0*t)*kPi/180.0;
                 const bool datum=(i==0||i==kTicks-1||i==kTicks/2);
-                context->setFrameColor(datum?VSTGUI::CColor{206,215,221,145}:VSTGUI::CColor{139,157,170,88});
-                context->setLineWidth(datum?1.10:0.75);
+                context->setFrameColor(datum?VSTGUI::CColor{218,226,231,190}:VSTGUI::CColor{158,176,188,132});
+                context->setLineWidth(datum?1.25:0.90);
                 context->drawLine({cx+std::cos(a)*inner,cy+std::sin(a)*inner},
                                   {cx+std::cos(a)*outer,cy+std::sin(a)*outer});
             }
@@ -800,25 +781,28 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* face,VSTGUI::CBitmap* cover)
-: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(face),cover_(cover)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* face,VSTGUI::CBitmap* needle,VSTGUI::CBitmap* cover)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(face),needle_(needle),cover_(cover)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(needle_) needle_->remember();
     if(cover_) cover_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),cover_(other.cover_)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),needle_(other.needle_),cover_(other.cover_)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(needle_) needle_->remember();
     if(cover_) cover_->remember();
 }
 
 HardwareVUMeter::~HardwareVUMeter()
 {
     if(filmstrip_) filmstrip_->forget();
+    if(needle_) needle_->forget();
     if(cover_) cover_->forget();
 }
 
@@ -881,43 +865,24 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto value=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
 
-    // Static KnobMan face + continuously drawn needle. This avoids the huge
-    // 128-frame VU filmstrip (which exceeded practical GPU bitmap dimensions)
-    // while keeping the calibrated processor value untouched.
-    if(filmstrip_ && filmstrip_->isLoaded()) {
-        // Runtime face is generated at the exact 320x216 logical view size.
-        // HiDPI uses the associated 3x platform bitmap, so no source/destination
-        // resampling is attempted here.
-        const VSTGUI::CRect faceSrc(0.0,0.0,320.0,216.0);
-        context->fillRectWithBitmap(filmstrip_,faceSrc,r,1.f);
+    // Exact original meter motion: face and needle frames come from the same
+    // 480x276/128-frame KnobMan source. No production pivot/angle estimation.
+    if(filmstrip_ && filmstrip_->isLoaded() && needle_ && needle_->isLoaded()) {
+        context->fillRectWithBitmap(filmstrip_,{0.0,0.0,320.0,184.0},r,1.f);
 
-        // Geometry follows the approved 400x270 face: pivot near the lower centre,
-        // with the needle sweeping over the printed -20..+3 scale.
-        const VSTGUI::CPoint pivot(r.left+r.getWidth()*0.5,
-                                   r.top+r.getHeight()*(239.0/270.0));
-        const double needleAngle=(220.0+100.0*value)*kPi/180.0;
-        const double needleLength=r.getHeight()*0.57;
-        const VSTGUI::CPoint tip(pivot.x+std::cos(needleAngle)*needleLength,
-                                 pivot.y+std::sin(needleAngle)*needleLength);
+        constexpr int kFrames=128;
+        constexpr int kColumns=8;
+        constexpr double kTileW=224.0;
+        constexpr double kTileH=168.0;
+        const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
+        const int col=frame%kColumns;
+        const int row=frame/kColumns;
+        const VSTGUI::CRect src(kTileW*col,kTileH*row,kTileW*(col+1),kTileH*(row+1));
+        const VSTGUI::CRect dst(r.left+48.0,r.top+12.0,r.left+272.0,r.top+180.0);
+        context->fillRectWithBitmap(needle_,src,dst,1.f);
 
-        // Soft shadow plus satin-grey needle matches the source meter better than
-        // the red fallback needle used by the old procedural face.
-        context->setFrameColor({0,0,0,95});
-        context->setLineWidth(3.2);
-        context->drawLine({pivot.x+1.2,pivot.y+1.3},{tip.x+1.2,tip.y+1.3});
-        context->setFrameColor({86,88,90,245});
-        context->setLineWidth(1.9);
-        context->drawLine(pivot,tip);
-        context->setFrameColor({235,235,229,100});
-        context->setLineWidth(0.7);
-        context->drawLine({pivot.x-0.7,pivot.y-0.5},{tip.x-0.7,tip.y-0.5});
-
-        // Transparent exact-size overlay contains only the original NeedleCover.
-        // Drawing it last makes the live needle pass mechanically behind the hub.
-        if(cover_ && cover_->isLoaded()) {
-            const VSTGUI::CRect coverSrc(0.0,0.0,320.0,216.0);
-            context->fillRectWithBitmap(cover_,coverSrc,r,1.f);
-        }
+        if(cover_ && cover_->isLoaded())
+            context->fillRectWithBitmap(cover_,{0.0,0.0,320.0,184.0},r,1.f);
 
         setDirty(false);
         return;

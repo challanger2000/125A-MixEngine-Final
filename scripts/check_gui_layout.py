@@ -29,7 +29,7 @@ EXPECTED_CENTERS = {
     "LabelVUSource": 720.0, "VUSourceSelector": 720.0, "LabelVURef": 720.0,
     "LabelMixTitle": 1323.0, "LabelQuality": 1323.0, "QualitySelector": 1323.0,
     "LabelBypass": 1323.0, "Bypass": 1323.0,
-    "VULeft": 418.0, "VURight": 1022.0,
+    "VULeft": 480.0, "VURight": 960.0,
 }
 
 def point(value):
@@ -63,6 +63,13 @@ for path in FILES:
         actual = x + w / 2.0
         if actual != expected:
             raise SystemExit(f"{path}: {name} centre {actual} != exact {expected}")
+
+    for name, expected_box in {
+        "VULeft": (320.0, 50.0, 320.0, 184.0),
+        "VURight": (800.0, 50.0, 320.0, 184.0),
+    }.items():
+        if views[name] != expected_box:
+            raise SystemExit(f"{path}: {name} box {views[name]} != exact {expected_box}")
 
     # Exact bilateral placement inside two-control module rows.
     pairs = {

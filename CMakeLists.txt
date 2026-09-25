@@ -31,11 +31,13 @@ set(MIXENGINE_KNOB_RESOURCES
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png"
 
- # Exact-size static VU face plus transparent cover overlay, 1x and 3x.
- "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_320x216.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_960x648.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Cover_320x216.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Cover_960x648.png")
+ # Original VU face + original 128-frame needle atlas + pivot cover.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Face_320x184.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Face_960x552.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Needle_224x168_8x16_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Needle_672x504_8x16_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Cover_320x184.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Original_Cover_960x552.png")
 foreach(MIXENGINE_KNOB_RESOURCE IN LISTS MIXENGINE_KNOB_RESOURCES)
  if(NOT EXISTS "${MIXENGINE_KNOB_RESOURCE}")
   message(FATAL_ERROR "Missing approved MixEngine GUI asset: ${MIXENGINE_KNOB_RESOURCE}")
