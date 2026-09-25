@@ -1,4 +1,3 @@
-V3 RC trigger
-source=4810925ded0206158b72d4a209a209c44d10ca9e
-reason=fix-uidesc-template-opening-tag-editor-open
-retry=0
+RC trigger after exact GUI geometry QA success
+Source: 2cc34066f6a16d92b1f13370e7245dae29d636a3
+Research: #145 SUCCESS
