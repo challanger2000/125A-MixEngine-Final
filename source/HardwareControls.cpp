@@ -399,7 +399,7 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
     if(filmstrip_ && filmstrip_->isLoaded()) {
         constexpr int kFrames=128;
         constexpr int kColumns=16;
-        constexpr double kSourceFrame=384.0;
+        const double kSourceFrame=style_==Style::Large?128.0:(style_==Style::Medium?96.0:64.0);
         const int frame=std::clamp(static_cast<int>(std::lround(v*static_cast<double>(kFrames-1))),0,kFrames-1);
 
         // Secondary controls get a restrained vector scale. It stays sharp at every
@@ -795,23 +795,26 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* filmstrip)
-: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(filmstrip)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* face,VSTGUI::CBitmap* cover)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(face),cover_(cover)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(cover_) cover_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other),filmstrip_(other.filmstrip_)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),cover_(other.cover_)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(cover_) cover_->remember();
 }
 
 HardwareVUMeter::~HardwareVUMeter()
 {
     if(filmstrip_) filmstrip_->forget();
+    if(cover_) cover_->forget();
 }
 
 HardwareUIScale::HardwareUIScale(const VSTGUI::CRect& size,VSTGUI::VST3Editor* editor)
@@ -877,7 +880,10 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     // 128-frame VU filmstrip (which exceeded practical GPU bitmap dimensions)
     // while keeping the calibrated processor value untouched.
     if(filmstrip_ && filmstrip_->isLoaded()) {
-        const VSTGUI::CRect faceSrc(0.0,0.0,filmstrip_->getWidth(),filmstrip_->getHeight());
+        // Runtime face is generated at the exact 320x216 logical view size.
+        // HiDPI uses the associated 3x platform bitmap, so no source/destination
+        // resampling is attempted here.
+        const VSTGUI::CRect faceSrc(0.0,0.0,320.0,216.0);
         context->fillRectWithBitmap(filmstrip_,faceSrc,r,1.f);
 
         // Geometry follows the approved 400x270 face: pivot near the lower centre,
@@ -901,16 +907,12 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
         context->setLineWidth(0.7);
         context->drawLine({pivot.x-0.7,pivot.y-0.5},{tip.x-0.7,tip.y-0.5});
 
-        // Repaint the original NeedleCover from the static face over the needle,
-        // so the pivot retains the exact KnobMan hardware artwork.
-        const double sw=filmstrip_->getWidth();
-        const double sh=filmstrip_->getHeight();
-        const VSTGUI::CRect coverSrc(sw*(165.0/400.0),sh*(205.0/270.0),
-                                     sw*(235.0/400.0),sh);
-        const VSTGUI::CRect coverDst(r.left+r.getWidth()*(165.0/400.0),
-                                     r.top+r.getHeight()*(205.0/270.0),
-                                     r.left+r.getWidth()*(235.0/400.0),r.bottom);
-        context->fillRectWithBitmap(filmstrip_,coverSrc,coverDst,1.f);
+        // Transparent exact-size overlay contains only the original NeedleCover.
+        // Drawing it last makes the live needle pass mechanically behind the hub.
+        if(cover_ && cover_->isLoaded()) {
+            const VSTGUI::CRect coverSrc(0.0,0.0,320.0,216.0);
+            context->fillRectWithBitmap(cover_,coverSrc,r,1.f);
+        }
 
         setDirty(false);
         return;

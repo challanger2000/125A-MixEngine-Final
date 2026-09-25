@@ -124,15 +124,21 @@ jobs:
           # Guard against GUI asset bloat: only runtime PNGs referenced by the
           # production UIDesc are allowed to ship inside either VST3 bundle.
           $allowedPng = @(
+            "125A_MixEngine_Vernier_L_128px_16x8_128f.png",
             "125A_MixEngine_Vernier_L_384px_16x8_128f.png",
-            "125A_MixEngine_Small_Gunmetal_384px_16x8_128f.png",
+            "125A_MixEngine_Gunmetal_S_64px_16x8_128f.png",
+            "125A_MixEngine_Gunmetal_S_192px_16x8_128f.png",
+            "125A_MixEngine_Gunmetal_M_96px_16x8_128f.png",
+            "125A_MixEngine_Gunmetal_M_288px_16x8_128f.png",
             "125A_MixEngine_Push_Button_64px_100pct_3states.png",
             "125A_MixEngine_Push_Button_96px_150pct_3states.png",
             "125A_MixEngine_Push_Button_128px_200pct_3states.png",
             "125A_MixEngine_Push_Button_192px_300pct_3states.png",
-            "125A_MixEngine_VU_Face_400x270px_Master.png"
-          )
-          $bundles = @(
+            "125A_MixEngine_VU_Face_320x216.png",
+            "125A_MixEngine_VU_Face_960x648.png",
+            "125A_MixEngine_VU_Cover_320x216.png",
+            "125A_MixEngine_VU_Cover_960x648.png"
+          )          $bundles = @(
             "$root/VST3/125A-MixEngine-V3.vst3",
             "$root/VST3/125A-MixEngine-V3-Channel.vst3"
           )

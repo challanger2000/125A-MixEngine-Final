@@ -2,14 +2,21 @@
 <vstgui-ui-description version="1">
   <colors><color name="Background" rgba="#101217FF"/></colors>
   <bitmaps>
-    <bitmap name="MixKnobVernierAtlas" path="125A_MixEngine_Vernier_L_384px_16x8_128f.png"/>
-    <bitmap name="MixKnobGunmetalAtlas" path="125A_MixEngine_Small_Gunmetal_384px_16x8_128f.png"/>
+    <bitmap name="MixKnobVernierAtlas" path="125A_MixEngine_Vernier_L_128px_16x8_128f.png"/>
+    <bitmap name="MixKnobVernierAtlas#3.0x" path="125A_MixEngine_Vernier_L_384px_16x8_128f.png" scale-factor="3"/>
+    <bitmap name="MixKnobGunmetalSAtlas" path="125A_MixEngine_Gunmetal_S_64px_16x8_128f.png"/>
+    <bitmap name="MixKnobGunmetalSAtlas#3.0x" path="125A_MixEngine_Gunmetal_S_192px_16x8_128f.png" scale-factor="3"/>
+    <bitmap name="MixKnobGunmetalMAtlas" path="125A_MixEngine_Gunmetal_M_96px_16x8_128f.png"/>
+    <bitmap name="MixKnobGunmetalMAtlas#3.0x" path="125A_MixEngine_Gunmetal_M_288px_16x8_128f.png" scale-factor="3"/>
     <bitmap name="MixPush" path="125A_MixEngine_Push_Button_64px_100pct_3states.png"/>
     <bitmap name="MixPush#1.5x" path="125A_MixEngine_Push_Button_96px_150pct_3states.png" scale-factor="1.5"/>
     <bitmap name="MixPush#2.0x" path="125A_MixEngine_Push_Button_128px_200pct_3states.png" scale-factor="2"/>
     <bitmap name="MixPush#3.0x" path="125A_MixEngine_Push_Button_192px_300pct_3states.png" scale-factor="3"/>
-    <bitmap name="MixVUFace" path="125A_MixEngine_VU_Face_400x270px_Master.png"/>
-  </bitmaps> <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
+    <bitmap name="MixVUFace" path="125A_MixEngine_VU_Face_320x216.png"/>
+    <bitmap name="MixVUFace#3.0x" path="125A_MixEngine_VU_Face_960x648.png" scale-factor="3"/>
+    <bitmap name="MixVUOverlay" path="125A_MixEngine_VU_Cover_320x216.png"/>
+    <bitmap name="MixVUOverlay#3.0x" path="125A_MixEngine_VU_Cover_960x648.png" scale-factor="3"/>
+  </bitmaps>template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVUSource" origin="644,70" size="152,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVURef" origin="644,164" size="152,14" mouse-enabled="false"/>
@@ -50,9 +57,9 @@
     <view class="CView" custom-view-name="LabelOutputGain" origin="1273,518" size="110,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelLevelMatch" origin="1274,560" size="108,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="BrandLogo" origin="34,92" size="176,88" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="VULeft" origin="263,44" size="310,209" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VULeft" origin="258,41" size="320,216" mouse-enabled="false"/>
     <view class="CView" custom-view-name="ClipL" origin="584,72" size="10,10" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="VURight" origin="867,44" size="310,209" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VURight" origin="862,41" size="320,216" mouse-enabled="false"/>
     <view class="CView" custom-view-name="ClipR" origin="1188,72" size="10,10" mouse-enabled="false"/>
     <view class="CView" custom-view-name="UIScale" origin="62,214" size="110,28"/>
     <view class="CView" custom-view-name="VUSourceSelector" origin="640,104" size="160,40"/>

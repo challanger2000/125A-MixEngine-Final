@@ -211,29 +211,29 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(std::strcmp(name,"HardwareFaceplate")==0)return new HardwareFaceplate(r);
     if(std::strcmp(name,"BrandLogo")==0)return new HardwareLogo(r);
     if(std::strcmp(name,"UIScale")==0)return new HardwareUIScale(r,e);
-    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUFace"):nullptr);
-    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUFace"):nullptr);
+    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
+    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
     if(std::strcmp(name,"ClipL")==0)return new HardwareClipLed(r,e,kParamClipL);
     if(std::strcmp(name,"ClipR")==0)return new HardwareClipLed(r,e,kParamClipR);
 
     if(auto* v=knob("Input",kParamInput,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
     if(auto* v=knob("ConsoleDrive",kParamConsoleDrive,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
 #ifndef MIXENGINE_CHANNEL_BUILD
-    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
+    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
 #endif
-    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
+    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("TubeAmount",kParamTubeAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
     if(auto* v=knob("TapeAmount",kParamTapeAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
-    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
-    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
+    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("GlueAmount",kParamGlueAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
-    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
+    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("VinylCharacter",kParamVinylCharacter,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
-    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
-    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
-    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium,"MixKnobGunmetalAtlas"))return v;
-    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobGunmetalAtlas"))return v;
-    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small,"MixKnobGunmetalAtlas"))return v;
+    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium,"MixKnobGunmetalMAtlas"))return v;
+    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
     if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
 
     // Static full-custom VSTGUI legends. These deliberately avoid CTextLabel so

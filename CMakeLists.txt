@@ -16,19 +16,26 @@ if(NOT MIXENGINE_KNOB_ASSET_ROOT)
 endif()
 file(TO_CMAKE_PATH "${MIXENGINE_KNOB_ASSET_ROOT}" MIXENGINE_KNOB_RESOURCE_DIR)
 set(MIXENGINE_KNOB_RESOURCES
- # High-resolution 16x8 atlases are prepared deterministically from the approved
- # 384 px / 128-frame masters before CMake configures the plug-in.
+ # Runtime atlases generated from approved masters. Only these exact resources
+ # are embedded; source masters stay in the asset checkout and never enter VST3.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Vernier_L_128px_16x8_128f.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Vernier_L_384px_16x8_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Small_Gunmetal_384px_16x8_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Gunmetal_S_64px_16x8_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Gunmetal_S_192px_16x8_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Gunmetal_M_96px_16x8_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Gunmetal_M_288px_16x8_128f.png"
 
- # Current rendered push-button family; LEDs remain procedural overlays.
+ # Current push-button family; LEDs remain procedural overlays.
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_64px_100pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png"
 
- # Static meter face. Needle motion is drawn continuously by VSTGUI.
- "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Face_400x270px_Master.png")
+ # Exact-size static VU face plus transparent cover overlay, 1x and 3x.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_320x216.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_960x648.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Cover_320x216.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Cover_960x648.png")
 foreach(MIXENGINE_KNOB_RESOURCE IN LISTS MIXENGINE_KNOB_RESOURCES)
  if(NOT EXISTS "${MIXENGINE_KNOB_RESOURCE}")
   message(FATAL_ERROR "Missing approved MixEngine GUI asset: ${MIXENGINE_KNOB_RESOURCE}")
