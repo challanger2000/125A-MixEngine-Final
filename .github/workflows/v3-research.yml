@@ -45,6 +45,10 @@ jobs:
           }
           Write-Host "MixEngine V3 GUI prototype assets: $($required.Count)/$($required.Count) present"
 
+      - name: Verify GUI XML and exact layout geometry
+        shell: pwsh
+        run: python scripts/check_gui_layout.py resource/mixengine.uidesc resource/mixengine_channel.uidesc
+
       - name: Prepare high-resolution GUI atlases
         shell: pwsh
         run: |

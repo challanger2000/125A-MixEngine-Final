@@ -187,12 +187,18 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         context->setFrameColor(c); context->setLineWidth(w);
         context->drawLine({ox+x1,oy+y1},{ox+x2,oy+y2});
     };
-    const auto well=[&](double x,double y,double w,double h,double radius=7.0){
-        const auto shadow=rect(x+1,y+2,w,h);
-        fillRoundGradient(context,shadow,radius,{2,3,5,205},{0,0,0,240});
-        const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{7,12,18,255},{13,21,29,255});
-        strokeRound(context,rr,radius,{51,73,92,150},1.0);
+    const auto meterShadow=[&](double x,double y,double w,double h){
+        // Exact meter footprint shadow only: no enclosing black well.
+        // VU bitmap itself remains the visible hardware object.
+        for(int i=4;i>=1;--i) {
+            const double grow=static_cast<double>(i);
+            const auto sr=rect(x+2.0-grow*0.35,y+3.0-grow*0.20,w+grow*0.70,h+grow*0.55);
+            fillRoundGradient(context,sr,7.0+grow,
+                              {0,0,0,static_cast<uint8_t>(18*i)},
+                              {0,0,0,static_cast<uint8_t>(28*i)});
+        }
+        const auto contact=rect(x+1.0,y+2.0,w,h);
+        fillRoundGradient(context,contact,7.0,{0,0,0,88},{0,0,0,145});
     };
     const auto plate=[&](double x,double y,double w,double h,double radius,bool header=false){
         // Raised blue anodised sub-panel sitting on the near-black chassis.
@@ -253,11 +259,10 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     plate(224,26,992,234,14.0,false);
     plate(1226,26,194,234,12.0,false);
 
-    // VU glass recesses remain visibly inset into the blue meter plate.
-    well(232,44,372,210,10.0);
-    well(836,44,372,210,10.0);
-    well(630,92,180,66,9.0);
-    well(1234,104,178,58,9.0);
+    // VUs sit directly on the blue meter plate. Only their exact 320x216 footprints
+    // receive shadow, so no unrelated black rectangle remains visible.
+    meterShadow(258,41,320,216);
+    meterShadow(862,41,320,216);
 
     // Meter bridge datum and deliberate chassis gap before the lower modules.
     line(226,267,1214,267,{205,42,46,58},1.25);
@@ -281,12 +286,8 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         line(x,344,x+width,344,{158,192,216,66},1.0);
     }
 
-    // Selector recesses remain inside their parent plates, but much subtler than before:
-    // controls should look installed in the plate, not boxed into a second UI layer.
-    well(34,586,124,42,7.0);
-    well(190,574,164,44,7.0);
-    well(374,574,148,44,7.0);
-    well(550,574,148,44,7.0);
+    // Selectors and utility buttons now mount directly on the blue plates.
+    // Their own hardware bezels provide depth; no extra black background boxes.
 
     // Structural fasteners only at the chassis corners and the analogue module bank.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
@@ -384,28 +385,45 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
         const double kSourceFrame=style_==Style::Large?128.0:(style_==Style::Medium?96.0:64.0);
         const int frame=std::clamp(static_cast<int>(std::lround(v*static_cast<double>(kFrames-1))),0,kFrames-1);
 
-        // Secondary controls get a restrained vector scale. It stays sharp at every
-        // editor zoom and deliberately has no numbers, leaving Vernier knobs dominant.
-        if(style_!=Style::Large) {
-            constexpr int kTicks=9;
-            const double outer=std::min(r.getWidth(),r.getHeight())*0.48;
-            const double inner=outer-(style_==Style::Small?4.5:6.0);
-            for(int i=0;i<kTicks;++i) {
-                const double t=static_cast<double>(i)/static_cast<double>(kTicks-1);
-                const double a=(135.0+270.0*t)*kPi/180.0;
-                const bool datum=(i==0||i==kTicks-1||i==kTicks/2);
-                context->setFrameColor(datum?VSTGUI::CColor{210,216,220,175}:VSTGUI::CColor{142,153,162,120});
-                context->setLineWidth(datum?1.25:0.9);
-                context->drawLine({cx+std::cos(a)*inner,cy+std::sin(a)*inner},
-                                  {cx+std::cos(a)*outer,cy+std::sin(a)*outer});
-            }
+        // Exact contact shadow inside the transparent bitmap margin. Small controls need
+        // more local occlusion than the large Vernier controls to read as mounted hardware.
+        const double shadowRx=style_==Style::Small?20.5:(style_==Style::Medium?32.0:42.0);
+        const double shadowRy=style_==Style::Small?17.5:(style_==Style::Medium?27.0:34.0);
+        const double shadowDy=style_==Style::Small?6.0:(style_==Style::Medium?7.0:8.0);
+        for(int n=3;n>=1;--n) {
+            const double grow=static_cast<double>(n)*1.6;
+            context->setFillColor({0,0,0,static_cast<uint8_t>(style_==Style::Small?18*n:12*n)});
+            context->drawEllipse({cx-shadowRx-grow,cy-shadowRy+shadowDy-grow*0.25,
+                                  cx+shadowRx+grow,cy+shadowRy+shadowDy+grow*0.50},
+                                 VSTGUI::kDrawFilled);
         }
+        context->setFillColor({0,0,0,style_==Style::Small?105u:78u});
+        context->drawEllipse({cx-shadowRx,cy-shadowRy+shadowDy,
+                              cx+shadowRx,cy+shadowRy+shadowDy},
+                             VSTGUI::kDrawFilled);
 
         const int col=frame%kColumns;
         const int row=frame/kColumns;
         const VSTGUI::CRect src(kSourceFrame*col,kSourceFrame*row,
                                 kSourceFrame*(col+1),kSourceFrame*(row+1));
         context->fillRectWithBitmap(filmstrip_,src,r,1.f);
+
+        // Scale is drawn after the bitmap but only in its transparent outer margin.
+        // This keeps it crisp without painting across the metal knob cap.
+        if(style_!=Style::Large) {
+            constexpr int kTicks=9;
+            const double outer=std::min(r.getWidth(),r.getHeight())*0.492;
+            const double inner=outer-(style_==Style::Small?3.2:4.2);
+            for(int i=0;i<kTicks;++i) {
+                const double t=static_cast<double>(i)/static_cast<double>(kTicks-1);
+                const double a=(135.0+270.0*t)*kPi/180.0;
+                const bool datum=(i==0||i==kTicks-1||i==kTicks/2);
+                context->setFrameColor(datum?VSTGUI::CColor{206,215,221,145}:VSTGUI::CColor{139,157,170,88});
+                context->setLineWidth(datum?1.10:0.75);
+                context->drawLine({cx+std::cos(a)*inner,cy+std::sin(a)*inner},
+                                  {cx+std::cos(a)*outer,cy+std::sin(a)*outer});
+            }
+        }
 
         if(isEditing()) {
             const auto valueText=formatKnobValue(getTag(),v);
@@ -666,60 +684,65 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
     }
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
-
     const auto count=static_cast<int>(labels_.size());
     const auto selected=std::clamp(
         static_cast<int>(std::lround(getValueNormalized()*static_cast<double>(std::max(1,count-1)))),
         0,count-1);
 
-    // One visual language for the whole instrument: every selector is a row of
-    // compact push-buttons derived from the Console/Tube/Tape power-button material.
-    // No separate "digital selector" housing remains.
-    const double gap=2.0;
-    const double segW=(r.getWidth()-gap*static_cast<double>(count-1))/static_cast<double>(count);
-
-    double fontSize=count>=4?7.2:8.6;
-    while(fontSize>6.2) {
+    const double cellW=r.getWidth()/static_cast<double>(count);
+    double fontSize=count>=4?6.8:8.0;
+    while(fontSize>6.0) {
         context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
         bool fits=true;
         for(const auto& label:labels_) {
-            if(context->getStringWidth(label.c_str())>segW-5.0) { fits=false; break; }
+            if(context->getStringWidth(label.c_str())>cellW-4.0) { fits=false; break; }
         }
         if(fits) break;
-        fontSize-=0.25;
+        fontSize-=0.2;
     }
-    context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
 
     for(int i=0;i<count;++i) {
-        const double left=r.left+i*(segW+gap);
-        VSTGUI::CRect sw(left,r.top,left+segW,r.bottom);
-        if(i==count-1) sw.right=r.right;
+        const double cx=r.left+(static_cast<double>(i)+0.5)*cellW;
+        const bool on=i==selected;
 
-        VSTGUI::CRect bezel=sw;
-        VSTGUI::CRect shadow=bezel; shadow.offset(0.0,1.8);
-        fillRoundGradient(context,shadow,5.0,{2,3,4,185},{0,0,0,225});
-        fillRoundGradient(context,bezel,5.0,{92,99,107,255},{25,30,35,255});
-        strokeRound(context,bezel,5.0,{5,7,9,255},1.0);
-
-        VSTGUI::CRect cap=bezel; cap.inset(2.0,2.0);
-        if(i==selected) cap.offset(0.0,0.8);
-        fillRoundGradient(context,cap,3.5,
-                          i==selected?VSTGUI::CColor{64,75,84,255}:VSTGUI::CColor{48,55,62,255},
-                          i==selected?VSTGUI::CColor{18,25,31,255}:VSTGUI::CColor{13,19,24,255});
-        strokeRound(context,cap,3.5,
-                    i==selected?VSTGUI::CColor{142,159,172,185}:VSTGUI::CColor{91,108,121,155},1.0);
-
-        VSTGUI::CRect inset=cap; inset.inset(2.0,2.0);
-        strokeRound(context,inset,2.5,{255,255,255,static_cast<uint8_t>(i==selected?28:14)},1.0);
-
-        // Same restrained blue hardware cue already used on the module push buttons.
-        if(i==selected) {
-            VSTGUI::CRect glint=cap; glint.inset(3.0,2.0); glint.bottom=glint.top+1.0;
-            context->setFillColor({190,220,240,38});
-            context->drawRect(glint,VSTGUI::kDrawFilled);
+        // Same LED-above-button construction as Console/Tube/Tape/Glue/Vinyl power.
+        const double ledD=8.0;
+        const VSTGUI::CRect led(cx-ledD*.5,r.top+1.0,cx+ledD*.5,r.top+1.0+ledD);
+        if(on) {
+            for(int n=2;n>=1;--n) {
+                const double grow=static_cast<double>(n)*1.8;
+                context->setFillColor({68,220,104,static_cast<uint8_t>(12*n)});
+                context->drawEllipse({led.left-grow,led.top-grow,led.right+grow,led.bottom+grow},
+                                     VSTGUI::kDrawFilled);
+            }
         }
+        fillRadialEllipse(context,led,
+                          on?VSTGUI::CColor{193,255,205,255}:VSTGUI::CColor{19,42,27,255},
+                          on?VSTGUI::CColor{86,224,125,255}:VSTGUI::CColor{5,9,7,255},
+                          {-ledD*.18,-ledD*.18});
+        context->setFrameColor({4,5,7,255});
+        context->setLineWidth(1.0);
+        context->drawEllipse(led,VSTGUI::kDrawStroked);
 
-        context->setFontColor(i==selected?VSTGUI::CColor{231,240,246,255}:VSTGUI::CColor{169,181,190,245});
+        const double capW=std::max(18.0,cellW-5.0);
+        const VSTGUI::CRect sw(cx-capW*.5,r.top+12.0,cx+capW*.5,r.bottom);
+        VSTGUI::CRect shadow=sw; shadow.offset(0.0,1.5);
+        fillRoundGradient(context,shadow,4.5,{2,3,4,195},{0,0,0,235});
+
+        VSTGUI::CRect bezel=sw; bezel.inset(-1.5,-1.5);
+        fillRoundGradient(context,bezel,5.0,{93,99,106,255},{24,28,33,255});
+        strokeRound(context,bezel,5.0,{4,6,8,255},1.0);
+
+        VSTGUI::CRect cap=sw;
+        if(on) cap.offset(0.0,0.8);
+        fillRoundGradient(context,cap,3.8,
+                          on?VSTGUI::CColor{54,67,78,255}:VSTGUI::CColor{40,47,54,255},
+                          on?VSTGUI::CColor{11,17,23,255}:VSTGUI::CColor{10,15,20,255});
+        strokeRound(context,cap,3.8,
+                    on?VSTGUI::CColor{137,158,174,125}:VSTGUI::CColor{88,103,115,100},1.0);
+
+        context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
+        context->setFontColor(on?VSTGUI::CColor{229,239,245,255}:VSTGUI::CColor{168,180,188,245});
         context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),cap,VSTGUI::kCenterText);
     }
 
