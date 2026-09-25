@@ -11,7 +11,8 @@ FetchContent_MakeAvailable(hiir)
 # commit so GUI builds remain reproducible and never silently pick up a newer export.
 FetchContent_Declare(knob_assets
  GIT_REPOSITORY https://github.com/challanger2000/125A-Knob-Designer.git
- GIT_TAG bc2c80a89f717ca2d8e0e29b6464f802814e308c
+ GIT_TAG generated-assets-v0.1.0
+ GIT_SHALLOW FALSE
  SOURCE_DIR "${CMAKE_BINARY_DIR}/125a-knob-assets")
 FetchContent_GetProperties(knob_assets)
 if(NOT knob_assets_POPULATED)
