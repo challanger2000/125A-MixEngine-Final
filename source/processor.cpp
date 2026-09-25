@@ -381,7 +381,7 @@ double Processor::processGlueGain(double detector,GlueChannelState& state,double
 
  // Parallel-style blend keeps transients and low-level detail alive at normal
  // settings, while the upper range can still become intentionally forceful.
- const double blend=strength*(0.70+0.30*strength);
+ const double blend=strength*(0.80+0.20*strength);
  const double compressedGain=dbToGain(-gr);
  return 1.0+(compressedGain-1.0)*blend;
 }
