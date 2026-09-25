@@ -48,7 +48,7 @@ std::vector<double> render(int mode,double drive,bool enabled=true){
     ParameterChanges init{64},outChanges{8};
     const std::vector<std::pair<ParamID,double>> cfg={
       {MixEngine::kParamInput,0.5},{MixEngine::kParamOutput,0.5},{MixEngine::kParamCalibration,0.5},
-      {MixEngine::kParamAutoGain,1.0},{MixEngine::kParamConsoleOn,enabled?1.0:0.0},
+      {MixEngine::kParamAutoGain,0.0},{MixEngine::kParamConsoleOn,enabled?1.0:0.0},
       {MixEngine::kParamConsoleMode,double(mode)/3.0},{MixEngine::kParamConsoleDrive,drive},
       {MixEngine::kParamConsoleNoise,0.0},{MixEngine::kParamTubeOn,0.0},{MixEngine::kParamTapeOn,0.0},
       {MixEngine::kParamGlueOn,0.0},{MixEngine::kParamVinylOn,0.0},{MixEngine::kParamDepth,0.5},
@@ -111,6 +111,8 @@ int main(){
       }
     }
 
+    // Character/Drive is measured with Level Match disabled. Level Match has its
+    // own dedicated QA and must not flatten this diagnostic's transfer metric.
     // Each mode must keep responding through the upper drive range.
     for(int mode=0;mode<4;++mode){
       std::array<double,4> d{};
