@@ -92,3 +92,12 @@ def verify(layout_name,ui_name,expect_crosstalk):
 verify("mixengine.layout.json","mixengine.uidesc",True)
 verify("mixengine_channel.layout.json","mixengine_channel.uidesc",False)
 print("Generated GUI contracts PASS: Mix FX with Crosstalk, Channel without Crosstalk")
+
+# Flagship V3 presentation contracts: explicit scalable UI factors and no stale V2 face identity.
+controller=(ROOT/"source/controller.cpp").read_text(encoding="utf-8")
+controls=(ROOT/"source/HardwareControls.cpp").read_text(encoding="utf-8")
+assert 'label("LabelMixTitle","MIX ENGINE V3",13.0,true,false)' in controller,"V3 GUI title missing"
+assert '"MIX ENGINE V2"' not in controller,"stale V2 GUI title returned"
+assert 'constexpr double factors[] {0.75,1.0,1.25,1.5};' in controls,"75/100/125/150 UI scale contract missing"
+assert 'editor_->setZoomFactor' in controls,"UI scale control no longer drives editor zoom"
+print("V3 flagship GUI identity/scale contracts PASS")

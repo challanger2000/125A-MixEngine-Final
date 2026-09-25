@@ -388,9 +388,22 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
                           {cx+std::cos(a)*r2,cy+std::sin(a)*r2});
     }
 
-    // Champagne retaining ring and deep bakelite/graphite cap.
+    // Module-specific metal nuance: one instrument, but distinct analogue stages.
+    VSTGUI::CColor ringColor {176,145,89,195}; // default champagne
+    if(style_!=Style::Small) {
+        switch(getTag()) {
+            case kParamConsoleDrive:    ringColor={171,145,96,198}; break;  // aged console brass
+            case kParamTubeAmount:      ringColor={184,128,74,198}; break;  // warm valve amber
+            case kParamTapeAmount:      ringColor={162,119,75,198}; break;  // bronze transport
+            case kParamGlueAmount:      ringColor={142,151,160,190}; break; // cool compressor steel
+            case kParamVinylCharacter:  ringColor={166,107,82,194}; break;  // muted copper
+            case kParamInput:
+            case kParamOutput:          ringColor={158,163,169,190}; break; // neutral I/O metal
+            default: break;
+        }
+    }
     const double ring=radius*0.67;
-    context->setFrameColor({176,145,89,205}); context->setLineWidth(1.5);
+    context->setFrameColor(ringColor); context->setLineWidth(1.5);
     context->drawEllipse({cx-ring,cy-ring,cx+ring,cy+ring},VSTGUI::kDrawStroked);
 
     const double cap=radius*0.58;
