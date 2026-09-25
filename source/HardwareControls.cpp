@@ -245,19 +245,30 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     line(20,284,1420,284,{144,150,159,25},1.0);
     line(20,287,1420,287,{0,0,0,215},2.0);
 
-    // Lower console is four structural bays, not eight independent boxes.
+    // Lower console: distinct hardware modules seated into one common chassis.
     raised(20,300,152,464,12.0);      // input
-    raised(184,300,872,464,12.0);     // analogue colour chain
     raised(1068,300,166,464,12.0);    // stereo
     raised(1246,300,174,464,12.0);    // output
 
-    // The five colour stages read as one ANALOG ENGINE, separated only by quiet engraved guides.
-    for(double x : {360.0,536.0,712.0,888.0})
-        line(x,350,x,742,{148,154,163,15},1.0);
-    line(188,344,1052,344,{205,208,214,16},1.0);
-    line(24,344,168,344,{205,208,214,22},1.0);
-    line(1072,344,1230,344,{205,208,214,22},1.0);
-    line(1250,344,1416,344,{205,208,214,22},1.0);
+    // Five independent analogue daughter-panels. The separation is deliberate:
+    // each stage must read instantly as its own hardware module.
+    for(double x : {184.0,360.0,536.0,712.0,888.0}) {
+        raised(x,300,168,464,10.0);
+        VSTGUI::CRect moduleInset=rect(x+6.0,306.0,156.0,452.0);
+        strokeRound(context,moduleInset,8.0,{6,8,10,210},1.0);
+        VSTGUI::CRect moduleHighlight=moduleInset;
+        moduleHighlight.inset(2.0,2.0);
+        moduleHighlight.bottom=moduleHighlight.top+1.0;
+        context->setFillColor({236,239,243,18});
+        context->drawRect(moduleHighlight,VSTGUI::kDrawFilled);
+    }
+
+    // Stronger engraved datum line under every module title row.
+    for(double x : {188.0,364.0,540.0,716.0,892.0})
+        line(x,344,x+160.0,344,{205,210,217,34},1.0);
+    line(24,344,168,344,{205,208,214,28},1.0);
+    line(1072,344,1230,344,{205,208,214,28},1.0);
+    line(1250,344,1416,344,{205,208,214,28},1.0);
 
     // Recesses under discrete selectors keep controls seated in the metal.
     well(34,586,124,42,7.0);
@@ -274,9 +285,6 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         screw(p.x,p.y);
 
     // Quiet hierarchy labels are part of the chassis, not additional controls.
-    context->setFont(VSTGUI::kNormalFont,8.8,VSTGUI::kBoldFace);
-    context->setFontColor({132,139,148,220});
-    context->drawString(VSTGUI::UTF8String("ANALOG ENGINE"),rect(466,288,308,12),VSTGUI::kCenterText);
     context->setFont(VSTGUI::kNormalFont,8.8,0);
     context->setFontColor({142,148,156,225});
     context->drawString(VSTGUI::UTF8String("v3.0.0"),rect(1260,74,128,12),VSTGUI::kCenterText);
@@ -345,7 +353,7 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto v=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
     const auto cx=r.getCenter().x, cy=r.getCenter().y;
-    const double radius=std::min(r.getWidth(),r.getHeight())*0.38;
+    const double radius=std::min(r.getWidth(),r.getHeight())*0.40;
     const double angle=(135.0+270.0*v)*kPi/180.0;
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
@@ -354,14 +362,15 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
     context->setFillColor({0,0,0,105});
     context->drawEllipse({cx-radius-7,cy-radius-3,cx+radius+7,cy+radius+10},VSTGUI::kDrawFilled);
 
-    // Brushed steel skirt with an off-centre highlight.
-    const VSTGUI::CRect skirt(cx-radius-4,cy-radius-4,cx+radius+4,cy+radius+4);
-    fillRadialEllipse(context,skirt,{128,133,141,255},{25,28,33,255},{-radius*.25,-radius*.28});
-    context->setFrameColor({5,6,8,255}); context->setLineWidth(1.2);
+    // Substantial machined skirt: broad satin metal, dark recessed shoulder.
+    const VSTGUI::CRect skirt(cx-radius-5,cy-radius-5,cx+radius+5,cy+radius+5);
+    fillRadialEllipse(context,skirt,{150,154,160,255},{34,38,44,255},{-radius*.30,-radius*.32});
+    context->setFrameColor({4,5,7,255}); context->setLineWidth(1.5);
     context->drawEllipse(skirt,VSTGUI::kDrawStroked);
 
-    VSTGUI::CRect skirtInner=skirt; skirtInner.inset(4.0,4.0);
-    context->setFrameColor({210,214,220,48}); context->setLineWidth(1.0);
+    VSTGUI::CRect skirtInner=skirt; skirtInner.inset(5.5,5.5);
+    fillRadialEllipse(context,skirtInner,{75,79,86,255},{19,22,27,255},{-radius*.24,-radius*.28});
+    context->setFrameColor({214,218,224,42}); context->setLineWidth(1.0);
     context->drawEllipse(skirtInner,VSTGUI::kDrawStroked);
 
     // Scale ticks float around the metal skirt.
@@ -377,13 +386,13 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
                           {cx+std::cos(a)*ro,cy+std::sin(a)*ro});
     }
 
-    // Fine radial knurling around the skirt gives the knob a machined grip.
-    const int knurls=(style_==Style::Small)?18:28;
-    for(int i=0;i<knurls;++i){
-        const double a=2.0*kPi*static_cast<double>(i)/static_cast<double>(knurls);
-        const double r1=radius*0.83, r2=radius*0.94;
-        context->setFrameColor((i%2)==0?VSTGUI::CColor{205,209,214,44}:VSTGUI::CColor{4,5,7,80});
-        context->setLineWidth(0.8);
+    // Sparse grip notches: enough tactile cue without the previous spiky look.
+    const int gripMarks=(style_==Style::Small)?8:12;
+    for(int i=0;i<gripMarks;++i){
+        const double a=2.0*kPi*static_cast<double>(i)/static_cast<double>(gripMarks);
+        const double r1=radius*0.89, r2=radius*0.97;
+        context->setFrameColor({216,220,225,46});
+        context->setLineWidth(1.0);
         context->drawLine({cx+std::cos(a)*r1,cy+std::sin(a)*r1},
                           {cx+std::cos(a)*r2,cy+std::sin(a)*r2});
     }
@@ -402,11 +411,11 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
             default: break;
         }
     }
-    const double ring=radius*0.67;
+    const double ring=radius*0.73;
     context->setFrameColor(ringColor); context->setLineWidth(1.5);
     context->drawEllipse({cx-ring,cy-ring,cx+ring,cy+ring},VSTGUI::kDrawStroked);
 
-    const double cap=radius*0.58;
+    const double cap=radius*0.70;
     const VSTGUI::CRect capRect(cx-cap,cy-cap,cx+cap,cy+cap);
     fillRadialEllipse(context,capRect,
                       style_==Style::Small?VSTGUI::CColor{58,61,67,255}:VSTGUI::CColor{66,69,75,255},
