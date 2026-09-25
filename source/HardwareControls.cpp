@@ -189,8 +189,8 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     };
     const auto raised=[&](double x,double y,double w,double h,double radius){
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{31,35,41,255},{16,19,23,255});
-        strokeRound(context,rr,radius,{83,90,99,128},1.0);
+        fillRoundGradient(context,rr,radius,{35,45,57,255},{15,22,30,255});
+        strokeRound(context,rr,radius,{83,105,126,150},1.0);
         auto hi=rr; hi.inset(2.0,2.0); hi.bottom=hi.top+1.0;
         context->setFillColor({255,255,255,16});
         context->drawRect(hi,VSTGUI::kDrawFilled);
@@ -199,8 +199,8 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         const auto shadow=rect(x+1,y+2,w,h);
         fillRoundGradient(context,shadow,radius,{4,5,7,185},{0,0,0,225});
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{11,13,16,255},{19,22,27,255});
-        strokeRound(context,rr,radius,{66,73,82,128},1.0);
+        fillRoundGradient(context,rr,radius,{8,13,19,255},{18,27,37,255});
+        strokeRound(context,rr,radius,{65,88,108,145},1.0);
     };
     const auto screw=[&](double x,double y){
         const auto sr=rect(x-4.5,y-4.5,9,9);
@@ -213,20 +213,20 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
     // Main 125A chassis: one continuous instrument instead of eight boxed cells.
-    context->setFillColor({5,7,9,255});
+    context->setFillColor({4,8,12,255});
     context->drawRect(r,VSTGUI::kDrawFilled);
     auto chassis=r; chassis.inset(7.0,7.0);
-    fillRoundGradient(context,chassis,16.0,{36,40,47,255},{14,17,21,255});
-    strokeRound(context,chassis,16.0,{1,2,3,255},2.0);
+    fillRoundGradient(context,chassis,16.0,{39,54,68,255},{13,22,31,255});
+    strokeRound(context,chassis,16.0,{1,4,7,255},2.0);
     auto inner=chassis; inner.inset(4.0,4.0);
-    strokeRound(context,inner,13.0,{145,151,160,27},1.0);
+    strokeRound(context,inner,13.0,{126,157,181,42},1.0);
 
     // Restrained anodised grain: enough material cue without visual shimmer.
     for(int y=18;y<786;y+=8) {
         const uint8_t a=(y%32==0)?7:3;
-        line(14,y,1426,y,{188,193,201,a},1.0);
+        line(14,y,1426,y,{168,192,210,a},1.0);
     }
-    line(20,14,1420,14,{220,224,230,28},1.0);
+    line(20,14,1420,14,{205,225,239,34},1.0);
     line(20,786,1420,786,{0,0,0,210},1.0);
 
     // Upper bridge: logo, two recessed meters, centre utility strip and master block.
@@ -250,25 +250,55 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     raised(1068,300,166,464,12.0);    // stereo
     raised(1246,300,174,464,12.0);    // output
 
-    // Five independent analogue daughter-panels. The separation is deliberate:
-    // each stage must read instantly as its own hardware module.
-    for(double x : {184.0,360.0,536.0,712.0,888.0}) {
-        raised(x,300,168,464,10.0);
-        VSTGUI::CRect moduleInset=rect(x+6.0,306.0,156.0,452.0);
-        strokeRound(context,moduleInset,8.0,{6,8,10,210},1.0);
+    // Five independent analogue daughter-panels. They share one blue-anodised
+    // chassis, but each stage has its own recessed edge and subtle material tint.
+    // This is intentionally independent from the knob artwork so future rendered
+    // knob strips can be dropped in without redesigning the faceplate again.
+    struct ModulePlate { double x; VSTGUI::CColor top; VSTGUI::CColor bottom; };
+    constexpr ModulePlate modulePlates[] {
+        {184.0,{42,55,68,255},{18,27,36,255}},   // Console
+        {360.0,{46,55,66,255},{20,27,35,255}},   // Tube
+        {536.0,{39,52,65,255},{17,26,35,255}},   // Tape
+        {712.0,{38,50,62,255},{16,24,32,255}},   // Glue
+        {888.0,{43,52,64,255},{18,25,33,255}}    // Vinyl
+    };
+    for(const auto& plate : modulePlates) {
+        const auto shadow=rect(plate.x+2.0,303.0,168.0,464.0);
+        fillRoundGradient(context,shadow,10.0,{1,3,5,150},{0,0,0,230});
+
+        const auto panel=rect(plate.x,300.0,168.0,464.0);
+        fillRoundGradient(context,panel,10.0,plate.top,plate.bottom);
+        strokeRound(context,panel,10.0,{90,114,136,145},1.0);
+
+        VSTGUI::CRect moduleInset=rect(plate.x+6.0,306.0,156.0,452.0);
+        strokeRound(context,moduleInset,8.0,{4,10,15,220},1.0);
         VSTGUI::CRect moduleHighlight=moduleInset;
         moduleHighlight.inset(2.0,2.0);
         moduleHighlight.bottom=moduleHighlight.top+1.0;
-        context->setFillColor({236,239,243,18});
+        context->setFillColor({218,235,246,22});
         context->drawRect(moduleHighlight,VSTGUI::kDrawFilled);
+
+        // Narrow header rail makes module boundaries obvious before the eye
+        // reaches the controls, without turning the interface into coloured boxes.
+        VSTGUI::CRect header=rect(plate.x+8.0,307.0,152.0,35.0);
+        fillRoundGradient(context,header,5.0,{51,67,82,145},{25,36,47,75});
+        strokeRound(context,header,5.0,{118,146,169,38},1.0);
     }
 
-    // Stronger engraved datum line under every module title row.
+    // I/O and stereo sections use the same material family but remain visually
+    // broader structural bays rather than analogue daughter modules.
+    for(const auto& bay : {VSTGUI::CRect{26,306,166,758},
+                           VSTGUI::CRect{1074,306,1228,758},
+                           VSTGUI::CRect{1252,306,1414,758}}) {
+        strokeRound(context,bay,8.0,{101,129,151,34},1.0);
+    }
+
+    // Engraved datum line under every title row.
     for(double x : {188.0,364.0,540.0,716.0,892.0})
-        line(x,344,x+160.0,344,{205,210,217,34},1.0);
-    line(24,344,168,344,{205,208,214,28},1.0);
-    line(1072,344,1230,344,{205,208,214,28},1.0);
-    line(1250,344,1416,344,{205,208,214,28},1.0);
+        line(x,344,x+160.0,344,{151,181,203,58},1.0);
+    line(24,344,168,344,{145,174,196,44},1.0);
+    line(1072,344,1230,344,{145,174,196,44},1.0);
+    line(1250,344,1416,344,{145,174,196,44},1.0);
 
     // Recesses under discrete selectors keep controls seated in the metal.
     well(34,586,124,42,7.0);
@@ -564,13 +594,13 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
 
     VSTGUI::CRect shadow=r; shadow.offset(0.0,2.0);
     fillRoundGradient(context,shadow,7.0,{2,3,5,200},{0,0,0,235});
-    fillRoundGradient(context,r,7.0,{83,88,96,255},{23,26,31,255});
-    strokeRound(context,r,7.0,{5,6,8,255},1.0);
+    fillRoundGradient(context,r,7.0,{75,91,105,255},{20,29,38,255});
+    strokeRound(context,r,7.0,{4,8,12,255},1.0);
 
     VSTGUI::CRect inner=r;
     inner.inset(3.5,3.5);
-    fillRoundGradient(context,inner,5.0,{16,19,23,255},{8,10,13,255});
-    strokeRound(context,inner,5.0,{116,122,131,78},1.0);
+    fillRoundGradient(context,inner,5.0,{13,21,29,255},{7,12,18,255});
+    strokeRound(context,inner,5.0,{105,134,157,92},1.0);
     const auto count=static_cast<int>(labels_.size());
     const auto selected=std::clamp(
         static_cast<int>(std::lround(getValueNormalized()*static_cast<double>(std::max(1,count-1)))),
@@ -598,14 +628,14 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
         if(i==selected) {
             VSTGUI::CRect selectedShadow=face; selectedShadow.offset(0.0,1.3);
             fillRoundGradient(context,selectedShadow,4.0,{3,4,5,180},{0,0,0,220});
-            fillRoundGradient(context,face,4.0,{91,76,52,255},{47,39,28,255});
-            strokeRound(context,face,4.0,{181,151,97,180},1.0);
+            fillRoundGradient(context,face,4.0,{55,84,106,255},{25,48,66,255});
+            strokeRound(context,face,4.0,{118,168,201,190},1.0);
             VSTGUI::CRect glint=face; glint.inset(2.0,2.0); glint.bottom=glint.top+1.0;
-            context->setFillColor({255,237,190,38});
+            context->setFillColor({218,240,255,42});
             context->drawRect(glint,VSTGUI::kDrawFilled);
         } else {
-            fillRoundGradient(context,face,4.0,{42,46,52,255},{23,26,31,255});
-            strokeRound(context,face,4.0,{73,79,88,170},1.0);
+            fillRoundGradient(context,face,4.0,{38,49,59,255},{18,26,34,255});
+            strokeRound(context,face,4.0,{69,91,108,175},1.0);
         }
 
         if(i>0) {
@@ -614,7 +644,7 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
             context->drawLine({seg.left,inner.top+5.0},{seg.left,inner.bottom-5.0});
         }
 
-        context->setFontColor(i==selected?VSTGUI::CColor{235,228,210,255}:VSTGUI::CColor{178,185,194,245});
+        context->setFontColor(i==selected?VSTGUI::CColor{226,241,250,255}:VSTGUI::CColor{177,194,207,245});
         context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),face,VSTGUI::kCenterText);
     }
 
