@@ -80,6 +80,7 @@ private:
     struct TubeChannelState { V3Research::TubeV3State v3{}; };
     struct TapeChannelState { double highMemory=0.0,lowMemory=0.0,wowPhase=0.0,flutterPhase=0.0,previousInput=0.0,hissMemory=0.0,compressionEnvelope=0.0,magneticMemory=0.0; std::uint32_t noiseRng=0; V3Research::TapeV3State v3{}; };
     struct GlueChannelState { double envelope=0.0; };
+    struct ProgramLevelMatchState { double inputPower=0.0, outputPower=0.0, gain=1.0; };
     struct VinylChannelState {
         double highMemory=0.0,lowMemory=0.0,stylusMemory=0.0,surfaceMemory=0.0,clickEnvelope=0.0,clickPolarity=1.0;
         std::uint32_t noiseRng=0;
@@ -105,6 +106,7 @@ private:
     double processGlueGain(double detector, GlueChannelState& state, double amount, double character) const;
     double processVinylSample(double x, VinylChannelState& state, int sourceIndex, int lane, double character, double wear, int osFactor, double noiseAmount, double calibrationNorm);
     double dcBlock(double x, ConsoleChannelState& state);
+    double programLevelMatchGain(ProgramLevelMatchState& state, double refL, double refR, double outL, double outR, bool stereo, bool enabled);
 #ifndef MIXENGINE_CHANNEL_BUILD
     Steinberg::tresult processMixFxChannelInternal(Steinberg::int32 index, Steinberg::Vst::ProcessData& data);
     void prepareMixFxSnapshotBuffers();
@@ -136,6 +138,8 @@ private:
     std::array<std::array<VinylChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxVinylState_{};
     std::array<StereoChannelState,kMaxAudioChannels> stereoState_{};
     std::array<std::array<StereoChannelState,kMaxAudioChannels>,kMaxMixFxChannels> mixFxStereoState_{};
+    ProgramLevelMatchState programLevelMatchState_{};
+    std::array<ProgramLevelMatchState,kMaxMixFxChannels> mixFxProgramLevelMatchState_{};
     std::array<OversamplingEngine,kMaxAudioChannels> consoleOversampling_{};
     std::array<std::array<OversamplingEngine,kMaxAudioChannels>,kMaxMixFxChannels> mixFxConsoleOversampling_{};
     std::array<int,kMaxAudioChannels> consoleOversamplingFactor_{{1,1}};

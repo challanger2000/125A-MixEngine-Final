@@ -224,7 +224,7 @@ tresult PLUGIN_API Processor::setActive(TBool state){
 tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;if(p&&!processing_)resetConsoleState();processing_=p;return kResultOk;}
 
 void Processor::resetConsoleState(){
- for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s={};for(auto&source:mixFxTubeState_)for(auto&s:source)s={};for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};
+ for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s={};for(auto&source:mixFxTubeState_)for(auto&s:source)s={};for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};programLevelMatchState_={};for(auto&s:mixFxProgramLevelMatchState_)s={};
  for(auto&s:consoleOversampling_)s.reset();for(auto&source:mixFxConsoleOversampling_)for(auto&s:source)s.reset();
  consoleOversamplingFactor_.fill(1);for(auto&source:mixFxConsoleOversamplingFactor_)source.fill(1);
  for(auto&s:nonlinearOversampling_)s.reset();for(auto&source:mixFxNonlinearOversampling_)for(auto&s:source)s.reset();
@@ -288,6 +288,27 @@ void Processor::publishMeterParameters(IParameterChanges* changes,double vuL,dou
  sendMeterExchange(normL,normR,clipL,clipR,numSamples);
 }
 double Processor::dcBlock(double x,ConsoleChannelState& state){const double y=x-state.dcX1+dcCoeff_*state.dcY1;state.dcX1=x;state.dcY1=y;return y;}
+double Processor::programLevelMatchGain(ProgramLevelMatchState& state,double refL,double refR,double outL,double outR,bool stereo,bool enabled){
+    if(!enabled){
+        state={};
+        return 1.0;
+    }
+    const double refPower=stereo?0.5*(refL*refL+refR*refR):refL*refL;
+    const double outPower=stereo?0.5*(outL*outL+outR*outR):outL*outL;
+    // Slow programme-energy tracking: fast enough to settle after a control move,
+    // slow enough to avoid following individual transients like a compressor.
+    const double detectorCoeff=1.0-std::exp(-1.0/(0.120*sampleRate_));
+    const double gainCoeff=1.0-std::exp(-1.0/(0.180*sampleRate_));
+    state.inputPower+=detectorCoeff*(refPower-state.inputPower);
+    state.outputPower+=detectorCoeff*(outPower-state.outputPower);
+    if(state.inputPower>1.0e-10&&state.outputPower>1.0e-10){
+        const double target=std::clamp(std::sqrt(state.inputPower/state.outputPower),
+                                       dbToGain(-6.0),dbToGain(6.0));
+        state.gain+=gainCoeff*(target-state.gain);
+    }
+    if(!std::isfinite(state.gain))state.gain=1.0;
+    return std::clamp(state.gain,dbToGain(-6.0),dbToGain(6.0));
+}
 double Processor::processConsoleSample(double x,ConsoleChannelState& state,int sourceIndex,int lane,int mode,double drive,int osFactor,double noiseAmount,double calibrationNorm){const double d=std::clamp(drive,0.0,1.0),variation=stableVariation(sourceIndex,lane),tolerance=1.0+0.008*variation*d,bias=0.0015*variation;x=x*tolerance+bias*d;if(mode==2&&d>0.0){const double magneticDrive=1.35+0.95*d,target=std::tanh(magneticDrive*x+0.24*d*state.transformerMemory),memoryCoeff=0.20+0.16*d;state.transformerMemory+=memoryCoeff*(target-state.transformerMemory);const double staticMag=std::tanh(magneticDrive*x),hysteresis=state.transformerMemory-staticMag;x+=0.16*d*hysteresis;}else state.transformerMemory*=0.995;state.lowMemory+=lowCoeff_*(x-state.lowMemory);const double low=state.lowMemory,high=x-state.lowMemory;OversamplingEngine* engine=nullptr;int* currentFactor=nullptr;const int factor=OversamplingEngine::sanitiseFactor(osFactor);if(mixFxEngaged_){engine=&mixFxConsoleOversampling_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];currentFactor=&mixFxConsoleOversamplingFactor_[static_cast<std::size_t>(sourceIndex)][static_cast<std::size_t>(lane)];}else{engine=&consoleOversampling_[static_cast<std::size_t>(lane)];currentFactor=&consoleOversamplingFactor_[static_cast<std::size_t>(lane)];}double y=x;if(d>0.0){y=processConsoleOversampledCore(*engine,*currentFactor,factor,x,low,high,mode,drive);y=dcBlock(y,state);}else{state.dcX1=x;state.dcY1=x;}noiseAmount=std::clamp(noiseAmount,0.0,1.0);if(noiseAmount>0.0){if(state.noiseRng==0u)state.noiseRng=makeNoiseSeed(sourceIndex,lane,0xC01150E1u);const double white=randomBipolar(state.noiseRng),coeff=1.0-std::exp(-2.0*kPi*6500.0/sampleRate_);state.noiseMemory+=coeff*(white-state.noiseMemory);const double colored=0.72*white+0.28*state.noiseMemory,n=noiseAmount*noiseAmount,sourceScale=(mixFxEngaged_&&mixFxChannelCount_>1)?1.0/std::sqrt(static_cast<double>(mixFxChannelCount_)):1.0;y+=colored*0.00025*n*sourceScale*calibrationNorm;}return y;}
 double Processor::processTubeSample(double x,TubeChannelState& state,double typeMorph,double amount,int osFactor){return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);}
 double Processor::processTapeSample(double x,TapeChannelState& state,int sourceIndex,int lane,double speedMorph,double amount,double stability,int osFactor,double noiseAmount,double calibrationNorm){
@@ -814,6 +835,11 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
    processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff);
   }
 
+  const double programmeMatch=programLevelMatchGain(
+      mixFxProgramLevelMatchState_[static_cast<std::size_t>(index)],
+      meterL,meterR,l,r,stereo,autoGainOn);
+  l*=programmeMatch;r*=programmeMatch;
+
   auto& align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];
   leftOut=align[0].process(l*outputGain*inputMatchGain,latencyDelay);
   rightOut=stereo?align[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;
@@ -1053,6 +1079,10 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             auto& st=stereoState_[0];
             processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff);
         }
+
+        const double programmeMatch=programLevelMatchGain(
+            programLevelMatchState_,meterL,meterR,l,r,stereo,autoGainOn);
+        l*=programmeMatch;r*=programmeMatch;
 
         leftOut=latencyAligner_[0].process(l*outputGain*inputMatchGain,latencyDelay);
         rightOut=stereo?latencyAligner_[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;

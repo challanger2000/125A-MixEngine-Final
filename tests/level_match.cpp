@@ -209,16 +209,11 @@ int main(){
                          <<" ON="<<onDb<<" dB"
                          <<" improvement="<<(std::abs(offDb)-std::abs(onDb))<<" dB\n";
 
-                // Level Match is deliberately fixed/transparent rather than a
-                // dynamic loudness normalizer. A single static compensation
-                // cannot move every programme level toward unity for a
-                // level-dependent nonlinear processor. Dedicated V3 module
-                // calibration fixtures enforce the intended nominal operating
-                // point, while v3-autolevel-level-sweep explicitly measures
-                // programme-level dependence. This legacy cross-module gate
-                // therefore guards only against an excessive fixed gain jump.
-                if(std::abs(onDb)>3.0)ok=false;
-                if(std::abs(onDb-offDb)>2.5)ok=false;
+                // V3 Level Match is a slow programme-energy compensation stage.
+                // It must remove obvious loudness bias without behaving like a
+                // fast compressor. On this mixed-spectrum fixture, each module
+                // and the full chain must settle close enough for fair A/B use.
+                if(std::abs(onDb)>0.75)ok=false;
             }
         }
 
