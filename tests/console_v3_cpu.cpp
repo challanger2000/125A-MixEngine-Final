@@ -25,15 +25,17 @@ void setParam(ParameterChanges& c,ParamID id,double v){
  int32 pi=0;if(q->addPoint(0,std::clamp(v,0.0,1.0),pi)!=kResultTrue)throw 11;
 }
 
-struct Stats{double mean=0,p95=0,p99=0,max=0;};
+struct Stats{double mean=0,p95=0,p99=0,max=0;int overruns=0;};
 
-Stats stats(std::vector<double> v){
+Stats stats(std::vector<double> v,double deadline){
  std::sort(v.begin(),v.end());
  Stats s{};
  if(v.empty())return s;
  s.mean=std::accumulate(v.begin(),v.end(),0.0)/double(v.size());
  auto q=[&](double p){const std::size_t i=std::min(v.size()-1,static_cast<std::size_t>(std::ceil(p*v.size())-1));return v[i];};
- s.p95=q(0.95);s.p99=q(0.99);s.max=v.back();return s;
+ s.p95=q(0.95);s.p99=q(0.99);s.max=v.back();
+ s.overruns=static_cast<int>(std::count_if(v.begin(),v.end(),[&](double x){return x>deadline;}));
+ return s;
 }
 
 Stats run(int channels,double drive){
@@ -109,7 +111,8 @@ Stats run(int channels,double drive){
   if(b>=warmBlocks)
    durations.push_back(std::chrono::duration<double,std::micro>(t1-t0).count());
  }
- return stats(std::move(durations));
+ const double deadlineUs=1.0e6*double(block)/sr;
+ return stats(std::move(durations),deadlineUs);
 }
 }
 
@@ -127,8 +130,20 @@ int main(){
             <<" us on="<<on.mean<<"/"<<on.p95<<"/"<<on.p99<<"/"<<on.max
             <<" overheadMean="<<overheadMean
             <<" overheadP99="<<overheadP99
-            <<" deadline="<<deadlineUs<<" us\n";
-   if(!(std::isfinite(on.mean)&&std::isfinite(on.p99)&&on.max<deadlineUs*20.0))ok=false;
+            <<" deadline="<<deadlineUs
+            <<" overruns="<<on.overruns<<"\n";
+   if(!(std::isfinite(on.mean)&&std::isfinite(on.p99)&&std::isfinite(on.max)))ok=false;
+   if(channels<=64){
+    // Production gate: up to 64 simultaneous Console channels must meet the
+    // realtime block deadline at p99 with zero measured overruns.
+    if(on.overruns!=0||on.p99>=deadlineUs)ok=false;
+   }else{
+    // 128 channels is an intentionally extreme shared-runner stress case.
+    // Gate sustained throughput and bounded tail behavior without treating
+    // isolated hosted-runner scheduling stalls as DSP regressions.
+    const double overrunFraction=double(on.overruns)/double(measuredBlocks);
+    if(on.mean>=deadlineUs||on.p95>=deadlineUs||overrunFraction>0.05)ok=false;
+   }
   }
   std::cout<<(ok?"PASS":"FAIL")<<": Console V3 CPU scaling measurement\n";
   return ok?0:1;
