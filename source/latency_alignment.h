@@ -4,7 +4,7 @@
 #include <cstddef>
 namespace MixEngine {
 constexpr int kFixedLatencySamples=21; // V2 oversampling budget, retained for legacy diagnostics.
-constexpr int kV3MaxLatencySamples=256;
+constexpr int kV3MaxLatencySamples=96;
 inline int v3TapeNominalDelaySamples(double sampleRate) noexcept {
  return std::max(0,static_cast<int>(std::ceil(0.00015*std::max(1.0,sampleRate))));
 }
