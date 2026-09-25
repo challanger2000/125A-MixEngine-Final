@@ -33,11 +33,16 @@ inline double processConsoleNonlinearCore(double x,double low,double high,int mo
     double y=x;
     switch(mode){
         case 0:
-            y=consoleSoftClip(x,0.30*e);
+            // Clean: retain the restrained low range, but open the upper half so
+            // 75-100 % remains a genuine creative reserve instead of a cosmetic turn.
+            y=consoleSoftClip(x,std::min(1.0,0.42*e+0.12*zone));
             break;
         case 1:
             y=consoleSoftClip((x+0.070*e*low)*hot,e)/hot;
             y+=0.018*e*high*std::abs(x);
+            // Once the soft-clip amount reaches its natural ceiling, keep the
+            // final quarter meaningful with a bounded parallel asymmetry/density term.
+            y+=0.032*zone*(x*std::abs(x))/(1.0+0.75*x*x);
             break;
         case 2:
             y=consoleSoftClip((x+0.135*e*low
