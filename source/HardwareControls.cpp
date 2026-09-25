@@ -525,19 +525,24 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareToggle::HardwareToggle(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,bool ledLeft,bool moduleLedAbove,bool blueLed)
-: VSTGUI::COnOffButton(size,listener,tag,nullptr),ledLeft_(ledLeft),moduleLedAbove_(moduleLedAbove),blueLed_(blueLed)
+HardwareToggle::HardwareToggle(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* filmstrip,bool ledLeft,bool moduleLedAbove,bool blueLed)
+: VSTGUI::COnOffButton(size,listener,tag,nullptr),filmstrip_(filmstrip),ledLeft_(ledLeft),moduleLedAbove_(moduleLedAbove),blueLed_(blueLed)
 {
+    if(filmstrip_) filmstrip_->remember();
     setTransparency(true);
     setWantsFocus(true);
 }
 
 HardwareToggle::HardwareToggle(const HardwareToggle& other)
-: VSTGUI::COnOffButton(other),ledLeft_(other.ledLeft_),moduleLedAbove_(other.moduleLedAbove_),blueLed_(other.blueLed_)
+: VSTGUI::COnOffButton(other),filmstrip_(other.filmstrip_),ledLeft_(other.ledLeft_),moduleLedAbove_(other.moduleLedAbove_),blueLed_(other.blueLed_)
 {
+    if(filmstrip_) filmstrip_->remember();
 }
 
-
+HardwareToggle::~HardwareToggle()
+{
+    if(filmstrip_) filmstrip_->forget();
+}
 
 void HardwareToggle::draw(VSTGUI::CDrawContext* context)
 {
@@ -564,6 +569,26 @@ void HardwareToggle::draw(VSTGUI::CDrawContext* context)
         context->setFrameColor({4,5,7,255}); context->setLineWidth(1.0);
         context->drawEllipse(lr,VSTGUI::kDrawStroked);
     };
+
+    // Style-prototype path: use the current Knob Designer push-button filmstrip,
+    // while retaining the existing 125A LED behaviour as a separate overlay.
+    if(filmstrip_ && filmstrip_->isLoaded()) {
+        constexpr int kStates=3;
+        constexpr double kFrameSize=64.0;
+        const int frame=on?2:0;
+        filmstrip_->draw(context,r,{0.0,kFrameSize*static_cast<double>(frame)},1.f);
+
+        if(moduleLedAbove_) {
+            const auto cx=r.getCenter().x;
+            drawLed(cx-5.0,r.top+3.0,10.0);
+        } else if(ledLeft_) {
+            drawLed(r.left+4.0,r.getCenter().y-5.0,10.0);
+        } else {
+            drawLed(r.right-14.0,r.getCenter().y-5.0,10.0);
+        }
+        setDirty(false);
+        return;
+    }
 
     auto drawPush=[&](const VSTGUI::CRect& sw){
         // Metal bezel + inset latching cap: visually closer to a studio hardware switch.
@@ -736,16 +761,23 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag)
-: VSTGUI::CControl(size,listener,tag,nullptr)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* filmstrip)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(filmstrip)
 {
+    if(filmstrip_) filmstrip_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_)
 {
+    if(filmstrip_) filmstrip_->remember();
+}
+
+HardwareVUMeter::~HardwareVUMeter()
+{
+    if(filmstrip_) filmstrip_->forget();
 }
 
 HardwareUIScale::HardwareUIScale(const VSTGUI::CRect& size,VSTGUI::VST3Editor* editor)
@@ -806,6 +838,17 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
 {
     const auto r=getViewSize();
     const auto value=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
+
+    // The processor already publishes the calibrated -20..+3 VU needle position
+    // as a normalized value, so the rendered 128-frame meter can map 1:1.
+    if(filmstrip_ && filmstrip_->isLoaded()) {
+        constexpr int kFrames=128;
+        constexpr double kFrameHeight=184.0;
+        const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
+        filmstrip_->draw(context,r,{0.0,kFrameHeight*static_cast<double>(frame)},1.f);
+        setDirty(false);
+        return;
+    }
     const auto cx=r.getCenter().x;
     const auto cy=r.bottom+30.0;
     const auto radius=std::min(r.getWidth()*0.395,r.getHeight()*0.90);

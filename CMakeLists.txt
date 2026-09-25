@@ -16,21 +16,32 @@ if(NOT MIXENGINE_KNOB_ASSET_ROOT)
 endif()
 file(TO_CMAKE_PATH "${MIXENGINE_KNOB_ASSET_ROOT}" MIXENGINE_KNOB_RESOURCE_DIR)
 set(MIXENGINE_KNOB_RESOURCES
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_128px_100pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_192px_150pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_256px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_384px_300pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_96px_100pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_144px_150pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_192px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_288px_300pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_64px_100pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_96px_150pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_128px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_192px_300pct_128f.png")
+ # V3 GUI style prototype: one 128 px Vernier master for large/primary knobs.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Vernier_L_128px_100pct_128f.png"
+
+ # Keep the existing medium/small knob families for direct A/B judgement in the real plugin.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_96px_100pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_144px_150pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_192px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_288px_300pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_64px_100pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_96px_150pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_128px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_192px_300pct_128f.png"
+
+ # Current rendered push-button family; LEDs remain the existing procedural LEDs.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_64px_100pct_3states.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png"
+
+ # For this style prototype use the 320x184 render as the 100% logical VU face.
+ # The 480x276 render is its exact 150% HiDPI representation.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Meter_320x184px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Meter_480x276px_300pct_128f.png")
 foreach(MIXENGINE_KNOB_RESOURCE IN LISTS MIXENGINE_KNOB_RESOURCES)
  if(NOT EXISTS "${MIXENGINE_KNOB_RESOURCE}")
-  message(FATAL_ERROR "Missing approved MixEngine knob asset: ${MIXENGINE_KNOB_RESOURCE}")
+  message(FATAL_ERROR "Missing approved MixEngine GUI asset: ${MIXENGINE_KNOB_RESOURCE}")
  endif()
 endforeach()
 set(SMTG_CREATE_PLUGIN_LINK 0 CACHE BOOL "Disable automatic VST3 install links" FORCE)

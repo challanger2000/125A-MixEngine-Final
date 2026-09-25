@@ -174,16 +174,15 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     VSTGUI::CRect r(o.x,o.y,o.x+sz.x,o.y+sz.y);
 
 
-    auto knob=[&](const char* n,ParamID id,HardwareKnob::Style st)->VSTGUI::CView*{
+    auto knob=[&](const char* n,ParamID id,HardwareKnob::Style st,const char* bitmapName)->VSTGUI::CView*{
         if(std::strcmp(name,n)!=0)return nullptr;
-        const char* bitmapName=st==HardwareKnob::Style::Large?"MixKnobL":
-                               (st==HardwareKnob::Style::Medium?"MixKnobM":"MixKnobS");
         auto* filmstrip=description?description->getBitmap(bitmapName):nullptr;
         return new HardwareKnob(r,e,id,st,filmstrip);
     };
     auto toggle=[&](const char* n,ParamID id,bool ledLeft=false,bool moduleLedAbove=false,bool blueLed=false)->VSTGUI::CView*{
-        if(std::strcmp(name,n)==0)return new HardwareToggle(r,e,id,ledLeft,moduleLedAbove,blueLed);
-        return nullptr;
+        if(std::strcmp(name,n)!=0)return nullptr;
+        auto* filmstrip=description?description->getBitmap("MixPush"):nullptr;
+        return new HardwareToggle(r,e,id,filmstrip,ledLeft,moduleLedAbove,blueLed);
     };
     auto selector=[&](const char* n,ParamID id,std::vector<std::string> labels)->VSTGUI::CView*{
         if(std::strcmp(name,n)==0)return new HardwareSelector(r,e,id,std::move(labels));
@@ -212,30 +211,30 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(std::strcmp(name,"HardwareFaceplate")==0)return new HardwareFaceplate(r);
     if(std::strcmp(name,"BrandLogo")==0)return new HardwareLogo(r);
     if(std::strcmp(name,"UIScale")==0)return new HardwareUIScale(r,e);
-    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL);
-    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR);
+    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUProto"):nullptr);
+    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUProto"):nullptr);
     if(std::strcmp(name,"ClipL")==0)return new HardwareClipLed(r,e,kParamClipL);
     if(std::strcmp(name,"ClipR")==0)return new HardwareClipLed(r,e,kParamClipR);
 
-    if(auto* v=knob("Input",kParamInput,HardwareKnob::Style::Large))return v;
-    if(auto* v=knob("ConsoleDrive",kParamConsoleDrive,HardwareKnob::Style::Medium))return v;
+    if(auto* v=knob("Input",kParamInput,HardwareKnob::Style::Large,"MixKnobProto"))return v;
+    if(auto* v=knob("ConsoleDrive",kParamConsoleDrive,HardwareKnob::Style::Large,"MixKnobProto"))return v;
 #ifndef MIXENGINE_CHANNEL_BUILD
-    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small))return v;
+    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small,"MixKnobS"))return v;
 #endif
-    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("TubeAmount",kParamTubeAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("TapeAmount",kParamTapeAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("GlueAmount",kParamGlueAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("VinylCharacter",kParamVinylCharacter,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large))return v;
+    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("TubeAmount",kParamTubeAmount,HardwareKnob::Style::Large,"MixKnobProto"))return v;
+    if(auto* v=knob("TapeAmount",kParamTapeAmount,HardwareKnob::Style::Large,"MixKnobProto"))return v;
+    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("GlueAmount",kParamGlueAmount,HardwareKnob::Style::Large,"MixKnobProto"))return v;
+    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("VinylCharacter",kParamVinylCharacter,HardwareKnob::Style::Large,"MixKnobProto"))return v;
+    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium,"MixKnobM"))return v;
+    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobM"))return v;
+    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small,"MixKnobS"))return v;
+    if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large,"MixKnobProto"))return v;
 
     // Static full-custom VSTGUI legends. These deliberately avoid CTextLabel so
     // typography and rendering stay under the same hardware-style renderer.
