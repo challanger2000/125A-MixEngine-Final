@@ -39,6 +39,7 @@ public:
 private:
     Style style_;
     VSTGUI::CBitmap* filmstrip_ {nullptr};
+    VSTGUI::CBitmap* filmstripB_ {nullptr};
 };
 
 class HardwareToggle final : public VSTGUI::COnOffButton {
@@ -92,7 +93,7 @@ private:
 
 class HardwareVUMeter final : public VSTGUI::CControl {
 public:
-    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* atlas);
+    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* atlasA, VSTGUI::CBitmap* atlasB);
     HardwareVUMeter(const HardwareVUMeter& other);
     ~HardwareVUMeter() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareVUMeter(*this); }

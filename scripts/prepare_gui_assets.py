@@ -9,7 +9,7 @@ KNOB_ROWS = 8
 MASTER_FRAME = 384
 RESAMPLE = Image.Resampling.LANCZOS
 
-VU_COLS = 16
+VU_COLS = 8
 VU_ROWS = 8
 
 def load_knob_master(source: Path) -> Image.Image:
@@ -64,20 +64,26 @@ def clear_connected_dark_border(image: Image.Image, threshold: int = 26) -> Imag
         if y + 1 < h: q.append((x, y + 1))
     return image
 
-def make_vu_atlas(source: Path, frame_size: tuple[int, int], target: Path) -> None:
+def make_vu_atlases(source: Path, frame_size: tuple[int, int], target_a: Path, target_b: Path) -> None:
     frame_w, frame_h = frame_size
     strip = Image.open(source).convert("RGBA")
     expected = (frame_w, frame_h * FRAMES)
     if strip.size != expected:
         raise RuntimeError(f"{source.name}: expected {expected}, got {strip.size}")
-    atlas = Image.new("RGBA", (frame_w * VU_COLS, frame_h * VU_ROWS), (0,0,0,0))
-    for index in range(FRAMES):
-        frame = strip.crop((0,index*frame_h,frame_w,(index+1)*frame_h))
-        frame = clear_connected_dark_border(frame)
-        atlas.alpha_composite(frame, ((index % VU_COLS)*frame_w,(index // VU_COLS)*frame_h))
-    target.parent.mkdir(parents=True, exist_ok=True)
-    atlas.save(target,format="PNG",optimize=True)
-    print(f"{target.name}: {atlas.width}x{atlas.height} / frame {frame_w}x{frame_h}")
+    targets = [target_a, target_b]
+    for page in range(2):
+        atlas = Image.new("RGBA", (frame_w * VU_COLS, frame_h * VU_ROWS), (0,0,0,0))
+        for local_index in range(64):
+            index = page * 64 + local_index
+            frame = strip.crop((0,index*frame_h,frame_w,(index+1)*frame_h))
+            frame = clear_connected_dark_border(frame)
+            atlas.alpha_composite(frame, ((local_index % VU_COLS)*frame_w,(local_index // VU_COLS)*frame_h))
+        target = targets[page]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        atlas.save(target,format="PNG",optimize=True)
+        print(f"{target.name}: {atlas.width}x{atlas.height} / frame {frame_w}x{frame_h}")
+        if atlas.width > 4096 or atlas.height > 4096:
+            raise RuntimeError(f"{target.name}: exceeds 4096px GPU-safe edge")
 
 def main() -> None:
     if len(sys.argv) != 2:
@@ -97,10 +103,14 @@ def main() -> None:
 
     # Full original meter frames, repacked only. No reconstructed face, no synthetic
     # needle, no estimated pivot. 320x184 is exact 200% source, 480x276 exact 300%.
-    make_vu_atlas(root/"meters"/"125A_MixEngine_VU_Meter_320x184px_200pct_128f.png",
-                  (320,184),generated/"125A_MixEngine_VU_320x184_16x8_128f.png")
-    make_vu_atlas(root/"meters"/"125A_MixEngine_VU_Meter_480x276px_300pct_128f.png",
-                  (480,276),generated/"125A_MixEngine_VU_480x276_16x8_128f.png")
+    make_vu_atlases(root/"meters"/"125A_MixEngine_VU_Meter_320x184px_200pct_128f.png",
+                    (320,184),
+                    generated/"125A_MixEngine_VU_320x184_A_8x8_64f.png",
+                    generated/"125A_MixEngine_VU_320x184_B_8x8_64f.png")
+    make_vu_atlases(root/"meters"/"125A_MixEngine_VU_Meter_480x276px_300pct_128f.png",
+                    (480,276),
+                    generated/"125A_MixEngine_VU_480x276_A_8x8_64f.png",
+                    generated/"125A_MixEngine_VU_480x276_B_8x8_64f.png")
 
 if __name__=="__main__":
     main()

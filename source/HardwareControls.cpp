@@ -806,23 +806,26 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* atlas)
-: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(atlas)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* atlasA,VSTGUI::CBitmap* atlasB)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(atlasA),filmstripB_(atlasB)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(filmstripB_) filmstripB_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other),filmstrip_(other.filmstrip_)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),filmstripB_(other.filmstripB_)
 {
     if(filmstrip_) filmstrip_->remember();
+    if(filmstripB_) filmstripB_->remember();
 }
 
 HardwareVUMeter::~HardwareVUMeter()
 {
     if(filmstrip_) filmstrip_->forget();
+    if(filmstripB_) filmstripB_->forget();
 }
 
 HardwareUIScale::HardwareUIScale(const VSTGUI::CRect& size,VSTGUI::VST3Editor* editor)
@@ -887,15 +890,18 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     // Production meter: one exact original KnobMan frame per telemetry value.
     // The original face, printed scale, pivot, needle length and needle angle are
     // never reconstructed or estimated.
-    if(filmstrip_ && filmstrip_->isLoaded()) {
+    if(filmstrip_ && filmstrip_->isLoaded() && filmstripB_ && filmstripB_->isLoaded()) {
         constexpr int kFrames=128;
-        constexpr int kColumns=16;
+        constexpr int kColumns=8;
         constexpr double kFrameW=320.0;
         constexpr double kFrameH=184.0;
         const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
-        const int col=frame%kColumns;
-        const int row=frame/kColumns;
+        const bool secondPage=frame>=64;
+        const int localFrame=secondPage?frame-64:frame;
+        const int col=localFrame%kColumns;
+        const int row=localFrame/kColumns;
         const VSTGUI::CRect src(kFrameW*col,kFrameH*row,kFrameW*(col+1),kFrameH*(row+1));
+        auto* atlas=secondPage?filmstripB_:filmstrip_;
 
         // A compact contact shadow remains behind the transparent exterior of
         // the original meter housing, with no rectangular black backing panel.
@@ -903,7 +909,7 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
         shadow.offset(0.0,3.0);
         shadow.inset(4.0,2.0);
         fillRoundGradient(context,shadow,8.0,{0,0,0,82},{0,0,0,150});
-        context->fillRectWithBitmap(filmstrip_,src,r,1.f);
+        context->fillRectWithBitmap(atlas,src,r,1.f);
         setDirty(false);
         return;
     }

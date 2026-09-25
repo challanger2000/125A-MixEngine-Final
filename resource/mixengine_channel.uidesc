@@ -12,8 +12,10 @@
     <bitmap name="MixPush#1.5x" path="125A_MixEngine_Push_Button_96px_150pct_3states.png" scale-factor="1.5"/>
     <bitmap name="MixPush#2.0x" path="125A_MixEngine_Push_Button_128px_200pct_3states.png" scale-factor="2"/>
     <bitmap name="MixPush#3.0x" path="125A_MixEngine_Push_Button_192px_300pct_3states.png" scale-factor="3"/>
-    <bitmap name="MixVUAtlas" path="125A_MixEngine_VU_320x184_16x8_128f.png"/>
-    <bitmap name="MixVUAtlas#1.5x" path="125A_MixEngine_VU_480x276_16x8_128f.png" scale-factor="1.5"/>
+    <bitmap name="MixVUAtlasA" path="125A_MixEngine_VU_320x184_A_8x8_64f.png"/>
+    <bitmap name="MixVUAtlasA#1.5x" path="125A_MixEngine_VU_480x276_A_8x8_64f.png" scale-factor="1.5"/>
+    <bitmap name="MixVUAtlasB" path="125A_MixEngine_VU_320x184_B_8x8_64f.png"/>
+    <bitmap name="MixVUAtlasB#1.5x" path="125A_MixEngine_VU_480x276_B_8x8_64f.png" scale-factor="1.5"/>
   </bitmaps>
   <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
