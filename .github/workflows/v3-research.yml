@@ -1,5 +1,9 @@
 name: V3 Research Diagnostics
 
+concurrency:
+  group: v3-research-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [v3.0.0-development]
