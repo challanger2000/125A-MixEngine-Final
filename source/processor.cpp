@@ -72,6 +72,9 @@ constexpr double kDefaults[kParamCount] = {
     0.0, 0.0
 };
 
+inline double sanitiseNormalized(double value,double fallback) noexcept {
+    return std::isfinite(value)?std::clamp(value,0.0,1.0):std::clamp(fallback,0.0,1.0);
+}
 inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 inline double gainToDb(double gain) { return 20.0 * std::log10(std::max(gain, 1.0e-12)); }
 inline double calibrationReferenceDb(double normalized) {
@@ -463,7 +466,7 @@ double Processor::processVinylSample(double x,VinylChannelState& state,int sourc
  }
  return y;
 }
-void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue)params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
+void Processor::readParameterChanges(IParameterChanges* changes){if(!changes)return;const int32 count=changes->getParameterCount();for(int32 i=0;i<count;++i){auto*q=changes->getParameterData(i);if(!q)continue;const ParamID id=q->getParameterId();if(id>=kParamCount)continue;const int32 points=q->getPointCount();for(int32 point=0;point<points;++point){int32 offset=0;ParamValue value=0.0;if(q->getPoint(point,offset,value)==kResultTrue&&std::isfinite(static_cast<double>(value)))params_[id]=std::clamp(static_cast<double>(value),0.0,1.0);}}}
 #ifndef MIXENGINE_CHANNEL_BUILD
 void Processor::prepareMixFxSnapshotBuffers(){
  const auto count=std::clamp<int32>(mixFxChannelCount_,0,kMaxMixFxChannels);
@@ -623,8 +626,16 @@ tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
     for(int32 pi=0;pi<pointCount;++pi){
      int32 offset=0; ParamValue value=0.0;
      if(queue->getPoint(pi,offset,value)!=kResultTrue)continue;
+     if(!std::isfinite(static_cast<double>(value)))continue;
      const int32 clampedOffset=data->numSamples>0?std::clamp<int32>(offset,0,data->numSamples-1):0;
-     lane.push_back({clampedOffset,std::clamp(static_cast<double>(value),0.0,1.0)});
+     const double normalised=std::clamp(static_cast<double>(value),0.0,1.0);
+     // VST3 automation queues are sample ordered. Multiple host points may
+     // legally collapse onto the same clamped sample; keep the last value
+     // instead of growing the realtime vector beyond its preallocated
+     // maxSamplesPerBlock capacity.
+     if(!lane.empty()&&lane.back().offset==clampedOffset)lane.back().value=normalised;
+     else if(lane.size()<lane.capacity())lane.push_back({clampedOffset,normalised});
+     else if(!lane.empty())lane.back()={clampedOffset,normalised};
     }
    }
   }
@@ -1136,6 +1147,6 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     outBus.silenceFlags=0;
     return kResultOk;
 }
-tresult PLUGIN_API Processor::setState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(ParamID id=0;id<kParamCount;++id){double loaded=0.0;if(!streamer.readDouble(loaded)){if(id==kParamTubeType){params_[kParamTubeType]=0.5;params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamMeterSource){params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamTapeHiss){params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamVinylNoise){params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}return kResultFalse;}params_[id]=std::clamp(loaded,0.0,1.0);}syncMixFxTargets();resetConsoleState();return kResultOk;}
+tresult PLUGIN_API Processor::setState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(ParamID id=0;id<kParamCount;++id){double loaded=0.0;if(!streamer.readDouble(loaded)){if(id==kParamTubeType){params_[kParamTubeType]=0.5;params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamMeterSource){params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamTapeHiss){params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamVinylNoise){params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}return kResultFalse;}params_[id]=sanitiseNormalized(loaded,kDefaults[id]);}syncMixFxTargets();resetConsoleState();return kResultOk;}
 tresult PLUGIN_API Processor::getState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(const auto value:params_)if(!streamer.writeDouble(value))return kResultFalse;return kResultOk;}
 } // namespace MixEngine
