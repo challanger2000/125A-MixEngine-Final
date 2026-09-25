@@ -187,20 +187,39 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         context->setFrameColor(c); context->setLineWidth(w);
         context->drawLine({ox+x1,oy+y1},{ox+x2,oy+y2});
     };
-    const auto raised=[&](double x,double y,double w,double h,double radius){
-        const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{35,45,57,255},{15,22,30,255});
-        strokeRound(context,rr,radius,{83,105,126,150},1.0);
-        auto hi=rr; hi.inset(2.0,2.0); hi.bottom=hi.top+1.0;
-        context->setFillColor({255,255,255,16});
-        context->drawRect(hi,VSTGUI::kDrawFilled);
-    };
     const auto well=[&](double x,double y,double w,double h,double radius=7.0){
         const auto shadow=rect(x+1,y+2,w,h);
-        fillRoundGradient(context,shadow,radius,{4,5,7,185},{0,0,0,225});
+        fillRoundGradient(context,shadow,radius,{2,3,5,205},{0,0,0,240});
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{8,13,19,255},{18,27,37,255});
-        strokeRound(context,rr,radius,{65,88,108,145},1.0);
+        fillRoundGradient(context,rr,radius,{7,12,18,255},{13,21,29,255});
+        strokeRound(context,rr,radius,{51,73,92,150},1.0);
+    };
+    const auto plate=[&](double x,double y,double w,double h,double radius,bool header=false){
+        // Raised blue anodised sub-panel sitting on the near-black chassis.
+        // The shadow is deliberately outside the plate, like the blue modules in Ugly Reverb,
+        // while highlights stay restrained enough for a mastering/mix tool.
+        const auto shadow=rect(x+3.0,y+4.0,w,h);
+        fillRoundGradient(context,shadow,radius,{0,0,0,130},{0,0,0,235});
+
+        const auto rr=rect(x,y,w,h);
+        fillRoundGradient(context,rr,radius,{39,63,83,255},{15,31,45,255});
+        strokeRound(context,rr,radius,{5,12,18,255},1.5);
+
+        auto rim=rr; rim.inset(2.0,2.0);
+        strokeRound(context,rim,std::max(2.0,radius-2.0),{122,162,191,78},1.0);
+
+        auto top=rr; top.inset(4.0,4.0); top.bottom=top.top+1.0;
+        context->setFillColor({224,241,252,34});
+        context->drawRect(top,VSTGUI::kDrawFilled);
+
+        // A darker lower edge gives the illusion of a thin metal plate mounted on the chassis.
+        line(x+7.0,y+h-3.0,x+w-7.0,y+h-3.0,{0,0,0,120},1.0);
+
+        if(header) {
+            const auto hr=rect(x+7.0,y+7.0,w-14.0,34.0);
+            fillRoundGradient(context,hr,5.0,{46,72,92,185},{22,41,57,155});
+            strokeRound(context,hr,5.0,{132,169,195,46},1.0);
+        }
     };
     const auto screw=[&](double x,double y){
         const auto sr=rect(x-4.5,y-4.5,9,9);
@@ -212,109 +231,72 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
-    // Main 125A chassis: one continuous instrument instead of eight boxed cells.
-    context->setFillColor({4,8,12,255});
+    // Dark structural chassis: deliberately much darker than the blue functional plates.
+    context->setFillColor({2,5,8,255});
     context->drawRect(r,VSTGUI::kDrawFilled);
     auto chassis=r; chassis.inset(7.0,7.0);
-    fillRoundGradient(context,chassis,16.0,{39,54,68,255},{13,22,31,255});
-    strokeRound(context,chassis,16.0,{1,4,7,255},2.0);
+    fillRoundGradient(context,chassis,16.0,{18,25,32,255},{5,9,13,255});
+    strokeRound(context,chassis,16.0,{0,2,4,255},2.0);
     auto inner=chassis; inner.inset(4.0,4.0);
-    strokeRound(context,inner,13.0,{126,157,181,42},1.0);
+    strokeRound(context,inner,13.0,{93,112,126,30},1.0);
 
-    // Restrained anodised grain: enough material cue without visual shimmer.
-    for(int y=18;y<786;y+=8) {
-        const uint8_t a=(y%32==0)?7:3;
-        line(14,y,1426,y,{168,192,210,a},1.0);
+    // Quiet horizontal grain belongs to the chassis, not the modules.
+    for(int y=18;y<786;y+=10) {
+        const uint8_t a=(y%40==0)?5:2;
+        line(14,y,1426,y,{150,166,177,a},1.0);
     }
-    line(20,14,1420,14,{205,225,239,34},1.0);
-    line(20,786,1420,786,{0,0,0,210},1.0);
+    line(20,14,1420,14,{205,225,239,20},1.0);
+    line(20,786,1420,786,{0,0,0,225},1.0);
 
-    // Upper bridge: logo, two recessed meters, centre utility strip and master block.
-    raised(20,26,194,234,12.0);
-    raised(224,26,992,234,14.0);
-    raised(1226,26,194,234,12.0);
+    // Upper instrument bridge: three separate mounted blue plates.
+    plate(20,26,194,234,12.0,false);
+    plate(224,26,992,234,14.0,false);
+    plate(1226,26,194,234,12.0,false);
 
+    // VU glass recesses remain visibly inset into the blue meter plate.
     well(232,44,372,210,10.0);
     well(836,44,372,210,10.0);
     well(630,92,180,66,9.0);
     well(1234,104,178,58,9.0);
 
-    // A restrained brand datum ties the meter bridge together without glowing at the user.
-    line(226,267,1214,267,{205,42,46,66},1.25);
-    line(20,284,1420,284,{144,150,159,25},1.0);
-    line(20,287,1420,287,{0,0,0,215},2.0);
+    // Meter bridge datum and deliberate chassis gap before the lower modules.
+    line(226,267,1214,267,{205,42,46,58},1.25);
+    line(20,279,1420,279,{0,0,0,230},2.0);
+    line(20,283,1420,283,{108,132,149,24},1.0);
 
-    // Lower console: distinct hardware modules seated into one common chassis.
-    raised(20,300,152,464,12.0);      // input
-    raised(1068,300,166,464,12.0);    // stereo
-    raised(1246,300,174,464,12.0);    // output
+    // Lower section: every functional block is now an individually mounted blue plate.
+    // This is the requested "dark chassis + blue modules on top" construction.
+    plate(20,300,152,464,12.0,true);    // Input
+    plate(184,300,168,464,10.0,true);   // Console
+    plate(360,300,168,464,10.0,true);   // Tube
+    plate(536,300,168,464,10.0,true);   // Tape
+    plate(712,300,168,464,10.0,true);   // Glue
+    plate(888,300,168,464,10.0,true);   // Vinyl
+    plate(1068,300,166,464,12.0,true);  // Stereo
+    plate(1246,300,174,464,12.0,true);  // Output
 
-    // Five independent analogue daughter-panels. They share one blue-anodised
-    // chassis, but each stage has its own recessed edge and subtle material tint.
-    // This is intentionally independent from the knob artwork so future rendered
-    // knob strips can be dropped in without redesigning the faceplate again.
-    struct ModulePlate { double x; VSTGUI::CColor top; VSTGUI::CColor bottom; };
-    constexpr ModulePlate modulePlates[] {
-        {184.0,{42,55,68,255},{18,27,36,255}},   // Console
-        {360.0,{46,55,66,255},{20,27,35,255}},   // Tube
-        {536.0,{39,52,65,255},{17,26,35,255}},   // Tape
-        {712.0,{38,50,62,255},{16,24,32,255}},   // Glue
-        {888.0,{43,52,64,255},{18,25,33,255}}    // Vinyl
-    };
-    for(const auto& plate : modulePlates) {
-        const auto shadow=rect(plate.x+2.0,303.0,168.0,464.0);
-        fillRoundGradient(context,shadow,10.0,{1,3,5,150},{0,0,0,230});
-
-        const auto panel=rect(plate.x,300.0,168.0,464.0);
-        fillRoundGradient(context,panel,10.0,plate.top,plate.bottom);
-        strokeRound(context,panel,10.0,{90,114,136,145},1.0);
-
-        VSTGUI::CRect moduleInset=rect(plate.x+6.0,306.0,156.0,452.0);
-        strokeRound(context,moduleInset,8.0,{4,10,15,220},1.0);
-        VSTGUI::CRect moduleHighlight=moduleInset;
-        moduleHighlight.inset(2.0,2.0);
-        moduleHighlight.bottom=moduleHighlight.top+1.0;
-        context->setFillColor({218,235,246,22});
-        context->drawRect(moduleHighlight,VSTGUI::kDrawFilled);
-
-        // Narrow header rail makes module boundaries obvious before the eye
-        // reaches the controls, without turning the interface into coloured boxes.
-        VSTGUI::CRect header=rect(plate.x+8.0,307.0,152.0,35.0);
-        fillRoundGradient(context,header,5.0,{51,67,82,145},{25,36,47,75});
-        strokeRound(context,header,5.0,{118,146,169,38},1.0);
+    // Fine engraved datum lines keep the module titles anchored to the plate.
+    for(double x : {24.0,188.0,364.0,540.0,716.0,892.0,1072.0,1250.0}) {
+        const double width=(x==24.0)?144.0:(x==1072.0?158.0:(x==1250.0?166.0:160.0));
+        line(x,344,x+width,344,{158,192,216,66},1.0);
     }
 
-    // I/O and stereo sections use the same material family but remain visually
-    // broader structural bays rather than analogue daughter modules.
-    for(const auto& bay : {VSTGUI::CRect{26,306,166,758},
-                           VSTGUI::CRect{1074,306,1228,758},
-                           VSTGUI::CRect{1252,306,1414,758}}) {
-        strokeRound(context,bay,8.0,{101,129,151,34},1.0);
-    }
-
-    // Engraved datum line under every title row.
-    for(double x : {188.0,364.0,540.0,716.0,892.0})
-        line(x,344,x+160.0,344,{151,181,203,58},1.0);
-    line(24,344,168,344,{145,174,196,44},1.0);
-    line(1072,344,1230,344,{145,174,196,44},1.0);
-    line(1250,344,1416,344,{145,174,196,44},1.0);
-
-    // Recesses under discrete selectors keep controls seated in the metal.
+    // Selector recesses remain inside their parent plates, but much subtler than before:
+    // controls should look installed in the plate, not boxed into a second UI layer.
     well(34,586,124,42,7.0);
     well(190,574,164,44,7.0);
     well(374,574,148,44,7.0);
     well(550,574,148,44,7.0);
 
-    // Flagship restraint: fasteners are structural accents, not repeating decoration.
+    // Structural fasteners only at the chassis corners and the analogue module bank.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
                   VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782},
                   VSTGUI::CPoint{196,314},VSTGUI::CPoint{1044,314},
                   VSTGUI::CPoint{196,750},VSTGUI::CPoint{1044,750}})
         screw(p.x,p.y);
 
-    // Quiet hierarchy labels are part of the chassis, not additional controls.
     context->setFont(VSTGUI::kNormalFont,8.8,0);
-    context->setFontColor({142,148,156,225});
+    context->setFontColor({139,151,161,225});
     context->drawString(VSTGUI::UTF8String("v3.0.0"),rect(1260,74,128,12),VSTGUI::kCenterText);
 
     setDirty(false);
