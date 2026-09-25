@@ -345,7 +345,9 @@ double Processor::processGlueGain(double detector,GlueChannelState& state,double
  // Keep the useful range from sitting permanently below threshold. Higher
  // Amount increases authority mostly through ratio/blend/GR ceiling rather
  // than simply forcing ever more of the low-level programme into compression.
- const double thresholdDb=-6.0-2.0*strength-1.0*zone;
+ // Keep 20-50 % musically useful while leaving the creative-zone term
+ // responsible for the strongest 75-100 % extension.
+ const double thresholdDb=-7.5-1.6*strength-1.0*zone;
  const double ratio=1.0+2.7*strength+0.9*c*strength+2.0*zone;
  const double kneeDb=8.5-2.5*c;
 
@@ -379,7 +381,7 @@ double Processor::processGlueGain(double detector,GlueChannelState& state,double
 
  // Parallel-style blend keeps transients and low-level detail alive at normal
  // settings, while the upper range can still become intentionally forceful.
- const double blend=strength*(0.52+0.48*strength);
+ const double blend=strength*(0.70+0.30*strength);
  const double compressedGain=dbToGain(-gr);
  return 1.0+(compressedGain-1.0)*blend;
 }
