@@ -942,22 +942,37 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             cursor.count=points;
             cursor.point=0;
             int32 offset=0; ParamValue value=0.0;
-            if(queue->getPoint(0,offset,value)==kResultTrue){
+            if(queue->getPoint(0,offset,value)==kResultTrue&&std::isfinite(static_cast<double>(value))){
                 cursor.offset=std::clamp<int32>(offset,0,data.numSamples-1);
-                cursor.value=std::clamp(value,0.0,1.0);
+                cursor.value=std::clamp(static_cast<double>(value),0.0,1.0);
                 cursor.valid=true;
+            }else{
+                // Skip malformed leading points without ever copying NaN/Inf
+                // into the live parameter array.
+                cursor.point=-1;
+                cursor.valid=true;
+                advanceCursor(cursor);
             }
         }
     }
 
     const auto advanceCursor=[&](AutomationCursor& cursor){
         ++cursor.point;
-        if(cursor.point>=cursor.count){cursor.valid=false;return;}
-        int32 offset=0; ParamValue value=0.0;
-        if(cursor.queue->getPoint(cursor.point,offset,value)==kResultTrue){
-            cursor.offset=std::clamp<int32>(offset,0,data.numSamples-1);
-            cursor.value=std::clamp(value,0.0,1.0);
-        }else cursor.valid=false;
+        while(cursor.point<cursor.count){
+            int32 offset=0; ParamValue value=0.0;
+            if(cursor.queue->getPoint(cursor.point,offset,value)!=kResultTrue){
+                cursor.valid=false;
+                return;
+            }
+            if(std::isfinite(static_cast<double>(value))){
+                cursor.offset=std::clamp<int32>(offset,0,data.numSamples-1);
+                cursor.value=std::clamp(static_cast<double>(value),0.0,1.0);
+                cursor.valid=true;
+                return;
+            }
+            ++cursor.point;
+        }
+        cursor.valid=false;
     };
 
     const auto applyAutomationAt=[&](int32 sampleOffset){
