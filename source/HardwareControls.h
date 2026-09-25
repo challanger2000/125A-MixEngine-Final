@@ -39,7 +39,6 @@ public:
 private:
     Style style_;
     VSTGUI::CBitmap* filmstrip_ {nullptr};
-    VSTGUI::CBitmap* filmstripB_ {nullptr};
 };
 
 class HardwareToggle final : public VSTGUI::COnOffButton {
@@ -100,6 +99,7 @@ public:
     void draw(VSTGUI::CDrawContext* context) override;
 private:
     VSTGUI::CBitmap* filmstrip_ {nullptr};
+    VSTGUI::CBitmap* filmstripB_ {nullptr};
 };
 
 class HardwareClipLed final : public VSTGUI::CControl {
