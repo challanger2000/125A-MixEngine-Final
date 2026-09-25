@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: challanger2000/125A-Knob-Designer
-          ref: fe06a68bb6ed7f9e16955eb8cfd22a1bb33e917f
+          ref: c09cff5d958969eb025fe09255173e65103deae9
           path: knob-assets
           fetch-depth: 1
 
@@ -31,27 +31,25 @@ jobs:
         run: |
           $root = "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
           $required = @(
-            "knobs/125A_MixEngine_Vernier_L_128px_100pct_128f.png",
-            "knobs/125A_MixEngine_Analog_M_96px_100pct_128f.png",
-            "knobs/125A_MixEngine_Analog_M_144px_150pct_128f.png",
-            "knobs/125A_MixEngine_Analog_M_192px_200pct_128f.png",
-            "knobs/125A_MixEngine_Analog_M_288px_300pct_128f.png",
-            "knobs/125A_MixEngine_Analog_S_64px_100pct_128f.png",
-            "knobs/125A_MixEngine_Analog_S_96px_150pct_128f.png",
-            "knobs/125A_MixEngine_Analog_S_128px_200pct_128f.png",
-            "knobs/125A_MixEngine_Analog_S_192px_300pct_128f.png",
+            "knobs/125A_MixEngine_Vernier_L_384px_300pct_128f.png",
+            "knobs/125A_MixEngine_Small_Gunmetal_384px_300pct_128f.png",
             "hardware/125A_MixEngine_Push_Button_64px_100pct_3states.png",
             "hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png",
             "hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png",
             "hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png",
-            "meters/125A_MixEngine_VU_Meter_320x184px_200pct_128f.png",
-            "meters/125A_MixEngine_VU_Meter_480x276px_300pct_128f.png"
+            "meters/125A_MixEngine_VU_Face_400x270px_Master.png"
           )
           foreach ($name in $required) {
             $path = Join-Path $root $name
             if (-not (Test-Path $path -PathType Leaf)) { throw "Missing approved GUI asset: $path" }
           }
           Write-Host "MixEngine V3 GUI prototype assets: $($required.Count)/$($required.Count) present"
+
+      - name: Prepare high-resolution GUI atlases
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python scripts/prepare_gui_assets.py "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
 
       - name: Checkout Steinberg VST3 SDK
         uses: actions/checkout@v4

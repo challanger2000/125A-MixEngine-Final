@@ -238,7 +238,6 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     well(836,44,372,210,10.0);
     well(630,92,180,66,9.0);
     well(1234,104,178,58,9.0);
-    well(1256,188,136,74,9.0);
 
     // A restrained brand datum ties the meter bridge together without glowing at the user.
     line(226,267,1214,267,{205,42,46,66},1.25);
@@ -305,7 +304,6 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     well(190,574,164,44,7.0);
     well(374,574,148,44,7.0);
     well(550,574,148,44,7.0);
-    well(1266,582,124,76,8.0);
 
     // Flagship restraint: fasteners are structural accents, not repeating decoration.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
@@ -395,14 +393,37 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
-    // Preferred production path: approved 128-frame Knob Designer filmstrip.
-    // UIDescription combines the 100/150/200/300% images into one HiDPI CBitmap,
-    // so VSTGUI selects the best platform bitmap for the editor's absolute scale.
+    // Production path: 16x8 atlas prepared from the approved 384 px master.
+    // Keeping each GPU bitmap below common texture limits avoids the oversized
+    // vertical-filmstrip failure while preserving enough source resolution for HiDPI.
     if(filmstrip_ && filmstrip_->isLoaded()) {
         constexpr int kFrames=128;
-        const double frameSize=style_==Style::Large?128.0:(style_==Style::Medium?96.0:64.0);
+        constexpr int kColumns=16;
+        constexpr double kSourceFrame=384.0;
         const int frame=std::clamp(static_cast<int>(std::lround(v*static_cast<double>(kFrames-1))),0,kFrames-1);
-        filmstrip_->draw(context,r,{0.0,frameSize*static_cast<double>(frame)},1.f);
+
+        // Secondary controls get a restrained vector scale. It stays sharp at every
+        // editor zoom and deliberately has no numbers, leaving Vernier knobs dominant.
+        if(style_!=Style::Large) {
+            constexpr int kTicks=9;
+            const double outer=std::min(r.getWidth(),r.getHeight())*0.48;
+            const double inner=outer-(style_==Style::Small?4.5:6.0);
+            for(int i=0;i<kTicks;++i) {
+                const double t=static_cast<double>(i)/static_cast<double>(kTicks-1);
+                const double a=(135.0+270.0*t)*kPi/180.0;
+                const bool datum=(i==0||i==kTicks-1||i==kTicks/2);
+                context->setFrameColor(datum?VSTGUI::CColor{210,216,220,175}:VSTGUI::CColor{142,153,162,120});
+                context->setLineWidth(datum?1.25:0.9);
+                context->drawLine({cx+std::cos(a)*inner,cy+std::sin(a)*inner},
+                                  {cx+std::cos(a)*outer,cy+std::sin(a)*outer});
+            }
+        }
+
+        const int col=frame%kColumns;
+        const int row=frame/kColumns;
+        const VSTGUI::CRect src(kSourceFrame*col,kSourceFrame*row,
+                                kSourceFrame*(col+1),kSourceFrame*(row+1));
+        context->fillRectWithBitmap(filmstrip_,src,r,1.f);
 
         if(isEditing()) {
             const auto valueText=formatKnobValue(getTag(),v);
@@ -577,6 +598,19 @@ void HardwareToggle::draw(VSTGUI::CDrawContext* context)
         constexpr double kFrameSize=64.0;
         const int frame=on?2:0;
         filmstrip_->draw(context,r,{0.0,kFrameSize*static_cast<double>(frame)},1.f);
+
+        // Subtle blue-gunmetal glaze ties the existing button artwork to the new
+        // Vernier/Gunmetal control language without throwing the asset away.
+        const auto cc=r.getCenter();
+        VSTGUI::CRect cap;
+        if(moduleLedAbove_)
+            cap={cc.x-22.0,r.top+24.0,cc.x+22.0,r.top+50.0};
+        else
+            cap={cc.x-22.0,cc.y-11.0,cc.x+22.0,cc.y+11.0};
+        fillRoundGradient(context,cap,4.5,
+                          on?VSTGUI::CColor{54,67,78,72}:VSTGUI::CColor{28,40,50,78},
+                          on?VSTGUI::CColor{11,17,23,76}:VSTGUI::CColor{6,10,14,92});
+        strokeRound(context,cap,4.5,on?VSTGUI::CColor{137,158,174,82}:VSTGUI::CColor{93,112,128,66},1.0);
 
         if(moduleLedAbove_) {
             const auto cx=r.getCenter().x;
@@ -839,13 +873,45 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto value=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
 
-    // The processor already publishes the calibrated -20..+3 VU needle position
-    // as a normalized value, so the rendered 128-frame meter can map 1:1.
+    // Static KnobMan face + continuously drawn needle. This avoids the huge
+    // 128-frame VU filmstrip (which exceeded practical GPU bitmap dimensions)
+    // while keeping the calibrated processor value untouched.
     if(filmstrip_ && filmstrip_->isLoaded()) {
-        constexpr int kFrames=128;
-        constexpr double kFrameHeight=184.0;
-        const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
-        filmstrip_->draw(context,r,{0.0,kFrameHeight*static_cast<double>(frame)},1.f);
+        const VSTGUI::CRect faceSrc(0.0,0.0,filmstrip_->getWidth(),filmstrip_->getHeight());
+        context->fillRectWithBitmap(filmstrip_,faceSrc,r,1.f);
+
+        // Geometry follows the approved 400x270 face: pivot near the lower centre,
+        // with the needle sweeping over the printed -20..+3 scale.
+        const VSTGUI::CPoint pivot(r.left+r.getWidth()*0.5,
+                                   r.top+r.getHeight()*(239.0/270.0));
+        const double needleAngle=(220.0+100.0*value)*kPi/180.0;
+        const double needleLength=r.getHeight()*0.57;
+        const VSTGUI::CPoint tip(pivot.x+std::cos(needleAngle)*needleLength,
+                                 pivot.y+std::sin(needleAngle)*needleLength);
+
+        // Soft shadow plus satin-grey needle matches the source meter better than
+        // the red fallback needle used by the old procedural face.
+        context->setFrameColor({0,0,0,95});
+        context->setLineWidth(3.2);
+        context->drawLine({pivot.x+1.2,pivot.y+1.3},{tip.x+1.2,tip.y+1.3});
+        context->setFrameColor({86,88,90,245});
+        context->setLineWidth(1.9);
+        context->drawLine(pivot,tip);
+        context->setFrameColor({235,235,229,100});
+        context->setLineWidth(0.7);
+        context->drawLine({pivot.x-0.7,pivot.y-0.5},{tip.x-0.7,tip.y-0.5});
+
+        // Repaint the original NeedleCover from the static face over the needle,
+        // so the pivot retains the exact KnobMan hardware artwork.
+        const double sw=filmstrip_->getWidth();
+        const double sh=filmstrip_->getHeight();
+        const VSTGUI::CRect coverSrc(sw*(165.0/400.0),sh*(205.0/270.0),
+                                     sw*(235.0/400.0),sh);
+        const VSTGUI::CRect coverDst(r.left+r.getWidth()*(165.0/400.0),
+                                     r.top+r.getHeight()*(205.0/270.0),
+                                     r.left+r.getWidth()*(235.0/400.0),r.bottom);
+        context->fillRectWithBitmap(filmstrip_,coverSrc,coverDst,1.f);
+
         setDirty(false);
         return;
     }

@@ -16,29 +16,19 @@ if(NOT MIXENGINE_KNOB_ASSET_ROOT)
 endif()
 file(TO_CMAKE_PATH "${MIXENGINE_KNOB_ASSET_ROOT}" MIXENGINE_KNOB_RESOURCE_DIR)
 set(MIXENGINE_KNOB_RESOURCES
- # V3 GUI style prototype: one 128 px Vernier master for large/primary knobs.
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Vernier_L_128px_100pct_128f.png"
+ # High-resolution 16x8 atlases are prepared deterministically from the approved
+ # 384 px / 128-frame masters before CMake configures the plug-in.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Vernier_L_384px_16x8_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_Small_Gunmetal_384px_16x8_128f.png"
 
- # Keep the existing medium/small knob families for direct A/B judgement in the real plugin.
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_96px_100pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_144px_150pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_192px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_M_288px_300pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_64px_100pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_96px_150pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_128px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/knobs/125A_MixEngine_Analog_S_192px_300pct_128f.png"
-
- # Current rendered push-button family; LEDs remain the existing procedural LEDs.
+ # Current rendered push-button family; LEDs remain procedural overlays.
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_64px_100pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png"
 
- # For this style prototype use the 320x184 render as the 100% logical VU face.
- # The 480x276 render is its exact 150% HiDPI representation.
- "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Meter_320x184px_200pct_128f.png"
- "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Meter_480x276px_300pct_128f.png")
+ # Static meter face. Needle motion is drawn continuously by VSTGUI.
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/meters/125A_MixEngine_VU_Face_400x270px_Master.png")
 foreach(MIXENGINE_KNOB_RESOURCE IN LISTS MIXENGINE_KNOB_RESOURCES)
  if(NOT EXISTS "${MIXENGINE_KNOB_RESOURCE}")
   message(FATAL_ERROR "Missing approved MixEngine GUI asset: ${MIXENGINE_KNOB_RESOURCE}")
