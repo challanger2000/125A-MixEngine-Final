@@ -1,4 +1,4 @@
 V3 RC trigger
-source=ab417e089e3a688e600fdf3c05f6f15ff531a054
-reason=dark-chassis-raised-blue-module-panels
-retry=1
+source=4810925ded0206158b72d4a209a209c44d10ca9e
+reason=fix-uidesc-template-opening-tag-editor-open
+retry=0

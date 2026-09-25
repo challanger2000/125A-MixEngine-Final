@@ -16,7 +16,8 @@
     <bitmap name="MixVUFace#3.0x" path="125A_MixEngine_VU_Face_960x648.png" scale-factor="3"/>
     <bitmap name="MixVUOverlay" path="125A_MixEngine_VU_Cover_320x216.png"/>
     <bitmap name="MixVUOverlay#3.0x" path="125A_MixEngine_VU_Cover_960x648.png" scale-factor="3"/>
-  </bitmaps>template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
+  </bitmaps>
+  <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVUSource" origin="644,70" size="152,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVURef" origin="644,164" size="152,14" mouse-enabled="false"/>
