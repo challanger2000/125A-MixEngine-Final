@@ -926,36 +926,6 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     std::array<AutomationCursor,kParamCount> automation{};
     int32 automationCount=0;
 
-    if(auto* changes=data.inputParameterChanges){
-        const int32 queues=changes->getParameterCount();
-        for(int32 qIndex=0;qIndex<queues && automationCount<static_cast<int32>(automation.size());++qIndex){
-            auto* queue=changes->getParameterData(qIndex);
-            if(!queue)continue;
-            const ParamID id=queue->getParameterId();
-            if(id>=kParamCount)continue;
-            const int32 points=queue->getPointCount();
-            if(points<=0)continue;
-
-            auto& cursor=automation[static_cast<std::size_t>(automationCount++)];
-            cursor.queue=queue;
-            cursor.id=id;
-            cursor.count=points;
-            cursor.point=0;
-            int32 offset=0; ParamValue value=0.0;
-            if(queue->getPoint(0,offset,value)==kResultTrue&&std::isfinite(static_cast<double>(value))){
-                cursor.offset=std::clamp<int32>(offset,0,data.numSamples-1);
-                cursor.value=std::clamp(static_cast<double>(value),0.0,1.0);
-                cursor.valid=true;
-            }else{
-                // Skip malformed leading points without ever copying NaN/Inf
-                // into the live parameter array.
-                cursor.point=-1;
-                cursor.valid=true;
-                advanceCursor(cursor);
-            }
-        }
-    }
-
     const auto advanceCursor=[&](AutomationCursor& cursor){
         ++cursor.point;
         while(cursor.point<cursor.count){
@@ -974,6 +944,26 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         }
         cursor.valid=false;
     };
+
+    if(auto* changes=data.inputParameterChanges){
+        const int32 queues=changes->getParameterCount();
+        for(int32 qIndex=0;qIndex<queues && automationCount<static_cast<int32>(automation.size());++qIndex){
+            auto* queue=changes->getParameterData(qIndex);
+            if(!queue)continue;
+            const ParamID id=queue->getParameterId();
+            if(id>=kParamCount)continue;
+            const int32 points=queue->getPointCount();
+            if(points<=0)continue;
+
+            auto& cursor=automation[static_cast<std::size_t>(automationCount++)];
+            cursor.queue=queue;
+            cursor.id=id;
+            cursor.count=points;
+            cursor.point=-1;
+            cursor.valid=true;
+            advanceCursor(cursor);
+        }
+    }
 
     const auto applyAutomationAt=[&](int32 sampleOffset){
         bool changed=false;
