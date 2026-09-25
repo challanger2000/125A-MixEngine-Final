@@ -138,7 +138,8 @@ jobs:
             "125A_MixEngine_VU_Face_960x648.png",
             "125A_MixEngine_VU_Cover_320x216.png",
             "125A_MixEngine_VU_Cover_960x648.png"
-          )          $bundles = @(
+          )
+          $bundles = @(
             "$root/VST3/125A-MixEngine-V3.vst3",
             "$root/VST3/125A-MixEngine-V3-Channel.vst3"
           )
