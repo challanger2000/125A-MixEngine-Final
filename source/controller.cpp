@@ -175,8 +175,11 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
 
 
     auto knob=[&](const char* n,ParamID id,HardwareKnob::Style st)->VSTGUI::CView*{
-        if(std::strcmp(name,n)==0)return new HardwareKnob(r,e,id,st);
-        return nullptr;
+        if(std::strcmp(name,n)!=0)return nullptr;
+        const char* bitmapName=st==HardwareKnob::Style::Large?"MixKnobL":
+                               (st==HardwareKnob::Style::Medium?"MixKnobM":"MixKnobS");
+        auto* filmstrip=description?description->getBitmap(bitmapName):nullptr;
+        return new HardwareKnob(r,e,id,st,filmstrip);
     };
     auto toggle=[&](const char* n,ParamID id,bool ledLeft=false,bool moduleLedAbove=false,bool blueLed=false)->VSTGUI::CView*{
         if(std::strcmp(name,n)==0)return new HardwareToggle(r,e,id,ledLeft,moduleLedAbove,blueLed);

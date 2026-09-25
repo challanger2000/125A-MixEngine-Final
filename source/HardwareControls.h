@@ -3,6 +3,7 @@
 #include "vstgui/lib/controls/cknob.h"
 #include "vstgui/lib/controls/cbuttons.h"
 #include "vstgui/lib/controls/ccontrol.h"
+#include "vstgui/lib/cbitmap.h"
 #include "vstgui/lib/cview.h"
 #include <string>
 #include <vector>
@@ -30,13 +31,14 @@ public:
 class HardwareKnob final : public VSTGUI::CAnimKnob {
 public:
     enum class Style { Large, Medium, Small };
-    HardwareKnob(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, Style style);
+    HardwareKnob(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, Style style, VSTGUI::CBitmap* filmstrip);
     HardwareKnob(const HardwareKnob& other);
-    ~HardwareKnob() override = default;
+    ~HardwareKnob() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareKnob(*this); }
     void draw(VSTGUI::CDrawContext* context) override;
 private:
     Style style_;
+    VSTGUI::CBitmap* filmstrip_ {nullptr};
 };
 
 class HardwareToggle final : public VSTGUI::COnOffButton {

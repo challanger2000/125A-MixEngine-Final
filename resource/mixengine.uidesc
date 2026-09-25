@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <vstgui-ui-description version="1">
   <colors><color name="Background" rgba="#101217FF"/></colors>
+  <bitmaps>
+    <bitmap name="MixKnobL" path="125A_MixEngine_Analog_L_128px_100pct_128f.png"/>
+    <bitmap name="MixKnobL#1.5x" path="125A_MixEngine_Analog_L_192px_150pct_128f.png" scale-factor="1.5"/>
+    <bitmap name="MixKnobL#2.0x" path="125A_MixEngine_Analog_L_256px_200pct_128f.png" scale-factor="2"/>
+    <bitmap name="MixKnobL#3.0x" path="125A_MixEngine_Analog_L_384px_300pct_128f.png" scale-factor="3"/>
+    <bitmap name="MixKnobM" path="125A_MixEngine_Analog_M_96px_100pct_128f.png"/>
+    <bitmap name="MixKnobM#1.5x" path="125A_MixEngine_Analog_M_144px_150pct_128f.png" scale-factor="1.5"/>
+    <bitmap name="MixKnobM#2.0x" path="125A_MixEngine_Analog_M_192px_200pct_128f.png" scale-factor="2"/>
+    <bitmap name="MixKnobM#3.0x" path="125A_MixEngine_Analog_M_288px_300pct_128f.png" scale-factor="3"/>
+    <bitmap name="MixKnobS" path="125A_MixEngine_Analog_S_64px_100pct_128f.png"/>
+    <bitmap name="MixKnobS#1.5x" path="125A_MixEngine_Analog_S_96px_150pct_128f.png" scale-factor="1.5"/>
+    <bitmap name="MixKnobS#2.0x" path="125A_MixEngine_Analog_S_128px_200pct_128f.png" scale-factor="2"/>
+    <bitmap name="MixKnobS#3.0x" path="125A_MixEngine_Analog_S_192px_300pct_128f.png" scale-factor="3"/>
+  </bitmaps>
   <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVUSource" origin="644,70" size="152,16" mouse-enabled="false"/>
@@ -50,32 +64,32 @@
     <view class="CView" custom-view-name="VUSourceSelector" origin="640,104" size="160,40"/>
     <view class="CView" custom-view-name="QualitySelector" origin="1238,116" size="172,38"/>
     <view class="CView" custom-view-name="Bypass" origin="1272,198" size="104,60"/>
-    <view class="CView" custom-view-name="Input" origin="40,396" size="112,112"/>
+    <view class="CView" custom-view-name="Input" origin="32,388" size="128,128"/>
     <view class="CView" custom-view-name="InputRefSelector" origin="35,592" size="122,34"/>
     <view class="CView" custom-view-name="ConsolePower" origin="234,340" size="76,58"/>
-    <view class="CView" custom-view-name="ConsoleDrive" origin="216,396" size="112,112"/>
+    <view class="CView" custom-view-name="ConsoleDrive" origin="224,404" size="96,96"/>
     <view class="CView" custom-view-name="ConsoleModeSelector" origin="192,580" size="160,34"/>
-    <view class="CView" custom-view-name="Crosstalk" origin="201,630" size="66,66"/>
-    <view class="CView" custom-view-name="ConsoleNoise" origin="277,630" size="66,66"/>
+    <view class="CView" custom-view-name="Crosstalk" origin="202,631" size="64,64"/>
+    <view class="CView" custom-view-name="ConsoleNoise" origin="278,631" size="64,64"/>
     <view class="CView" custom-view-name="TubePower" origin="410,340" size="76,58"/>
-    <view class="CView" custom-view-name="TubeAmount" origin="392,396" size="112,112"/>
+    <view class="CView" custom-view-name="TubeAmount" origin="400,404" size="96,96"/>
     <view class="CView" custom-view-name="TubeVoiceSelector" origin="376,580" size="144,34"/>
     <view class="CView" custom-view-name="TapePower" origin="586,340" size="76,58"/>
-    <view class="CView" custom-view-name="TapeAmount" origin="568,396" size="112,112"/>
+    <view class="CView" custom-view-name="TapeAmount" origin="576,404" size="96,96"/>
     <view class="CView" custom-view-name="TapeSpeedSelector" origin="552,580" size="144,34"/>
-    <view class="CView" custom-view-name="TapeStability" origin="553,630" size="66,66"/>
-    <view class="CView" custom-view-name="TapeHiss" origin="629,630" size="66,66"/>
+    <view class="CView" custom-view-name="TapeStability" origin="554,631" size="64,64"/>
+    <view class="CView" custom-view-name="TapeHiss" origin="630,631" size="64,64"/>
     <view class="CView" custom-view-name="GluePower" origin="762,340" size="76,58"/>
-    <view class="CView" custom-view-name="GlueAmount" origin="744,396" size="112,112"/>
-    <view class="CView" custom-view-name="GlueCharacter" origin="767,617" size="66,66"/>
+    <view class="CView" custom-view-name="GlueAmount" origin="752,404" size="96,96"/>
+    <view class="CView" custom-view-name="GlueCharacter" origin="768,618" size="64,64"/>
     <view class="CView" custom-view-name="VinylPower" origin="938,340" size="76,58"/>
-    <view class="CView" custom-view-name="VinylCharacter" origin="920,396" size="112,112"/>
-    <view class="CView" custom-view-name="VinylWear" origin="905,617" size="66,66"/>
-    <view class="CView" custom-view-name="VinylNoise" origin="981,617" size="66,66"/>
-    <view class="CView" custom-view-name="Depth" origin="1108,377" size="88,88"/>
-    <view class="CView" custom-view-name="Width" origin="1108,504" size="88,88"/>
-    <view class="CView" custom-view-name="LowMono" origin="1119,632" size="66,66"/>
-    <view class="CView" custom-view-name="Output" origin="1272,396" size="112,112"/>
+    <view class="CView" custom-view-name="VinylCharacter" origin="928,404" size="96,96"/>
+    <view class="CView" custom-view-name="VinylWear" origin="906,618" size="64,64"/>
+    <view class="CView" custom-view-name="VinylNoise" origin="982,618" size="64,64"/>
+    <view class="CView" custom-view-name="Depth" origin="1104,373" size="96,96"/>
+    <view class="CView" custom-view-name="Width" origin="1104,500" size="96,96"/>
+    <view class="CView" custom-view-name="LowMono" origin="1120,633" size="64,64"/>
+    <view class="CView" custom-view-name="Output" origin="1264,388" size="128,128"/>
     <view class="CView" custom-view-name="LevelMatch" origin="1276,590" size="104,60"/>
   </template>
 </vstgui-ui-description>

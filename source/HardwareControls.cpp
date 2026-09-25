@@ -364,9 +364,10 @@ void HardwareLogo::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareKnob::HardwareKnob(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,Style style)
-: VSTGUI::CAnimKnob(size,listener,tag,nullptr),style_(style)
+HardwareKnob::HardwareKnob(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,Style style,VSTGUI::CBitmap* filmstrip)
+: VSTGUI::CAnimKnob(size,listener,tag,nullptr),style_(style),filmstrip_(filmstrip)
 {
+    if(filmstrip_) filmstrip_->remember();
     setStartAngle(static_cast<float>(135.0/180.0*kPi));
     setRangeAngle(static_cast<float>(270.0/180.0*kPi));
     setTransparency(true);
@@ -374,8 +375,14 @@ HardwareKnob::HardwareKnob(const VSTGUI::CRect& size,VSTGUI::IControlListener* l
 }
 
 HardwareKnob::HardwareKnob(const HardwareKnob& other)
-: VSTGUI::CAnimKnob(other),style_(other.style_)
+: VSTGUI::CAnimKnob(other),style_(other.style_),filmstrip_(other.filmstrip_)
 {
+    if(filmstrip_) filmstrip_->remember();
+}
+
+HardwareKnob::~HardwareKnob()
+{
+    if(filmstrip_) filmstrip_->forget();
 }
 
 void HardwareKnob::draw(VSTGUI::CDrawContext* context)
@@ -388,6 +395,33 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
 
+    // Preferred production path: approved 128-frame Knob Designer filmstrip.
+    // UIDescription combines the 100/150/200/300% images into one HiDPI CBitmap,
+    // so VSTGUI selects the best platform bitmap for the editor's absolute scale.
+    if(filmstrip_ && filmstrip_->isLoaded()) {
+        constexpr int kFrames=128;
+        const double frameSize=style_==Style::Large?128.0:(style_==Style::Medium?96.0:64.0);
+        const int frame=std::clamp(static_cast<int>(std::lround(v*static_cast<double>(kFrames-1))),0,kFrames-1);
+        filmstrip_->draw(context,r,{0.0,frameSize*static_cast<double>(frame)},1.f);
+
+        if(isEditing()) {
+            const auto valueText=formatKnobValue(getTag(),v);
+            const double badgeW=(style_==Style::Small)?44.0:58.0;
+            const double badgeH=(style_==Style::Small)?16.0:19.0;
+            VSTGUI::CRect badge(cx-badgeW*.5,cy-badgeH*.5,cx+badgeW*.5,cy+badgeH*.5);
+            VSTGUI::CRect badgeShadow=badge; badgeShadow.offset(0.0,1.5);
+            fillRoundGradient(context,badgeShadow,badgeH*.38,{2,3,4,205},{0,0,0,235});
+            fillRoundGradient(context,badge,badgeH*.38,{39,43,49,248},{12,15,18,248});
+            strokeRound(context,badge,badgeH*.38,{104,143,171,190},1.0);
+            context->setFont(VSTGUI::kNormalFont,style_==Style::Small?7.2:8.6,VSTGUI::kBoldFace);
+            context->setFontColor({232,242,248,255});
+            context->drawString(VSTGUI::UTF8String(valueText.c_str()),badge,VSTGUI::kCenterText);
+        }
+        setDirty(false);
+        return;
+    }
+
+    // Vector fallback remains available if a resource is missing.
     // Soft contact shadow gives the control real separation from the panel.
     context->setFillColor({0,0,0,105});
     context->drawEllipse({cx-radius-7,cy-radius-3,cx+radius+7,cy+radius+10},VSTGUI::kDrawFilled);

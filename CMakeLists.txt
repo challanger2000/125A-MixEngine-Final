@@ -6,6 +6,31 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(FetchContent)
 FetchContent_Declare(hiir GIT_REPOSITORY https://github.com/unevens/hiir.git GIT_TAG 4589fedb4d08b899514cb605ccd7418bf262ab18 SOURCE_DIR "${CMAKE_BINARY_DIR}/hiir")
 FetchContent_MakeAvailable(hiir)
+
+# Approved 125A Knob Designer asset set. Pin the exact successful generated-assets
+# commit so GUI builds remain reproducible and never silently pick up a newer export.
+FetchContent_Declare(knob_assets
+ GIT_REPOSITORY https://github.com/challanger2000/125A-Knob-Designer.git
+ GIT_TAG bc2c80a89f717ca2d8e0e29b6464f802814e308c
+ SOURCE_DIR "${CMAKE_BINARY_DIR}/125a-knob-assets")
+FetchContent_GetProperties(knob_assets)
+if(NOT knob_assets_POPULATED)
+ FetchContent_Populate(knob_assets)
+endif()
+set(MIXENGINE_KNOB_RESOURCE_DIR "${knob_assets_SOURCE_DIR}/assets/mixengine")
+set(MIXENGINE_KNOB_RESOURCES
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_128px_100pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_192px_150pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_256px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_L_384px_300pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_96px_100pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_144px_150pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_192px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_M_288px_300pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_64px_100pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_96px_150pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_128px_200pct_128f.png"
+ "${MIXENGINE_KNOB_RESOURCE_DIR}/125A_MixEngine_Analog_S_192px_300pct_128f.png")
 set(SMTG_CREATE_PLUGIN_LINK 0 CACHE BOOL "Disable automatic VST3 install links" FORCE)
 if(NOT DEFINED VST3_SDK_ROOT)
  if(DEFINED ENV{VST3_SDK_ROOT})
@@ -45,14 +70,14 @@ smtg_add_vst3plugin(125A-MixEngine-V3 source/pluginids.h source/oversampling.h s
 target_sources(125A-MixEngine-V3 PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_link_libraries(125A-MixEngine-V3 PRIVATE sdk vstgui_support)
 target_include_directories(125A-MixEngine-V3 PRIVATE "${CMAKE_BINARY_DIR}")
-smtg_target_add_plugin_resources(125A-MixEngine-V3 RESOURCES "resource/mixengine.uidesc")
+smtg_target_add_plugin_resources(125A-MixEngine-V3 RESOURCES "resource/mixengine.uidesc" ${MIXENGINE_KNOB_RESOURCES})
 
 smtg_add_vst3plugin(125A-MixEngine-V3-Channel source/pluginids.h source/oversampling.h source/latency_alignment.h source/nonlinear_cores.h source/metering.h source/meter_exchange.h source/stereo_field.h source/processor.h source/processor.cpp source/controller.h source/controller.cpp source/editor.cpp source/factory_channel.cpp source/HardwareControls.h source/HardwareControls.cpp)
 target_sources(125A-MixEngine-V3-Channel PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_link_libraries(125A-MixEngine-V3-Channel PRIVATE sdk vstgui_support)
 target_include_directories(125A-MixEngine-V3-Channel PRIVATE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(125A-MixEngine-V3-Channel PRIVATE MIXENGINE_CHANNEL_BUILD=1)
-smtg_target_add_plugin_resources(125A-MixEngine-V3-Channel RESOURCES "resource/mixengine_channel.uidesc")
+smtg_target_add_plugin_resources(125A-MixEngine-V3-Channel RESOURCES "resource/mixengine_channel.uidesc" ${MIXENGINE_KNOB_RESOURCES})
 add_executable(oversampling-roundtrip tests/oversampling_roundtrip.cpp source/oversampling.h)
 target_include_directories(oversampling-roundtrip PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}")
 add_executable(oversampling-alias tests/oversampling_alias.cpp source/oversampling.h)
