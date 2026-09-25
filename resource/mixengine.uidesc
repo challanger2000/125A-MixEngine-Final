@@ -37,8 +37,8 @@
     <view class="CView" custom-view-name="LabelDbfs" origin="63,632" size="66,14" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelDrive" origin="222,536" size="92,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelMode" origin="224,558" size="88,16" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="LabelCrosstalk" origin="195,704" size="78,16" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="LabelConsoleNoise" origin="279,704" size="62,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelCrosstalk" origin="191,704" size="78,16" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="LabelConsoleNoise" origin="275,704" size="62,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelTubeAmount" origin="398,536" size="92,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelVoice" origin="402,558" size="84,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelTapeAmount" origin="574,536" size="92,16" mouse-enabled="false"/>
@@ -71,8 +71,8 @@
     <view class="CView" custom-view-name="ConsolePower" origin="236,340" size="64,64"/>
     <view class="CView" custom-view-name="ConsoleDrive" origin="204,406" size="128,128"/>
     <view class="CView" custom-view-name="ConsoleModeSelector" origin="188,578" size="160,42"/>
-    <view class="CView" custom-view-name="Crosstalk" origin="202,631" size="64,64"/>
-    <view class="CView" custom-view-name="ConsoleNoise" origin="278,631" size="64,64"/>
+    <view class="CView" custom-view-name="Crosstalk" origin="198,631" size="64,64"/>
+    <view class="CView" custom-view-name="ConsoleNoise" origin="274,631" size="64,64"/>
     <view class="CView" custom-view-name="TubePower" origin="412,340" size="64,64"/>
     <view class="CView" custom-view-name="TubeAmount" origin="380,406" size="128,128"/>
     <view class="CView" custom-view-name="TubeVoiceSelector" origin="372,578" size="144,42"/>
