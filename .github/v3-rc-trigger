@@ -1,4 +1,4 @@
 V3 RC trigger
-source=54987c80b37abeb7052a35dbafc8d44a376a135d
-reason=gui-style-prototype-knobs-vu-buttons
-retry=1
+source=aee2bbf759c862f21abd0ad9f46e8b8e1d9839b7
+reason=final-gui-masters-static-vu-runtime-asset-whitelist
+retry=0

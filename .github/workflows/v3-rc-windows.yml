@@ -121,6 +121,37 @@ jobs:
           Copy-Item $mix.FullName "$root/VST3/125A-MixEngine-V3.vst3" -Recurse
           Copy-Item $channel.FullName "$root/VST3/125A-MixEngine-V3-Channel.vst3" -Recurse
 
+          # Guard against GUI asset bloat: only runtime PNGs referenced by the
+          # production UIDesc are allowed to ship inside either VST3 bundle.
+          $allowedPng = @(
+            "125A_MixEngine_Vernier_L_384px_16x8_128f.png",
+            "125A_MixEngine_Small_Gunmetal_384px_16x8_128f.png",
+            "125A_MixEngine_Push_Button_64px_100pct_3states.png",
+            "125A_MixEngine_Push_Button_96px_150pct_3states.png",
+            "125A_MixEngine_Push_Button_128px_200pct_3states.png",
+            "125A_MixEngine_Push_Button_192px_300pct_3states.png",
+            "125A_MixEngine_VU_Face_400x270px_Master.png"
+          )
+          $bundles = @(
+            "$root/VST3/125A-MixEngine-V3.vst3",
+            "$root/VST3/125A-MixEngine-V3-Channel.vst3"
+          )
+          foreach ($bundle in $bundles) {
+            $pngFiles = @(Get-ChildItem $bundle -Recurse -File -Filter *.png)
+            $unexpected = @($pngFiles | Where-Object { $allowedPng -notcontains $_.Name })
+            if ($unexpected.Count -gt 0) {
+              $unexpected | ForEach-Object { Write-Host "Unexpected runtime PNG: $($_.FullName)" }
+              throw "VST3 contains unapproved/unused PNG resources"
+            }
+            foreach ($requiredPng in $allowedPng) {
+              if (-not ($pngFiles | Where-Object Name -eq $requiredPng)) {
+                throw "VST3 runtime PNG missing: $requiredPng in $bundle"
+              }
+            }
+            $pngBytes = ($pngFiles | Measure-Object Length -Sum).Sum
+            Write-Host "$bundle runtime PNG whitelist PASS: $($pngFiles.Count) files, $pngBytes bytes"
+          }
+
           @(
             "125A MixEngine V3 v3.0.0 Release Candidate",
             "Windows x64 / VST3",
