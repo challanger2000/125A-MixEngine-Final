@@ -12,8 +12,7 @@ FetchContent_MakeAvailable(hiir)
 FetchContent_Declare(knob_assets
  GIT_REPOSITORY https://github.com/challanger2000/125A-Knob-Designer.git
  GIT_TAG generated-assets-v0.1.0
- GIT_SHALLOW FALSE
- SOURCE_DIR "${CMAKE_BINARY_DIR}/125a-knob-assets")
+ GIT_SHALLOW FALSE)
 FetchContent_GetProperties(knob_assets)
 if(NOT knob_assets_POPULATED)
  FetchContent_Populate(knob_assets)
