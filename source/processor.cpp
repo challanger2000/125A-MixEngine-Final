@@ -835,9 +835,10 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
    processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff);
   }
 
+  const bool colourStageActive=consoleOn||tubeOn||tapeOn||glueOn||vinylOn;
   const double programmeMatch=programLevelMatchGain(
       mixFxProgramLevelMatchState_[static_cast<std::size_t>(index)],
-      meterL,meterR,l,r,stereo,autoGainOn);
+      meterL,meterR,l,r,stereo,autoGainOn&&colourStageActive);
   l*=programmeMatch;r*=programmeMatch;
 
   auto& align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];
@@ -1080,8 +1081,9 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             processStereoFieldSample(l,r,st,widthGain,lowMono,lowMonoCoeff,depthGain,depthCoeff);
         }
 
+        const bool colourStageActive=consoleOn||tubeOn||tapeOn||glueOn||vinylOn;
         const double programmeMatch=programLevelMatchGain(
-            programLevelMatchState_,meterL,meterR,l,r,stereo,autoGainOn);
+            programLevelMatchState_,meterL,meterR,l,r,stereo,autoGainOn&&colourStageActive);
         l*=programmeMatch;r*=programmeMatch;
 
         leftOut=latencyAligner_[0].process(l*outputGain*inputMatchGain,latencyDelay);
