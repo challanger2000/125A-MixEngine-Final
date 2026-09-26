@@ -191,22 +191,26 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         // Raised blue anodised sub-panel sitting on the near-black chassis.
         // The shadow is deliberately outside the plate, like the blue modules in Ugly Reverb,
         // while highlights stay restrained enough for a mastering/mix tool.
-        const auto shadow=rect(x+3.0,y+4.0,w,h);
-        fillRoundGradient(context,shadow,radius,{0,0,0,130},{0,0,0,235});
+        // Fixed key light from upper-left. Two shadow layers give both contact
+        // shadow and a softer cast shadow without making the plate look detached.
+        const auto castShadow=rect(x+4.0,y+5.0,w,h);
+        fillRoundGradient(context,castShadow,radius,{0,0,0,92},{0,0,0,210});
+        const auto contactShadow=rect(x+1.6,y+2.2,w,h);
+        fillRoundGradient(context,contactShadow,radius,{0,0,0,112},{0,0,0,188});
 
         const auto rr=rect(x,y,w,h);
-        fillRoundGradient(context,rr,radius,{39,63,83,255},{15,31,45,255});
+        fillRoundGradient(context,rr,radius,{42,67,88,255},{14,29,43,255});
         strokeRound(context,rr,radius,{5,12,18,255},1.5);
 
         auto rim=rr; rim.inset(2.0,2.0);
-        strokeRound(context,rim,std::max(2.0,radius-2.0),{122,162,191,78},1.0);
+        strokeRound(context,rim,std::max(2.0,radius-2.0),{132,173,203,82},1.0);
 
-        auto top=rr; top.inset(4.0,4.0); top.bottom=top.top+1.0;
-        context->setFillColor({224,241,252,34});
-        context->drawRect(top,VSTGUI::kDrawFilled);
-
-        // A darker lower edge gives the illusion of a thin metal plate mounted on the chassis.
-        line(x+7.0,y+h-3.0,x+w-7.0,y+h-3.0,{0,0,0,120},1.0);
+        // Upper/left highlight and lower/right occlusion all follow the same
+        // world-space light direction across every module.
+        line(x+7.0,y+3.0,x+w-7.0,y+3.0,{225,241,252,38},1.0);
+        line(x+3.0,y+7.0,x+3.0,y+h-7.0,{205,228,243,22},1.0);
+        line(x+7.0,y+h-3.0,x+w-7.0,y+h-3.0,{0,0,0,132},1.0);
+        line(x+w-3.0,y+7.0,x+w-3.0,y+h-7.0,{0,0,0,72},1.0);
 
         if(header) {
             const auto hr=rect(x+7.0,y+7.0,w-14.0,34.0);
@@ -221,12 +225,18 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
         context->drawEllipse(sr,VSTGUI::kDrawStroked);
         line(x-2.2,y,x+2.2,y,{6,7,9,230},1.0);
     };
-    const auto moduleScrew=[&](double x,double y){
+    const auto moduleScrew=[&](double x,double y,double slotDeg){
         const auto sr=rect(x-3.5,y-3.5,7,7);
-        fillRadialEllipse(context,sr,{126,132,139,235},{25,28,33,255},{-1.4,-1.5});
+        // Head highlight stays upper-left regardless of slot rotation: the screw
+        // turns mechanically, the room light does not.
+        fillRadialEllipse(context,sr,{132,138,145,238},{24,27,32,255},{-1.4,-1.5});
         context->setFrameColor({5,7,9,240}); context->setLineWidth(0.9);
         context->drawEllipse(sr,VSTGUI::kDrawStroked);
-        line(x-1.7,y,x+1.7,y,{7,9,11,220},0.9);
+
+        const double a=slotDeg*kPi/180.0;
+        const double dx=std::cos(a)*1.8;
+        const double dy=std::sin(a)*1.8;
+        line(x-dx,y-dy,x+dx,y+dy,{7,9,11,225},0.9);
     };
 
     context->setDrawMode(VSTGUI::kAntiAliasing);
@@ -279,25 +289,41 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
     // Selectors and utility buttons now mount directly on the blue plates.
     // Their own hardware bezels provide depth; no extra black background boxes.
 
-    // Chassis screws carry the enclosure. Smaller module screws then repeat the
-    // same two-point diagonal mounting logic on every blue sub-panel.
+    // Chassis screws carry the enclosure. Every raised blue plate is fastened
+    // at all four corners; two diagonal "decorative" screws would not plausibly
+    // hold a plate of this size.
     for(auto p : {VSTGUI::CPoint{18,18},VSTGUI::CPoint{1422,18},
                   VSTGUI::CPoint{18,782},VSTGUI::CPoint{1422,782}})
         screw(p.x,p.y);
 
-    for(auto p : {
-        VSTGUI::CPoint{30,36},   VSTGUI::CPoint{204,250},
-        VSTGUI::CPoint{234,36},  VSTGUI::CPoint{1206,250},
-        VSTGUI::CPoint{1236,36}, VSTGUI::CPoint{1410,250},
-        VSTGUI::CPoint{30,310},  VSTGUI::CPoint{162,754},
-        VSTGUI::CPoint{194,310}, VSTGUI::CPoint{342,754},
-        VSTGUI::CPoint{370,310}, VSTGUI::CPoint{518,754},
-        VSTGUI::CPoint{546,310}, VSTGUI::CPoint{694,754},
-        VSTGUI::CPoint{722,310}, VSTGUI::CPoint{870,754},
-        VSTGUI::CPoint{898,310}, VSTGUI::CPoint{1046,754},
-        VSTGUI::CPoint{1078,310},VSTGUI::CPoint{1224,754},
-        VSTGUI::CPoint{1256,310},VSTGUI::CPoint{1410,754}})
-        moduleScrew(p.x,p.y);
+    struct PanelScrew { double x; double y; double angle; };
+    constexpr PanelScrew panelScrews[] = {
+        // upper logo
+        {30,36,-27},{204,36,11},{30,250,24},{204,250,-8},
+        // upper meter bridge
+        {234,36,17},{1206,36,-19},{234,250,-6},{1206,250,29},
+        // upper master
+        {1236,36,-13},{1410,36,26},{1236,250,8},{1410,250,-25},
+
+        // Input
+        {30,310,-22},{162,310,7},{30,754,19},{162,754,-11},
+        // Console
+        {194,310,14},{342,310,-28},{194,754,-5},{342,754,23},
+        // Tube
+        {370,310,-16},{518,310,27},{370,754,10},{518,754,-24},
+        // Tape
+        {546,310,21},{694,310,-9},{546,754,-29},{694,754,13},
+        // Glue
+        {722,310,-7},{870,310,25},{722,754,16},{870,754,-20},
+        // Vinyl
+        {898,310,28},{1046,310,-14},{898,754,-4},{1046,754,22},
+        // Stereo
+        {1078,310,-25},{1224,310,9},{1078,754,26},{1224,754,-12},
+        // Output
+        {1256,310,12},{1410,310,-30},{1256,754,-8},{1410,754,20}
+    };
+    for(const auto& p : panelScrews)
+        moduleScrew(p.x,p.y,p.angle);
 
     context->setFont(VSTGUI::kNormalFont,8.8,0);
     context->setFontColor({139,151,161,225});
@@ -943,6 +969,21 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
         const VSTGUI::CPoint tip(pivot.x+std::cos(needleAngle)*needleLength,
                                  pivot.y+std::sin(needleAngle)*needleLength);
 
+        // Clean the bitmap perimeter without resampling or altering the calibrated
+        // face. A narrow inner lip hides the few rough source-edge pixels and makes
+        // the VU read as a meter seated in the blue bridge rather than a pasted image.
+        VSTGUI::CRect meterLip=r;
+        meterLip.inset(1.0,1.0);
+        strokeRound(context,meterLip,8.0,{3,6,9,215},2.0);
+        VSTGUI::CRect meterShoulder=r;
+        meterShoulder.inset(3.0,3.0);
+        strokeRound(context,meterShoulder,7.0,{208,221,229,34},0.9);
+        // Bottom/right contact occlusion follows the same upper-left key light.
+        context->setFrameColor({0,0,0,100});
+        context->setLineWidth(1.0);
+        context->drawLine({r.left+9.0,r.bottom-2.5},{r.right-9.0,r.bottom-2.5});
+        context->drawLine({r.right-2.5,r.top+9.0},{r.right-2.5,r.bottom-9.0});
+
         // Soft shadow plus satin-grey needle matches the source meter better than
         // the red fallback needle used by the old procedural face.
         context->setFrameColor({0,0,0,95});
@@ -961,6 +1002,10 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
             const VSTGUI::CRect coverSrc(0.0,0.0,320.0,216.0);
             context->fillRectWithBitmap(cover_,coverSrc,r,1.f);
         }
+
+        VSTGUI::CRect finalLip=r;
+        finalLip.inset(0.75,0.75);
+        strokeRound(context,finalLip,8.0,{2,5,8,225},1.5);
 
         setDirty(false);
         return;
