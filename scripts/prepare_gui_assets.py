@@ -1,11 +1,10 @@
 from pathlib import Path
 import sys
-from collections import deque
 from PIL import Image
 
 FRAMES = 128
-KNOB_COLS = 16
-KNOB_ROWS = 8
+COLS = 16
+ROWS = 8
 MASTER_FRAME = 384
 RESAMPLE = Image.Resampling.LANCZOS
 
@@ -49,18 +48,21 @@ def make_vu(master_path: Path, size: tuple[int, int], face_target: Path, overlay
 def main() -> None:
     if len(sys.argv) != 2:
         raise SystemExit("usage: prepare_gui_assets.py <assets/mixengine>")
-    root=Path(sys.argv[1]).resolve()
-    generated=root/"generated"
+    root = Path(sys.argv[1]).resolve()
+    generated = root / "generated"
 
-    vernier=load_knob_master(root/"knobs"/"125A_MixEngine_Vernier_L_384px_300pct_128f.png")
-    gunmetal=load_knob_master(root/"knobs"/"125A_MixEngine_Small_Gunmetal_384px_300pct_128f.png")
+    vernier = load_knob_master(root / "knobs" / "125A_MixEngine_Vernier_L_384px_300pct_128f.png")
+    gunmetal = load_knob_master(root / "knobs" / "125A_MixEngine_Small_Gunmetal_384px_300pct_128f.png")
 
-    make_knob_atlas(vernier,128,generated/"125A_MixEngine_Vernier_L_128px_16x8_128f.png")
-    make_knob_atlas(vernier,384,generated/"125A_MixEngine_Vernier_L_384px_16x8_128f.png")
-    make_knob_atlas(gunmetal,64,generated/"125A_MixEngine_Gunmetal_S_64px_16x8_128f.png")
-    make_knob_atlas(gunmetal,192,generated/"125A_MixEngine_Gunmetal_S_192px_16x8_128f.png")
-    make_knob_atlas(gunmetal,96,generated/"125A_MixEngine_Gunmetal_M_96px_16x8_128f.png")
-    make_knob_atlas(gunmetal,288,generated/"125A_MixEngine_Gunmetal_M_288px_16x8_128f.png")
+    # 1x + 3x is intentional: VSTGUI can downsample the 3x representation at
+    # intermediate display scales, while the plugin avoids shipping redundant 1.5x/2x atlases.
+    make_atlas(vernier, 128, generated / "125A_MixEngine_Vernier_L_128px_16x8_128f.png")
+    make_atlas(vernier, 384, generated / "125A_MixEngine_Vernier_L_384px_16x8_128f.png")
+
+    make_atlas(gunmetal, 64, generated / "125A_MixEngine_Gunmetal_S_64px_16x8_128f.png")
+    make_atlas(gunmetal, 192, generated / "125A_MixEngine_Gunmetal_S_192px_16x8_128f.png")
+    make_atlas(gunmetal, 96, generated / "125A_MixEngine_Gunmetal_M_96px_16x8_128f.png")
+    make_atlas(gunmetal, 288, generated / "125A_MixEngine_Gunmetal_M_288px_16x8_128f.png")
 
     vu_master = root / "meters" / "125A_MixEngine_VU_Face_400x270px_Master.png"
     make_vu(vu_master, (320, 216),
@@ -70,5 +72,5 @@ def main() -> None:
             generated / "125A_MixEngine_VU_Face_960x648.png",
             generated / "125A_MixEngine_VU_Cover_960x648.png")
 
-if __name__=="__main__":
+if __name__ == "__main__":
     main()
