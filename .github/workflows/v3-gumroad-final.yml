@@ -2,10 +2,6 @@ name: FINAL V3 Gumroad Package
 
 on:
   workflow_dispatch:
-  push:
-    branches: [v3.0.0-development]
-    paths:
-      - ".github/v3-gumroad-final-trigger"
 
 jobs:
   release:
