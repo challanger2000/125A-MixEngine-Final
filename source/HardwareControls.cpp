@@ -806,26 +806,26 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     setDirty(false);
 }
 
-HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* atlasA,VSTGUI::CBitmap* atlasB)
-: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(atlasA),filmstripB_(atlasB)
+HardwareVUMeter::HardwareVUMeter(const VSTGUI::CRect& size,VSTGUI::IControlListener* listener,int32_t tag,VSTGUI::CBitmap* face,VSTGUI::CBitmap* cover)
+: VSTGUI::CControl(size,listener,tag,nullptr),filmstrip_(face),cover_(cover)
 {
     if(filmstrip_) filmstrip_->remember();
-    if(filmstripB_) filmstripB_->remember();
+    if(cover_) cover_->remember();
     setTransparency(true);
     setMouseEnabled(false);
 }
 
 HardwareVUMeter::HardwareVUMeter(const HardwareVUMeter& other)
-: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),filmstripB_(other.filmstripB_)
+: VSTGUI::CControl(other),filmstrip_(other.filmstrip_),cover_(other.cover_)
 {
     if(filmstrip_) filmstrip_->remember();
-    if(filmstripB_) filmstripB_->remember();
+    if(cover_) cover_->remember();
 }
 
 HardwareVUMeter::~HardwareVUMeter()
 {
     if(filmstrip_) filmstrip_->forget();
-    if(filmstripB_) filmstripB_->forget();
+    if(cover_) cover_->forget();
 }
 
 HardwareUIScale::HardwareUIScale(const VSTGUI::CRect& size,VSTGUI::VST3Editor* editor)
@@ -887,29 +887,44 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
     const auto r=getViewSize();
     const auto value=std::clamp(static_cast<double>(getValueNormalized()),0.0,1.0);
 
-    // Production meter: one exact original KnobMan frame per telemetry value.
-    // The original face, printed scale, pivot, needle length and needle angle are
-    // never reconstructed or estimated.
-    if(filmstrip_ && filmstrip_->isLoaded() && filmstripB_ && filmstripB_->isLoaded()) {
-        constexpr int kFrames=128;
-        constexpr int kColumns=8;
-        constexpr double kFrameW=320.0;
-        constexpr double kFrameH=184.0;
-        const int frame=std::clamp(static_cast<int>(std::lround(value*static_cast<double>(kFrames-1))),0,kFrames-1);
-        const bool secondPage=frame>=64;
-        const int localFrame=secondPage?frame-64:frame;
-        const int col=localFrame%kColumns;
-        const int row=localFrame/kColumns;
-        const VSTGUI::CRect src(kFrameW*col,kFrameH*row,kFrameW*(col+1),kFrameH*(row+1));
-        auto* atlas=secondPage?filmstripB_:filmstrip_;
+    // Static KnobMan face + continuously drawn needle. This avoids the huge
+    // 128-frame VU filmstrip (which exceeded practical GPU bitmap dimensions)
+    // while keeping the calibrated processor value untouched.
+    if(filmstrip_ && filmstrip_->isLoaded()) {
+        // Runtime face is generated at the exact 320x216 logical view size.
+        // HiDPI uses the associated 3x platform bitmap, so no source/destination
+        // resampling is attempted here.
+        const VSTGUI::CRect faceSrc(0.0,0.0,320.0,216.0);
+        context->fillRectWithBitmap(filmstrip_,faceSrc,r,1.f);
 
-        // A compact contact shadow remains behind the transparent exterior of
-        // the original meter housing, with no rectangular black backing panel.
-        VSTGUI::CRect shadow=r;
-        shadow.offset(0.0,3.0);
-        shadow.inset(4.0,2.0);
-        fillRoundGradient(context,shadow,8.0,{0,0,0,82},{0,0,0,150});
-        context->fillRectWithBitmap(atlas,src,r,1.f);
+        // Geometry follows the approved 400x270 face: pivot near the lower centre,
+        // with the needle sweeping over the printed -20..+3 scale.
+        const VSTGUI::CPoint pivot(r.left+r.getWidth()*0.5,
+                                   r.top+r.getHeight()*(239.0/270.0));
+        const double needleAngle=(220.0+100.0*value)*kPi/180.0;
+        const double needleLength=r.getHeight()*0.57;
+        const VSTGUI::CPoint tip(pivot.x+std::cos(needleAngle)*needleLength,
+                                 pivot.y+std::sin(needleAngle)*needleLength);
+
+        // Soft shadow plus satin-grey needle matches the source meter better than
+        // the red fallback needle used by the old procedural face.
+        context->setFrameColor({0,0,0,95});
+        context->setLineWidth(3.2);
+        context->drawLine({pivot.x+1.2,pivot.y+1.3},{tip.x+1.2,tip.y+1.3});
+        context->setFrameColor({86,88,90,245});
+        context->setLineWidth(1.9);
+        context->drawLine(pivot,tip);
+        context->setFrameColor({235,235,229,100});
+        context->setLineWidth(0.7);
+        context->drawLine({pivot.x-0.7,pivot.y-0.5},{tip.x-0.7,tip.y-0.5});
+
+        // Transparent exact-size overlay contains only the original NeedleCover.
+        // Drawing it last makes the live needle pass mechanically behind the hub.
+        if(cover_ && cover_->isLoaded()) {
+            const VSTGUI::CRect coverSrc(0.0,0.0,320.0,216.0);
+            context->fillRectWithBitmap(cover_,coverSrc,r,1.f);
+        }
+
         setDirty(false);
         return;
     }

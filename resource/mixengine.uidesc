@@ -12,10 +12,10 @@
     <bitmap name="MixPush#1.5x" path="125A_MixEngine_Push_Button_96px_150pct_3states.png" scale-factor="1.5"/>
     <bitmap name="MixPush#2.0x" path="125A_MixEngine_Push_Button_128px_200pct_3states.png" scale-factor="2"/>
     <bitmap name="MixPush#3.0x" path="125A_MixEngine_Push_Button_192px_300pct_3states.png" scale-factor="3"/>
-    <bitmap name="MixVUAtlasA" path="125A_MixEngine_VU_320x184_A_8x8_64f.png"/>
-    <bitmap name="MixVUAtlasA#1.5x" path="125A_MixEngine_VU_480x276_A_8x8_64f.png" scale-factor="1.5"/>
-    <bitmap name="MixVUAtlasB" path="125A_MixEngine_VU_320x184_B_8x8_64f.png"/>
-    <bitmap name="MixVUAtlasB#1.5x" path="125A_MixEngine_VU_480x276_B_8x8_64f.png" scale-factor="1.5"/>
+    <bitmap name="MixVUFace" path="125A_MixEngine_VU_Face_320x216.png"/>
+    <bitmap name="MixVUFace#3.0x" path="125A_MixEngine_VU_Face_960x648.png" scale-factor="3"/>
+    <bitmap name="MixVUOverlay" path="125A_MixEngine_VU_Cover_320x216.png"/>
+    <bitmap name="MixVUOverlay#3.0x" path="125A_MixEngine_VU_Cover_960x648.png" scale-factor="3"/>
   </bitmaps>
   <template name="view" class="CViewContainer" origin="0,0" size="1440,800" transparent="false" background-color="Background">
     <view class="CView" custom-view-name="HardwareFaceplate" origin="0,0" size="1440,800" mouse-enabled="false"/>
@@ -58,9 +58,9 @@
     <view class="CView" custom-view-name="LabelOutputGain" origin="1278,518" size="110,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="LabelLevelMatch" origin="1279,558" size="108,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="BrandLogo" origin="34,92" size="176,88" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="VULeft" origin="320,50" size="320,184" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VULeft" origin="320,35" size="320,216" mouse-enabled="false"/>
     <view class="CView" custom-view-name="ClipL" origin="625,62" size="10,10" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="VURight" origin="800,50" size="320,184" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="VURight" origin="800,35" size="320,216" mouse-enabled="false"/>
     <view class="CView" custom-view-name="ClipR" origin="1105,62" size="10,10" mouse-enabled="false"/>
     <view class="CView" custom-view-name="UIScale" origin="62,214" size="110,28"/>
     <view class="CView" custom-view-name="VUSourceSelector" origin="640,90" size="160,42"/>

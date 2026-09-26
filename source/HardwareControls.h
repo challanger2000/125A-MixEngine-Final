@@ -92,14 +92,14 @@ private:
 
 class HardwareVUMeter final : public VSTGUI::CControl {
 public:
-    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* atlasA, VSTGUI::CBitmap* atlasB);
+    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* face, VSTGUI::CBitmap* cover);
     HardwareVUMeter(const HardwareVUMeter& other);
     ~HardwareVUMeter() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareVUMeter(*this); }
     void draw(VSTGUI::CDrawContext* context) override;
 private:
     VSTGUI::CBitmap* filmstrip_ {nullptr};
-    VSTGUI::CBitmap* filmstripB_ {nullptr};
+    VSTGUI::CBitmap* cover_ {nullptr};
 };
 
 class HardwareClipLed final : public VSTGUI::CControl {

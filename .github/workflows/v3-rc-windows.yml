@@ -36,8 +36,7 @@ jobs:
             "hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png",
             "hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png",
             "hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png",
-            "meters/125A_MixEngine_VU_Meter_320x184px_200pct_128f.png",
-            "meters/125A_MixEngine_VU_Meter_480x276px_300pct_128f.png"
+            "meters/125A_MixEngine_VU_Face_400x270px_Master.png"
           )
           foreach ($name in $required) {
             $path = Join-Path $root $name
@@ -139,10 +138,10 @@ jobs:
             "125A_MixEngine_Push_Button_96px_150pct_3states.png",
             "125A_MixEngine_Push_Button_128px_200pct_3states.png",
             "125A_MixEngine_Push_Button_192px_300pct_3states.png",
-            "125A_MixEngine_VU_320x184_A_8x8_64f.png",
-            "125A_MixEngine_VU_320x184_B_8x8_64f.png",
-            "125A_MixEngine_VU_480x276_A_8x8_64f.png",
-            "125A_MixEngine_VU_480x276_B_8x8_64f.png"
+            "125A_MixEngine_VU_Face_320x216.png",
+            "125A_MixEngine_VU_Face_960x648.png",
+            "125A_MixEngine_VU_Cover_320x216.png",
+            "125A_MixEngine_VU_Cover_960x648.png"
           )
           $bundles = @(
             "$root/VST3/125A-MixEngine-V3.vst3",

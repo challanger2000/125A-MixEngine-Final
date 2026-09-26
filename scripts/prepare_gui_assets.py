@@ -9,81 +9,24 @@ KNOB_ROWS = 8
 MASTER_FRAME = 384
 RESAMPLE = Image.Resampling.LANCZOS
 
-VU_COLS = 8
-VU_ROWS = 8
+def make_vu(master_path: Path, size: tuple[int, int], face_target: Path, overlay_target: Path) -> None:
+    master = Image.open(master_path).convert("RGBA")
+    if master.size != (400, 270):
+        raise RuntimeError(f"{master_path.name}: expected (400, 270), got {master.size}")
+    face = master.resize(size, RESAMPLE)
+    face_target.parent.mkdir(parents=True, exist_ok=True)
+    face.save(face_target, format="PNG", optimize=True)
 
-def load_knob_master(source: Path) -> Image.Image:
-    image = Image.open(source).convert("RGBA")
-    expected = (MASTER_FRAME, MASTER_FRAME * FRAMES)
-    if image.size != expected:
-        raise RuntimeError(f"{source.name}: expected {expected}, got {image.size}")
-    return image
-
-def make_knob_atlas(master: Image.Image, frame_size: int, target: Path) -> None:
-    atlas = Image.new("RGBA", (frame_size * KNOB_COLS, frame_size * KNOB_ROWS), (0, 0, 0, 0))
-    for index in range(FRAMES):
-        frame = master.crop((0, index * MASTER_FRAME, MASTER_FRAME, (index + 1) * MASTER_FRAME))
-        if frame_size != MASTER_FRAME:
-            frame = frame.resize((frame_size, frame_size), RESAMPLE)
-        atlas.paste(frame, ((index % KNOB_COLS) * frame_size, (index // KNOB_COLS) * frame_size))
-    target.parent.mkdir(parents=True, exist_ok=True)
-    atlas.save(target, format="PNG", optimize=True)
-    print(f"{target.name}: {atlas.width}x{atlas.height}")
-
-def clear_connected_dark_border(image: Image.Image, threshold: int = 26) -> Image.Image:
-    image = image.copy()
-    px = image.load()
-    w, h = image.size
-    seen = bytearray(w * h)
-    q = deque()
-
-    def eligible(x, y):
-        r, g, b, a = px[x, y]
-        return a > 0 and max(r, g, b) <= threshold
-
-    for x in range(w):
-        if eligible(x, 0): q.append((x, 0))
-        if eligible(x, h - 1): q.append((x, h - 1))
-    for y in range(h):
-        if eligible(0, y): q.append((0, y))
-        if eligible(w - 1, y): q.append((w - 1, y))
-
-    while q:
-        x, y = q.popleft()
-        idx = y * w + x
-        if seen[idx]:
-            continue
-        seen[idx] = 1
-        if not eligible(x, y):
-            continue
-        r, g, b, _ = px[x, y]
-        px[x, y] = (r, g, b, 0)
-        if x > 0: q.append((x - 1, y))
-        if x + 1 < w: q.append((x + 1, y))
-        if y > 0: q.append((x, y - 1))
-        if y + 1 < h: q.append((x, y + 1))
-    return image
-
-def make_vu_atlases(source: Path, frame_size: tuple[int, int], target_a: Path, target_b: Path) -> None:
-    frame_w, frame_h = frame_size
-    strip = Image.open(source).convert("RGBA")
-    expected = (frame_w, frame_h * FRAMES)
-    if strip.size != expected:
-        raise RuntimeError(f"{source.name}: expected {expected}, got {strip.size}")
-    targets = [target_a, target_b]
-    for page in range(2):
-        atlas = Image.new("RGBA", (frame_w * VU_COLS, frame_h * VU_ROWS), (0,0,0,0))
-        for local_index in range(64):
-            index = page * 64 + local_index
-            frame = strip.crop((0,index*frame_h,frame_w,(index+1)*frame_h))
-            frame = clear_connected_dark_border(frame)
-            atlas.alpha_composite(frame, ((local_index % VU_COLS)*frame_w,(local_index // VU_COLS)*frame_h))
-        target = targets[page]
-        target.parent.mkdir(parents=True, exist_ok=True)
-        atlas.save(target,format="PNG",optimize=True)
-        print(f"{target.name}: {atlas.width}x{atlas.height} / frame {frame_w}x{frame_h}")
-        if atlas.width > 4096 or atlas.height > 4096:
-            raise RuntimeError(f"{target.name}: exceeds 4096px GPU-safe edge")
+    # NeedleCover occupies the lower-centre hardware cap. Repaint only this area
+    # after the live vector needle so the needle appears mechanically behind it.
+    overlay = Image.new("RGBA", size, (0, 0, 0, 0))
+    x0 = round(size[0] * 165 / 400)
+    x1 = round(size[0] * 235 / 400)
+    y0 = round(size[1] * 205 / 270)
+    overlay.paste(face.crop((x0, y0, x1, size[1])), (x0, y0))
+    overlay.save(overlay_target, format="PNG", optimize=True)
+    print(f"{face_target.name}: {size[0]}x{size[1]}")
+    print(f"{overlay_target.name}: {size[0]}x{size[1]}")
 
 def main() -> None:
     if len(sys.argv) != 2:
@@ -101,16 +44,13 @@ def main() -> None:
     make_knob_atlas(gunmetal,96,generated/"125A_MixEngine_Gunmetal_M_96px_16x8_128f.png")
     make_knob_atlas(gunmetal,288,generated/"125A_MixEngine_Gunmetal_M_288px_16x8_128f.png")
 
-    # Full original meter frames, repacked only. No reconstructed face, no synthetic
-    # needle, no estimated pivot. 320x184 is exact 200% source, 480x276 exact 300%.
-    make_vu_atlases(root/"meters"/"125A_MixEngine_VU_Meter_320x184px_200pct_128f.png",
-                    (320,184),
-                    generated/"125A_MixEngine_VU_320x184_A_8x8_64f.png",
-                    generated/"125A_MixEngine_VU_320x184_B_8x8_64f.png")
-    make_vu_atlases(root/"meters"/"125A_MixEngine_VU_Meter_480x276px_300pct_128f.png",
-                    (480,276),
-                    generated/"125A_MixEngine_VU_480x276_A_8x8_64f.png",
-                    generated/"125A_MixEngine_VU_480x276_B_8x8_64f.png")
+    vu_master = root / "meters" / "125A_MixEngine_VU_Face_400x270px_Master.png"
+    make_vu(vu_master, (320, 216),
+            generated / "125A_MixEngine_VU_Face_320x216.png",
+            generated / "125A_MixEngine_VU_Cover_320x216.png")
+    make_vu(vu_master, (960, 648),
+            generated / "125A_MixEngine_VU_Face_960x648.png",
+            generated / "125A_MixEngine_VU_Cover_960x648.png")
 
 if __name__=="__main__":
     main()
