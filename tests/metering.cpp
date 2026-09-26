@@ -18,15 +18,31 @@ int main() {
     if (meter.vuL() < 0.99 || meter.vuL() > 1.001) return 3;
     if (meter.vuR() < 0.495 || meter.vuR() > 0.501) return 4;
 
-    // At the selected reference level the needle must sit at the authentic
-    // voltage-domain 0 VU position of a -20..+3 VU moving-coil scale.
-    const double refDb = -14.0;
-    const double refLinear = std::pow(10.0, refDb / 20.0);
-    const double needle = MixEngine::vuNeedleNormalized(refLinear, refDb);
+    // A DAW sine generator set to the selected dBFS reference must indicate
+    // exactly 0 VU after the RMS detector has settled. Verify all three user
+    // calibration choices (-18 / -14 / -10 dBFS), not just the mapping helper.
     const double minAmp = std::pow(10.0, -20.0 / 20.0);
     const double maxAmp = std::pow(10.0,   3.0 / 20.0);
     const double expectedZero = (1.0 - minAmp) / (maxAmp - minAmp);
-    if (std::abs(needle - expectedZero) > 1.0e-9) return 5;
+    constexpr double refs[] {-18.0, -14.0, -10.0};
+    constexpr double sr = 48000.0;
+    constexpr double freq = 1000.0;
+    constexpr int settleSamples = static_cast<int>(sr * 2.0);
+
+    for (double refDb : refs) {
+        meter.prepare(sr);
+        meter.beginBlock();
+        const double peak = std::pow(10.0, refDb / 20.0);
+        for (int i = 0; i < settleSamples; ++i) {
+            const double x = peak * std::sin(2.0 * 3.14159265358979323846 * freq *
+                                             static_cast<double>(i) / sr);
+            meter.push(x, x);
+        }
+        meter.publish();
+        const double needle = MixEngine::vuNeedleNormalized(meter.vuL(), refDb);
+        if (std::abs(needle - expectedZero) > 2.0e-3) return 5;
+    }
+
     if (MixEngine::vuScaleNormalizedFromDb(-20.0) != 0.0) return 6;
     if (std::abs(MixEngine::vuScaleNormalizedFromDb(3.0) - 1.0) > 1.0e-12) return 7;
 

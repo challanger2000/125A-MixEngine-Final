@@ -19,10 +19,15 @@ inline double vuScaleNormalizedFromDb(double vuDb) noexcept {
     return (amp - minAmp) / (maxAmp - minAmp);
 }
 
-// 0 VU is the selected reference level; the face spans -20 .. +3 VU.
-inline double vuNeedleNormalized(double linear, double referenceDb) noexcept {
-    const double dbfs = 20.0 * std::log10(std::max(linear, 1.0e-12));
-    return vuScaleNormalizedFromDb(dbfs - referenceDb);
+// The detector publishes RMS amplitude, while DAW/test-generator dBFS levels are
+// conventionally specified by sine-wave peak amplitude. Therefore a sine whose
+// generator level equals the selected reference must land exactly at 0 VU.
+// sine RMS = peak / sqrt(2) = peak - 3.01029995664 dB.
+inline double vuNeedleNormalized(double rmsLinear, double referenceDb) noexcept {
+    constexpr double kSineRmsOffsetDb = -3.010299956639812;
+    const double rmsDbfs = 20.0 * std::log10(std::max(rmsLinear, 1.0e-12));
+    const double referenceRmsDbfs = referenceDb + kSineRmsOffsetDb;
+    return vuScaleNormalizedFromDb(rmsDbfs - referenceRmsDbfs);
 }
 
 // Audio-thread detector with lock-free snapshots for the GUI/host telemetry.
