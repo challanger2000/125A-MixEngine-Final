@@ -57,7 +57,7 @@ def parse_table(lines,i):
 def render(src,out,label):
     lines=src.read_text(encoding="utf-8").splitlines()
     title=lines[0].lstrip("# ").strip()
-    version=next((x for x in lines[1:6] if x.strip()),"Version 1.0.0")
+    version=next((x for x in lines[1:6] if x.strip()),"Version 3.0.0")
     story=[Spacer(1,30*mm),Paragraph("125A",styles["Cover"]),Paragraph("MIXENGINE",styles["Cover"]),
            Spacer(1,3*mm),Paragraph(inline(title),styles["Sub"]),Paragraph(inline(version),styles["Sub"]),
            Spacer(1,17*mm),Paragraph("125A AUDIO SOFTWARE",styles["Sub"]),PageBreak()]
@@ -79,9 +79,9 @@ def render(src,out,label):
         para.append(line); i+=1
     flush()
     doc=SimpleDocTemplate(str(out),pagesize=A4,leftMargin=16*mm,rightMargin=16*mm,topMargin=15*mm,bottomMargin=19*mm,
-        title=title,author="125A Audio Software",subject="125A MixEngine v1.0.0")
+        title=title,author="125A Audio Software",subject="125A MixEngine V3 v3.0.0")
     doc.build(story,onFirstPage=lambda c,d:footer(c,d,label),onLaterPages=lambda c,d:footer(c,d,label))
 
-render(DOCS/"MANUAL_DE.md",DOCS/"125A_MixEngine_Bedienungsanleitung_DE.pdf","125A MixEngine - Bedienungsanleitung | v1.0.0")
-render(DOCS/"MANUAL_EN.md",DOCS/"125A_MixEngine_User_Manual_EN.pdf","125A MixEngine - User Manual | v1.0.0")
+render(DOCS/"MANUAL_DE.md",DOCS/"125A_MixEngine_Bedienungsanleitung_DE.pdf","125A MixEngine V3 - Bedienungsanleitung | v3.0.0")
+render(DOCS/"MANUAL_EN.md",DOCS/"125A_MixEngine_User_Manual_EN.pdf","125A MixEngine V3 - User Manual | v3.0.0")
 print("PDF manuals generated")

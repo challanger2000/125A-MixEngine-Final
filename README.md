@@ -1,15 +1,15 @@
-# 125A MixEngine V2
+# 125A MixEngine V3
 
-**125A MixEngine V2 v2.0.0** is a Windows x64 VST3 coloration, summing and mix-finishing processor with two editions built from the same DSP core:
+**125A MixEngine V3 v3.0.0** is a Windows x64 VST3 coloration, summing and mix-finishing processor with two editions built from the same DSP core:
 
-- **125A MixEngine V2** - PreSonus Studio One **Mix FX** edition with true adjacent-channel console crosstalk.
-- **125A MixEngine V2 Channel** - standard **VST3 insert** edition for tracks, buses and VST3 hosts without the PreSonus Mix FX API.
+- **125A MixEngine V3** - PreSonus Studio One **Mix FX** edition with true adjacent-channel console crosstalk.
+- **125A MixEngine V3 Channel** - standard **VST3 insert** edition for tracks, buses and VST3 hosts without the PreSonus Mix FX API.
 
 ## Signal flow
 
 `INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT`
 
-## V2 highlights
+## V3 highlights
 
 - Sample-offset accurate automation in both standard VST3 and Mix FX paths
 - True 0% neutral intensity points
@@ -21,7 +21,7 @@
 - Console: stronger character separation and bounded Vintage transformer memory
 - Scoped FTZ/DAZ denormal protection inside audio callbacks with host MXCSR restoration
 - Eco 1x / Normal 2x / High 4x quality modes
-- Fixed reported host latency: **21 samples**
+- Fixed host latency per sample rate, independent of Quality/modules/Bypass: **28 samples @44.1 kHz, 29 @48 kHz, 36 @96 kHz, 50 @192 kHz**
 - UI scaling: 75 / 100 / 125 / 150%
 - 32-bit and 64-bit audio processing
 - Mono and stereo support
@@ -37,9 +37,9 @@ Then rescan VST3 plugins in the DAW.
 
 ### Which edition?
 
-Use **125A MixEngine V2** in Studio One's Mix FX slot for channel-aware console behavior and true adjacent-channel crosstalk.
+Use **125A MixEngine V3** in Studio One's Mix FX slot for channel-aware console behavior and true adjacent-channel crosstalk.
 
-Use **125A MixEngine V2 Channel** as a normal insert on tracks or buses.
+Use **125A MixEngine V3 Channel** as a normal insert on tracks or buses.
 
 ## Gain staging
 
@@ -49,11 +49,11 @@ Level Match is parameter-dependent compensation, not an adaptive loudness normal
 
 ## Validation
 
-The V2 source includes diagnostics for zero-neutrality, range continuity, oversampling/aliasing, fixed latency, metering, mono/phase behavior, Channel/Mix FX parity, Level Match, automation stress, sample-offset accuracy, real Mix FX crosstalk, character morphing, Tape/Console memory, Glue transients, Vinyl axis separation, quality switching, sample-rate/sample-format matrix, denormal hardening and the Steinberg VST3 validator.
+The V3 source includes diagnostics for zero-neutrality, range continuity, oversampling/aliasing, fixed latency, metering, mono/phase behavior, Channel/Mix FX parity, Level Match, automation stress, sample-offset accuracy, real Mix FX crosstalk, character morphing, Tape/Console memory, Glue transients, Vinyl axis separation, quality switching, sample-rate/sample-format matrix, denormal hardening and the Steinberg VST3 validator.
 
 ## Documentation
 
-The Gumroad package contains complete German and English V2 PDF manuals.
+The Gumroad package contains complete German and English V3 PDF manuals.
 
 ## License
 

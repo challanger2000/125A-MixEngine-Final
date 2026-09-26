@@ -1,10 +1,10 @@
-# 125A MixEngine v1.0 Architecture
+# 125A MixEngine V3 Architecture
 
 ## Product variants
 
 The project builds two VST3 classes from one shared DSP implementation.
 
-### 125A MixEngine - Mix FX
+### 125A MixEngine V3 - Mix FX
 
 A PreSonus-specific `Audio Mix Processor`. Studio One supplies the Mix FX processor with all participating channel buses. The plugin snapshots the current input block in `processMixControl()` and then lets each `processMixChannel(index)` read immutable snapshots of direct neighbours.
 
@@ -17,7 +17,7 @@ This makes Crosstalk:
 
 The nominal maximum Crosstalk coefficient is 0.018 per direct neighbour.
 
-### 125A MixEngine Channel
+### 125A MixEngine V3 Channel
 
 A normal VST3 audio effect using the same processing chain and GUI family. It has its own processor/controller UIDs and excludes the PreSonus Mix FX interfaces at compile time.
 
@@ -67,11 +67,11 @@ Clip indicators trigger at digital full scale and hold for approximately 0.75 s.
 
 Quality modes use 1x / 2x / 4x oversampling in relevant nonlinear islands.
 
-The plugin reports a fixed host latency of **21 samples**. Internal paths with less bulk delay are aligned to the fixed target; Bypass is also delayed so host PDC does not change with module or Quality selection.
+The plugin reports a fixed host latency for a given sample rate, independent of module state, Quality and Bypass. V3 reserves the legacy 21-sample oversampling budget plus the Tape transport budget `ceil(0.00015 * sampleRate)`: **28 samples at 44.1 kHz, 29 at 48 kHz, 36 at 96 kHz and 50 at 192 kHz**.
 
 ## Automation
 
-Stored parameters are host-automatable. Processing consumes the latest parameter point received for the current audio block. No sample-accurate interpolation claim is made.
+Stored parameters are host-automatable. Both the standard VST3 and Mix FX paths apply parameter changes at the sample offsets supplied by the host; dedicated diagnostics verify sample-accurate automation behaviour.
 
 ## GUI
 

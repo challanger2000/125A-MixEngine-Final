@@ -1,10 +1,10 @@
 # 125A MixEngine - Bedienungsanleitung
 
-Version 1.0.0 - Windows x64 VST3
+Version 3.0.0 - Windows x64 VST3
 
 ## 1. Überblick
 
-125A MixEngine ist ein modularer Coloration- und Summing-Prozessor mit zwei Varianten: **125A MixEngine** als PreSonus Studio One Mix FX und **125A MixEngine Channel** als normaler VST3-Insert. Beide Varianten verwenden denselben zentralen DSP-Kern. Nur die Mix-FX-Variante kann auf benachbarte DAW-Kanäle zugreifen und deshalb echtes Kanal-zu-Kanal-Crosstalk erzeugen.
+125A MixEngine ist ein modularer Coloration- und Summing-Prozessor mit zwei Varianten: **125A MixEngine V3** als PreSonus Studio One Mix FX und **125A MixEngine V3 Channel** als normaler VST3-Insert. Beide Varianten verwenden denselben zentralen DSP-Kern. Nur die Mix-FX-Variante kann auf benachbarte DAW-Kanäle zugreifen und deshalb echtes Kanal-zu-Kanal-Crosstalk erzeugen.
 
 Signalfluss: **INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT**.
 
@@ -12,8 +12,8 @@ Signalfluss: **INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OU
 
 ## 2. Installation und Varianten
 
-- **125A MixEngine.vst3**: PreSonus Studio One Mix FX. In den Mix-FX-Slot eines Bus/Main-Bereichs laden.
-- **125A MixEngine Channel.vst3**: normaler VST3-Insert für Einzelkanäle, Busse und andere VST3-Hosts.
+- **125A-MixEngine-V3.vst3**: PreSonus Studio One Mix FX. In den Mix-FX-Slot eines Bus/Main-Bereichs laden.
+- **125A-MixEngine-V3-Channel.vst3**: normaler VST3-Insert für Einzelkanäle, Busse und andere VST3-Hosts.
 - Installation unter Windows: VST3-Bundle nach `C:\Program Files\Common Files\VST3` kopieren und Host neu scannen.
 - Beide Varianten besitzen getrennte Plugin-IDs und können parallel installiert werden.
 
@@ -104,16 +104,16 @@ Low Mono verwendet einen festen 120-Hz-Übergang und entfernt stufenlos den tief
 
 Eco = 1x, Normal = 2x, High = 4x Oversampling in relevanten nichtlinearen Stufen.
 
-Das Plugin meldet unabhängig vom Quality-Modus eine feste Host-Latenz von **21 Samples**. Interne kürzere Pfade werden auf dieses Ziel ausgerichtet; auch Bypass behält die Latenz.
+Das Plugin meldet bei einer gegebenen Sample-Rate eine feste Host-Latenz unabhängig von Quality, Modulzustand und Bypass. Sie beträgt **28 Samples bei 44,1 kHz, 29 bei 48 kHz, 36 bei 96 kHz und 50 bei 192 kHz**.
 
-Parameter sind host-automatisierbar. Die Verarbeitung verwendet den jeweils letzten Parameterwert des aktuellen Audio-Blocks; es wird keine sample-genaue Interpolation behauptet.
+Parameter sind host-automatisierbar. Standard-VST3- und Mix-FX-Pfad verarbeiten Parameteränderungen an den vom Host gelieferten Sample-Offsets; die sample-genaue Automation wird durch eigene Diagnosetests geprüft.
 
 ## 12. Technische Daten
 
 - Format: VST3, Windows x64
 - Editionen: PreSonus Studio One Mix FX + Standard VST3 Channel
 - Audio: Mono/Stereo, 32-bit und 64-bit Sample Processing
-- Feste Host-Latenz: 21 Samples
+- Feste Host-Latenz pro Sample-Rate: 28 Samples @44,1 kHz / 29 @48 kHz / 36 @96 kHz / 50 @192 kHz
 - Oversampling: 1x / 2x / 4x
 - 0 VU: -18 / -14 / -10 dBFS
 - VU Response: ca. 300 ms
