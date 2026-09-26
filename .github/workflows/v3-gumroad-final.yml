@@ -158,24 +158,24 @@ jobs:
           Copy-Item "RELEASE_NOTES.md" "$root/"
           Copy-Item "LICENSE.txt" "$root/"
 
-          @"
-125A MixEngine V3 - v3.0.0 - Windows x64 / VST3
-
-INSTALLATION
-1. Close your DAW.
-2. Copy the desired .vst3 bundle from the VST3 folder to:
-   C:\Program Files\Common Files\VST3
-3. Start the DAW and rescan VST3 plugins if required.
-
-125A-MixEngine-V3.vst3
-- PreSonus Studio One Mix FX edition.
-- Provides true adjacent-channel Crosstalk in the Mix FX environment.
-
-125A-MixEngine-V3-Channel.vst3
-- Standard VST3 insert edition for tracks, buses and compatible VST3 hosts.
-
-German and English manuals are in the Documentation folder.
-"@ | Set-Content "$root/INSTALL.txt" -Encoding UTF8
+          @(
+            "125A MixEngine V3 - v3.0.0 - Windows x64 / VST3",
+            "",
+            "INSTALLATION",
+            "1. Close your DAW.",
+            "2. Copy the desired .vst3 bundle from the VST3 folder to:",
+            "   C:\\Program Files\\Common Files\\VST3",
+            "3. Start the DAW and rescan VST3 plugins if required.",
+            "",
+            "125A-MixEngine-V3.vst3",
+            "- PreSonus Studio One Mix FX edition.",
+            "- Provides true adjacent-channel Crosstalk in the Mix FX environment.",
+            "",
+            "125A-MixEngine-V3-Channel.vst3",
+            "- Standard VST3 insert edition for tracks, buses and compatible VST3 hosts.",
+            "",
+            "German and English manuals are in the Documentation folder."
+          ) | Set-Content "$root/INSTALL.txt" -Encoding UTF8
 
           $checksums=Get-ChildItem "$root" -Recurse -File | Sort-Object FullName | ForEach-Object {
             $hash=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
