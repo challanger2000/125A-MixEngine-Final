@@ -58,9 +58,9 @@
     <view class="CView" custom-view-name="LabelLevelMatch" origin="1279,558" size="108,16" mouse-enabled="false"/>
     <view class="CView" custom-view-name="BrandLogo" origin="34,92" size="176,88" mouse-enabled="false"/>
     <view class="CView" custom-view-name="VULeft" origin="320,35" size="320,216" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="ClipL" origin="625,62" size="10,10" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="ClipL" origin="608,58" size="14,14" mouse-enabled="false"/>
     <view class="CView" custom-view-name="VURight" origin="800,35" size="320,216" mouse-enabled="false"/>
-    <view class="CView" custom-view-name="ClipR" origin="1105,62" size="10,10" mouse-enabled="false"/>
+    <view class="CView" custom-view-name="ClipR" origin="1088,58" size="14,14" mouse-enabled="false"/>
     <view class="CView" custom-view-name="UIScale" origin="62,214" size="110,28"/>
     <view class="CView" custom-view-name="VUSourceSelector" origin="640,90" size="160,42"/>
     <view class="CView" custom-view-name="QualitySelector" origin="1237,102" size="172,42"/>
@@ -69,7 +69,7 @@
     <view class="CView" custom-view-name="InputRefSelector" origin="35,584" size="122,42"/>
     <view class="CView" custom-view-name="ConsolePower" origin="236,340" size="64,64"/>
     <view class="CView" custom-view-name="ConsoleDrive" origin="204,406" size="128,128"/>
-    <view class="CView" custom-view-name="ConsoleModeSelector" origin="188,578" size="160,42"/>
+    <view class="CView" custom-view-name="ConsoleModeSelector" origin="186,578" size="164,42"/>
     <view class="CView" custom-view-name="ConsoleNoise" origin="232,629" size="72,72"/>
     <view class="CView" custom-view-name="TubePower" origin="412,340" size="64,64"/>
     <view class="CView" custom-view-name="TubeAmount" origin="380,406" size="128,128"/>

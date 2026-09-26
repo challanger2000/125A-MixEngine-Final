@@ -785,7 +785,7 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
 
         // Use almost the full cell width. The old 5 px subtraction made the
         // four-way Console selector unnecessarily cramped.
-        const double capW=std::max(18.0,cellW-2.5);
+        const double capW=std::max(18.0,cellW-1.0);
         const VSTGUI::CRect sw(cx-capW*.5,r.top+13.0,cx+capW*.5,r.bottom-2.0);
         VSTGUI::CRect shadow=sw;
         shadow.offset(0.0,on?0.9:1.5);
@@ -969,20 +969,15 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
         const VSTGUI::CPoint tip(pivot.x+std::cos(needleAngle)*needleLength,
                                  pivot.y+std::sin(needleAngle)*needleLength);
 
-        // Clean the bitmap perimeter without resampling or altering the calibrated
-        // face. A narrow inner lip hides the few rough source-edge pixels and makes
-        // the VU read as a meter seated in the blue bridge rather than a pasted image.
-        VSTGUI::CRect meterLip=r;
-        meterLip.inset(1.0,1.0);
-        strokeRound(context,meterLip,8.0,{3,6,9,215},2.0);
-        VSTGUI::CRect meterShoulder=r;
-        meterShoulder.inset(3.0,3.0);
-        strokeRound(context,meterShoulder,7.0,{208,221,229,34},0.9);
-        // Bottom/right contact occlusion follows the same upper-left key light.
-        context->setFrameColor({0,0,0,100});
-        context->setLineWidth(1.0);
-        context->drawLine({r.left+9.0,r.bottom-2.5},{r.right-9.0,r.bottom-2.5});
-        context->drawLine({r.right-2.5,r.top+9.0},{r.right-2.5,r.bottom-9.0});
+        // Keep the source meter housing visually dominant. Only a very subtle
+        // recessed seating line remains to mask the bitmap edge; no second outer
+        // "window" frame is drawn around the VU.
+        VSTGUI::CRect meterSeat=r;
+        meterSeat.inset(1.5,1.5);
+        strokeRound(context,meterSeat,12.0,{2,5,8,118},1.0);
+        VSTGUI::CRect meterCatch=r;
+        meterCatch.inset(3.0,3.0);
+        strokeRound(context,meterCatch,10.5,{218,229,236,18},0.7);
 
         // Soft shadow plus satin-grey needle matches the source meter better than
         // the red fallback needle used by the old procedural face.
@@ -1002,10 +997,6 @@ void HardwareVUMeter::draw(VSTGUI::CDrawContext* context)
             const VSTGUI::CRect coverSrc(0.0,0.0,320.0,216.0);
             context->fillRectWithBitmap(cover_,coverSrc,r,1.f);
         }
-
-        VSTGUI::CRect finalLip=r;
-        finalLip.inset(0.75,0.75);
-        strokeRound(context,finalLip,8.0,{2,5,8,225},1.5);
 
         setDirty(false);
         return;
@@ -1286,17 +1277,30 @@ void HardwareClipLed::draw(VSTGUI::CDrawContext* context)
     const bool on=getValueNormalized()>=0.5;
     const auto r=getViewSize();
     context->setDrawMode(VSTGUI::kAntiAliasing);
+
+    // A real panel indicator is a mounted component, not a painted red dot.
+    // The outer ring stays metallic/dark while the inner jewel lights up.
+    VSTGUI::CRect bezel=r;
+    fillRadialEllipse(context,bezel,{105,111,118,255},{18,21,25,255},{-2.0,-2.0});
+    context->setFrameColor({3,5,7,255});
+    context->setLineWidth(1.0);
+    context->drawEllipse(bezel,VSTGUI::kDrawStroked);
+
+    VSTGUI::CRect jewel=r;
+    jewel.inset(2.4,2.4);
     if(on) {
-        for(int n=2;n>=1;--n) {
-            const double g=n*2.5;
-            context->setFillColor({246,62,52,static_cast<uint8_t>(13*n)});
-            context->drawEllipse({r.left-g,r.top-g,r.right+g,r.bottom+g},VSTGUI::kDrawFilled);
-        }
+        VSTGUI::CRect glow=jewel;
+        glow.inset(-1.2,-1.2);
+        context->setFillColor({246,62,52,52});
+        context->drawEllipse(glow,VSTGUI::kDrawFilled);
     }
-    fillRadialEllipse(context,r,on?VSTGUI::CColor{255,185,174,255}:VSTGUI::CColor{72,29,25,255},
-                              on?VSTGUI::CColor{235,47,39,255}:VSTGUI::CColor{25,10,9,255},{-3.0,-3.0});
-    context->setFrameColor({7,8,10,255}); context->setLineWidth(1.0);
-    context->drawEllipse(r,VSTGUI::kDrawStroked);
+    fillRadialEllipse(context,jewel,
+                      on?VSTGUI::CColor{255,190,178,255}:VSTGUI::CColor{76,31,27,255},
+                      on?VSTGUI::CColor{232,43,36,255}:VSTGUI::CColor{24,9,8,255},
+                      {-1.5,-1.5});
+    context->setFrameColor(on?VSTGUI::CColor{118,22,18,255}:VSTGUI::CColor{11,8,8,255});
+    context->setLineWidth(0.8);
+    context->drawEllipse(jewel,VSTGUI::kDrawStroked);
     setDirty(false);
 }
 
