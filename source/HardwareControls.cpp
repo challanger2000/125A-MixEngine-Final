@@ -696,12 +696,29 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
         0,count-1);
 
     const double cellW=r.getWidth()/static_cast<double>(count);
-    double fontSize=count>=4?6.8:8.0;
-    while(fontSize>6.0) {
+
+    // Give the selectors the same "mounted hardware" logic as the rotary controls:
+    // one recessed carrier rail, then individual mechanical caps inside it.
+    const VSTGUI::CRect rail(r.left,r.top+10.0,r.right,r.bottom);
+    VSTGUI::CRect railShadow=rail;
+    railShadow.offset(0.0,1.5);
+    fillRoundGradient(context,railShadow,5.5,{1,2,3,205},{0,0,0,245});
+    fillRoundGradient(context,rail,5.5,{20,24,29,255},{7,10,13,255});
+    strokeRound(context,rail,5.5,{91,101,111,92},1.0);
+
+    VSTGUI::CRect railInner=rail;
+    railInner.inset(2.0,2.0);
+    strokeRound(context,railInner,4.0,{255,255,255,18},1.0);
+
+    // Start slightly larger than before and only shrink as much as the longest
+    // legend really requires. This materially improves 100% GUI readability.
+    double fontSize=count>=4?7.4:(count==3?8.5:8.8);
+    const double minFont=count>=4?6.4:7.0;
+    while(fontSize>minFont) {
         context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
         bool fits=true;
         for(const auto& label:labels_) {
-            if(context->getStringWidth(label.c_str())>cellW-4.0) { fits=false; break; }
+            if(context->getStringWidth(label.c_str())>cellW-3.0) { fits=false; break; }
         }
         if(fits) break;
         fontSize-=0.2;
@@ -711,7 +728,17 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
         const double cx=r.left+(static_cast<double>(i)+0.5)*cellW;
         const bool on=i==selected;
 
-        // Same LED-above-button construction as Console/Tube/Tape/Glue/Vinyl power.
+        // Fine engraved separators make the selector read as one hardware bank,
+        // rather than several unrelated GUI buttons.
+        if(i>0) {
+            const double x=r.left+static_cast<double>(i)*cellW;
+            context->setFrameColor({0,0,0,118});
+            context->setLineWidth(1.0);
+            context->drawLine({x,r.top+14.0},{x,r.bottom-4.0});
+            context->setFrameColor({255,255,255,15});
+            context->drawLine({x+1.0,r.top+14.0},{x+1.0,r.bottom-4.0});
+        }
+
         const double ledD=8.0;
         const VSTGUI::CRect led(cx-ledD*.5,r.top+1.0,cx+ledD*.5,r.top+1.0+ledD);
         if(on) {
@@ -723,32 +750,42 @@ void HardwareSelector::draw(VSTGUI::CDrawContext* context)
             }
         }
         fillRadialEllipse(context,led,
-                          on?VSTGUI::CColor{193,255,205,255}:VSTGUI::CColor{19,42,27,255},
-                          on?VSTGUI::CColor{86,224,125,255}:VSTGUI::CColor{5,9,7,255},
+                          on?VSTGUI::CColor{204,255,214,255}:VSTGUI::CColor{22,47,30,255},
+                          on?VSTGUI::CColor{87,226,126,255}:VSTGUI::CColor{5,9,7,255},
                           {-ledD*.18,-ledD*.18});
         context->setFrameColor({4,5,7,255});
         context->setLineWidth(1.0);
         context->drawEllipse(led,VSTGUI::kDrawStroked);
 
-        const double capW=std::max(18.0,cellW-5.0);
-        const VSTGUI::CRect sw(cx-capW*.5,r.top+12.0,cx+capW*.5,r.bottom);
-        VSTGUI::CRect shadow=sw; shadow.offset(0.0,1.5);
-        fillRoundGradient(context,shadow,4.5,{2,3,4,195},{0,0,0,235});
+        // Use almost the full cell width. The old 5 px subtraction made the
+        // four-way Console selector unnecessarily cramped.
+        const double capW=std::max(18.0,cellW-2.5);
+        const VSTGUI::CRect sw(cx-capW*.5,r.top+13.0,cx+capW*.5,r.bottom-2.0);
+        VSTGUI::CRect shadow=sw;
+        shadow.offset(0.0,on?0.9:1.5);
+        fillRoundGradient(context,shadow,3.8,{2,3,4,185},{0,0,0,230});
 
-        VSTGUI::CRect bezel=sw; bezel.inset(-1.5,-1.5);
-        fillRoundGradient(context,bezel,5.0,{93,99,106,255},{24,28,33,255});
-        strokeRound(context,bezel,5.0,{4,6,8,255},1.0);
+        VSTGUI::CRect bezel=sw;
+        bezel.inset(-1.0,-1.0);
+        fillRoundGradient(context,bezel,4.5,{91,98,105,255},{23,27,32,255});
+        strokeRound(context,bezel,4.5,{4,6,8,255},1.0);
 
         VSTGUI::CRect cap=sw;
-        if(on) cap.offset(0.0,0.8);
-        fillRoundGradient(context,cap,3.8,
-                          on?VSTGUI::CColor{54,67,78,255}:VSTGUI::CColor{40,47,54,255},
-                          on?VSTGUI::CColor{11,17,23,255}:VSTGUI::CColor{10,15,20,255});
-        strokeRound(context,cap,3.8,
-                    on?VSTGUI::CColor{137,158,174,125}:VSTGUI::CColor{88,103,115,100},1.0);
+        if(on) cap.offset(0.0,0.7);
+        fillRoundGradient(context,cap,3.4,
+                          on?VSTGUI::CColor{57,70,81,255}:VSTGUI::CColor{43,50,57,255},
+                          on?VSTGUI::CColor{12,18,24,255}:VSTGUI::CColor{10,15,20,255});
+        strokeRound(context,cap,3.4,
+                    on?VSTGUI::CColor{151,173,190,138}:VSTGUI::CColor{93,108,120,108},1.0);
+
+        // Thin upper highlight supplies a convincing satin edge without turning
+        // the control into a glossy "software" button.
+        context->setFrameColor(on?VSTGUI::CColor{238,244,248,34}:VSTGUI::CColor{230,236,240,22});
+        context->setLineWidth(1.0);
+        context->drawLine({cap.left+4.0,cap.top+2.0},{cap.right-4.0,cap.top+2.0});
 
         context->setFont(VSTGUI::kNormalFont,fontSize,VSTGUI::kBoldFace);
-        context->setFontColor(on?VSTGUI::CColor{229,239,245,255}:VSTGUI::CColor{168,180,188,245});
+        context->setFontColor(on?VSTGUI::CColor{235,243,248,255}:VSTGUI::CColor{185,196,204,248});
         context->drawString(VSTGUI::UTF8String(labels_[i].c_str()),cap,VSTGUI::kCenterText);
     }
 
@@ -801,7 +838,7 @@ void HardwareLabel::draw(VSTGUI::CDrawContext* context)
     context->setFontColor({0,0,0,145});
     context->drawString(VSTGUI::UTF8String(text_.c_str()),shadow,VSTGUI::kCenterText);
 
-    context->setFontColor(muted_?VSTGUI::CColor{151,158,168,245}:VSTGUI::CColor{218,217,211,250});
+    context->setFontColor(muted_?VSTGUI::CColor{166,174,184,248}:VSTGUI::CColor{222,221,216,252});
     context->drawString(VSTGUI::UTF8String(text_.c_str()),r,VSTGUI::kCenterText);
     setDirty(false);
 }
