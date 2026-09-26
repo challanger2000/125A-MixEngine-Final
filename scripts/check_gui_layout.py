@@ -66,7 +66,10 @@ for path in FILES:
 
     for name, expected_box in {
         "VULeft": (320.0, 35.0, 320.0, 216.0),
+        "ClipL": (608.0, 58.0, 14.0, 14.0),
         "VURight": (800.0, 35.0, 320.0, 216.0),
+        "ClipR": (1088.0, 58.0, 14.0, 14.0),
+        "ConsoleModeSelector": (186.0, 578.0, 164.0, 42.0),
     }.items():
         if views[name] != expected_box:
             raise SystemExit(f"{path}: {name} box {views[name]} != exact {expected_box}")

@@ -16,11 +16,8 @@ for needle in ("kChannelProcessorUID", "kChannelControllerUID"):
     if needle not in ids:
         fail(f"missing dedicated Channel UID: {needle}")
 
-if "0x4A17C2D3" not in ids or "0xB8D2517E" not in ids:
-    fail("original Mix FX UIDs changed")
-
 for needle in (
-    '#define stringPluginName "125A MixEngine V2 Channel"',
+    '#define stringPluginName "125A MixEngine V3 Channel"',
     "kChannelProcessorUID",
     "kChannelControllerUID",
     "kVstAudioEffectClass",
@@ -49,10 +46,10 @@ for needle in (
         fail(f"shared Processor routing token missing: {needle}")
 
 for needle in (
-    "smtg_add_vst3plugin(125A-MixEngine-Channel",
+    "smtg_add_vst3plugin(125A-MixEngine-V3-Channel",
     "source/factory_channel.cpp",
     "MIXENGINE_CHANNEL_BUILD=1",
-    "smtg_target_add_plugin_resources(125A-MixEngine-Channel",
+    "smtg_target_add_plugin_resources(125A-MixEngine-V3-Channel",
     'resource/mixengine_channel.uidesc',
 ):
     if needle not in cmake:
@@ -71,5 +68,13 @@ if "static constexpr int kMaxMixFxChannels = 0;" not in processor_h:
 channel_factory = (ROOT / "source/factory_channel.cpp").read_text(encoding="utf-8")
 if 'sizeof(MixEngine::Processor) < 64 * 1024' not in channel_factory:
     fail("Channel processor size regression guard missing")
+
+if 'project(MixEngine VERSION 3.0.0' not in cmake:
+    fail("project version is not V3 3.0.0")
+mix_factory = (ROOT / "source/factory.cpp").read_text(encoding="utf-8")
+if '#define stringPluginName "125A MixEngine V3"' not in mix_factory:
+    fail("Mix FX factory is not V3")
+if 'smtg_add_vst3plugin(125A-MixEngine-V3 ' not in cmake:
+    fail("V3 Mix FX CMake target missing")
 
 print("Channel contract PASS: dedicated standard VST3 identity, shared DSP/GUI, Mix FX API gated")

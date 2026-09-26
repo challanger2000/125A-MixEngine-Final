@@ -294,6 +294,10 @@ if processor.count("outBus.silenceFlags=0;") < 2:
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
     fail("shared calibrated VU scale mapping missing")
+if "kSineRmsOffsetDb = -3.010299956639812" not in metering:
+    fail("VU sine RMS/peak reference calibration missing")
+if "const double needleAngle=(220.0+100.0*value)*kPi/180.0;" not in hardware:
+    fail("loaded bitmap VU needle mapping changed")
 for needle in [
     "vuScaleNormalizedFromDb(static_cast<double>(db))",
     "vuScaleNormalizedFromDb(mark.db)",

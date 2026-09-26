@@ -626,7 +626,6 @@ void HardwareToggle::draw(VSTGUI::CDrawContext* context)
     // Style-prototype path: use the current Knob Designer push-button filmstrip,
     // while retaining the existing 125A LED behaviour as a separate overlay.
     if(filmstrip_ && filmstrip_->isLoaded()) {
-        constexpr int kStates=3;
         constexpr double kFrameSize=64.0;
         const int frame=on?2:0;
         filmstrip_->draw(context,r,{0.0,kFrameSize*static_cast<double>(frame)},1.f);

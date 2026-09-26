@@ -31,7 +31,7 @@ set(MIXENGINE_KNOB_RESOURCES
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png"
 
- # Original full VU frames split into two GPU-safe 64-frame atlases.
+ # Static VU face + transparent hub cover; the live needle is rendered in VSTGUI.
  "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_320x216.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Face_960x648.png"
  "${MIXENGINE_KNOB_RESOURCE_DIR}/generated/125A_MixEngine_VU_Cover_320x216.png"

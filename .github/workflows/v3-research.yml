@@ -49,6 +49,12 @@ jobs:
         shell: pwsh
         run: python scripts/check_gui_layout.py resource/mixengine.uidesc resource/mixengine_channel.uidesc
 
+      - name: Verify parameter and Channel contracts
+        shell: pwsh
+        run: |
+          python scripts/verify_parameter_contract.py
+          python scripts/verify_channel_contract.py
+
       - name: Prepare high-resolution GUI atlases
         shell: pwsh
         run: |
