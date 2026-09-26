@@ -9,6 +9,24 @@ KNOB_ROWS = 8
 MASTER_FRAME = 384
 RESAMPLE = Image.Resampling.LANCZOS
 
+def load_knob_master(source: Path) -> Image.Image:
+    image = Image.open(source).convert("RGBA")
+    expected = (MASTER_FRAME, MASTER_FRAME * FRAMES)
+    if image.size != expected:
+        raise RuntimeError(f"{source.name}: expected {expected}, got {image.size}")
+    return image
+
+def make_atlas(master: Image.Image, frame_size: int, target: Path) -> None:
+    atlas = Image.new("RGBA", (frame_size * COLS, frame_size * ROWS), (0, 0, 0, 0))
+    for index in range(FRAMES):
+        frame = master.crop((0, index * MASTER_FRAME, MASTER_FRAME, (index + 1) * MASTER_FRAME))
+        if frame_size != MASTER_FRAME:
+            frame = frame.resize((frame_size, frame_size), RESAMPLE)
+        atlas.paste(frame, ((index % COLS) * frame_size, (index // COLS) * frame_size))
+    target.parent.mkdir(parents=True, exist_ok=True)
+    atlas.save(target, format="PNG", optimize=True)
+    print(f"{target.name}: {atlas.width}x{atlas.height}")
+
 def make_vu(master_path: Path, size: tuple[int, int], face_target: Path, overlay_target: Path) -> None:
     master = Image.open(master_path).convert("RGBA")
     if master.size != (400, 270):
