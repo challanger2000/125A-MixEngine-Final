@@ -65,8 +65,8 @@ for path in FILES:
             raise SystemExit(f"{path}: {name} centre {actual} != exact {expected}")
 
     for name, expected_box in {
-        "VULeft": (320.0, 50.0, 320.0, 184.0),
-        "VURight": (800.0, 50.0, 320.0, 184.0),
+        "VULeft": (320.0, 35.0, 320.0, 216.0),
+        "VURight": (800.0, 35.0, 320.0, 216.0),
     }.items():
         if views[name] != expected_box:
             raise SystemExit(f"{path}: {name} box {views[name]} != exact {expected_box}")
