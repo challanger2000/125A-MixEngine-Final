@@ -1,0 +1,212 @@
+name: FINAL V3 Gumroad Package
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [v3.0.0-development]
+    paths:
+      - ".github/v3-gumroad-final-trigger"
+
+jobs:
+  release:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Checkout approved MixEngine GUI assets
+        uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Knob-Designer
+          ref: c09cff5d958969eb025fe09255173e65103deae9
+          path: knob-assets
+          fetch-depth: 1
+
+      - name: Verify final static contracts
+        shell: pwsh
+        run: |
+          python scripts/check_gui_layout.py resource/mixengine.uidesc resource/mixengine_channel.uidesc
+          python scripts/verify_parameter_contract.py
+          python scripts/verify_channel_contract.py
+
+      - name: Prepare final GUI assets
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python scripts/prepare_gui_assets.py "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DMIXENGINE_KNOB_ASSET_ROOT="$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine" -DSMTG_CREATE_PLUGIN_LINK=0
+
+      - name: Build final plugins, validator and release gates
+        shell: pwsh
+        run: >
+          cmake --build build --config Release --target
+          125A-MixEngine-V3
+          125A-MixEngine-V3-Channel
+          validator
+          release-robustness-diagnostic
+          state-roundtrip-diagnostic
+          state-migration-diagnostic
+          latency-matrix-diagnostic
+          metering-integration
+          zero-neutrality-diagnostic
+          sample-accuracy-diagnostic
+          mixfx-sample-accuracy-diagnostic
+          sample-rate-matrix-diagnostic
+          denormal-safety-diagnostic
+          phase-mono-diagnostic
+          level-match-diagnostic
+          console-noise-contract-diagnostic
+          mixfx-crosstalk-diagnostic
+          quality-switch-diagnostic
+          automation-stress-diagnostic
+          controller-lifecycle-diagnostic
+          tube-v3-autolevel-diagnostic
+          tape-v3-autolevel-diagnostic
+          vinyl-v3-autolevel-diagnostic
+          vinyl-v3-live-diagnostic
+          vinyl-v3-cpu-diagnostic
+          console-v3-cpu-diagnostic
+          v3-autolevel-level-sweep
+
+      - name: Run final release gates
+        shell: pwsh
+        run: |
+          $tests=@(
+            "release-robustness-diagnostic",
+            "state-roundtrip-diagnostic",
+            "state-migration-diagnostic",
+            "latency-matrix-diagnostic",
+            "metering-integration",
+            "zero-neutrality-diagnostic",
+            "sample-accuracy-diagnostic",
+            "mixfx-sample-accuracy-diagnostic",
+            "sample-rate-matrix-diagnostic",
+            "denormal-safety-diagnostic",
+            "phase-mono-diagnostic",
+            "level-match-diagnostic",
+            "console-noise-contract-diagnostic",
+            "mixfx-crosstalk-diagnostic",
+            "quality-switch-diagnostic",
+            "automation-stress-diagnostic",
+            "controller-lifecycle-diagnostic",
+            "tube-v3-autolevel-diagnostic",
+            "tape-v3-autolevel-diagnostic",
+            "vinyl-v3-autolevel-diagnostic",
+            "vinyl-v3-live-diagnostic",
+            "vinyl-v3-cpu-diagnostic",
+            "console-v3-cpu-diagnostic",
+            "v3-autolevel-level-sweep"
+          )
+          foreach($name in $tests){
+            $exe=Get-ChildItem build -Recurse -File -Filter "$name.exe"|Select-Object -First 1
+            if(-not $exe){throw "$name.exe not found"}
+            Write-Host "===== $name ====="
+            & $exe.FullName
+            if($LASTEXITCODE -ne 0){throw "$name failed with exit $LASTEXITCODE"}
+          }
+
+      - name: Validate final Channel VST3
+        shell: pwsh
+        run: |
+          $validator=Get-ChildItem build -Recurse -File -Filter "validator.exe"|Select-Object -First 1
+          $plugin=Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3"|Select-Object -First 1
+          if(-not $validator){throw "validator.exe not found"}
+          if(-not $plugin){throw "125A-MixEngine-V3-Channel.vst3 not found"}
+          & $validator.FullName $plugin.FullName
+          if($LASTEXITCODE -ne 0){throw "Steinberg validator failed with exit $LASTEXITCODE"}
+
+      - name: Build final V3 manuals
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet reportlab==4.4.9
+          python scripts/render_manuals.py
+          if(-not (Test-Path "docs/125A_MixEngine_Bedienungsanleitung_DE.pdf")){throw "German V3 PDF missing"}
+          if(-not (Test-Path "docs/125A_MixEngine_User_Manual_EN.pdf")){throw "English V3 PDF missing"}
+
+      - name: Create final Gumroad package
+        shell: pwsh
+        run: |
+          $root="dist/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad"
+          $zip="dist/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip"
+          if(Test-Path dist){Remove-Item dist -Recurse -Force}
+          New-Item -ItemType Directory -Force -Path "$root/VST3" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$root/Documentation" | Out-Null
+
+          $mix=Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3.vst3"|Select-Object -First 1
+          $ch=Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3"|Select-Object -First 1
+          if(-not $mix){throw "125A-MixEngine-V3.vst3 not found"}
+          if(-not $ch){throw "125A-MixEngine-V3-Channel.vst3 not found"}
+
+          Copy-Item $mix.FullName "$root/VST3/125A-MixEngine-V3.vst3" -Recurse
+          Copy-Item $ch.FullName "$root/VST3/125A-MixEngine-V3-Channel.vst3" -Recurse
+          Copy-Item "docs/125A_MixEngine_Bedienungsanleitung_DE.pdf" "$root/Documentation/"
+          Copy-Item "docs/125A_MixEngine_User_Manual_EN.pdf" "$root/Documentation/"
+          Copy-Item "README.md" "$root/"
+          Copy-Item "RELEASE_NOTES.md" "$root/"
+          Copy-Item "LICENSE.txt" "$root/"
+
+          @"
+125A MixEngine V3 - v3.0.0 - Windows x64 / VST3
+
+INSTALLATION
+1. Close your DAW.
+2. Copy the desired .vst3 bundle from the VST3 folder to:
+   C:\Program Files\Common Files\VST3
+3. Start the DAW and rescan VST3 plugins if required.
+
+125A-MixEngine-V3.vst3
+- PreSonus Studio One Mix FX edition.
+- Provides true adjacent-channel Crosstalk in the Mix FX environment.
+
+125A-MixEngine-V3-Channel.vst3
+- Standard VST3 insert edition for tracks, buses and compatible VST3 hosts.
+
+German and English manuals are in the Documentation folder.
+"@ | Set-Content "$root/INSTALL.txt" -Encoding UTF8
+
+          $checksums=Get-ChildItem "$root" -Recurse -File | Sort-Object FullName | ForEach-Object {
+            $hash=(Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            $relative=$_.FullName.Substring((Resolve-Path $root).Path.Length+1).Replace('\','/')
+            "$hash  $relative"
+          }
+          $checksums | Set-Content "$root/CHECKSUMS_SHA256.txt" -Encoding ASCII
+
+          Compress-Archive -Path "$root/*" -DestinationPath $zip -CompressionLevel Optimal
+          if(-not (Test-Path $zip)){throw "Gumroad ZIP not created"}
+
+          Expand-Archive -Path $zip -DestinationPath "dist/extracted" -Force
+          foreach($required in @(
+            "dist/extracted/VST3/125A-MixEngine-V3.vst3",
+            "dist/extracted/VST3/125A-MixEngine-V3-Channel.vst3",
+            "dist/extracted/Documentation/125A_MixEngine_Bedienungsanleitung_DE.pdf",
+            "dist/extracted/Documentation/125A_MixEngine_User_Manual_EN.pdf",
+            "dist/extracted/README.md",
+            "dist/extracted/RELEASE_NOTES.md",
+            "dist/extracted/LICENSE.txt",
+            "dist/extracted/INSTALL.txt",
+            "dist/extracted/CHECKSUMS_SHA256.txt"
+          )){
+            if(-not (Test-Path $required)){throw "Extracted Gumroad package missing: $required"}
+          }
+
+          Write-Host "FINAL V3 Gumroad package/extraction PASS"
+
+      - name: Upload final Gumroad package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad
+          path: dist/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip
+          if-no-files-found: error

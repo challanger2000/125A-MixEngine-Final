@@ -7,6 +7,8 @@ concurrency:
 on:
   push:
     branches: [v3.0.0-development]
+    paths-ignore:
+      - ".github/v3-gumroad-final-trigger"
 
 jobs:
   tape-v3:
