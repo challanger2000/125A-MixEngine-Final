@@ -2,7 +2,7 @@ name: FINAL V2 Gumroad Package
 
 on:
   push:
-    branches: [v2-rebuild-from-final, Demo]
+    branches: [v2-rebuild-from-final]
 
 jobs:
   release:
