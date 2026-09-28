@@ -2,11 +2,10 @@ name: FINAL V2 Gumroad Package
 
 on:
   push:
-    branches: [v2-rebuild-from-final]
+    branches: [v2-rebuild-from-final, Demo]
 
 jobs:
   release:
-    if: github.event.head_commit.message == 'Build FINAL V2 Gumroad package'
     runs-on: windows-2022
     steps:
       - name: Checkout project
@@ -84,9 +83,12 @@ jobs:
       - name: Create Gumroad package
         shell: pwsh
         run: |
-          $root="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad"
+          $root="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-DEMO"
+          $fullRoot="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-FULL"
           New-Item -ItemType Directory -Force -Path "$root/VST3" | Out-Null
           New-Item -ItemType Directory -Force -Path "$root/Documentation" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$fullRoot/VST3" | Out-Null
+          New-Item -ItemType Directory -Force -Path "$fullRoot/Documentation" | Out-Null
 
           $mix=Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine.vst3"|Select-Object -First 1
           $ch=Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3"|Select-Object -First 1
@@ -95,11 +97,20 @@ jobs:
 
           Copy-Item $mix.FullName "$root/VST3/125A-MixEngine-V2.vst3" -Recurse
           Copy-Item $ch.FullName "$root/VST3/125A-MixEngine-V2-Channel.vst3" -Recurse
+          Copy-Item $mix.FullName "$fullRoot/VST3/125A-MixEngine-V2.vst3" -Recurse
+          Copy-Item $ch.FullName "$fullRoot/VST3/125A-MixEngine-V2-Channel.vst3" -Recurse
+          Copy-Item "license/125A_MixEngine.license" "$fullRoot/VST3/125A-MixEngine-V2.vst3/Contents/Resources/125A_MixEngine.license" -Force
+          Copy-Item "license/125A_MixEngine.license" "$fullRoot/VST3/125A-MixEngine-V2-Channel.vst3/Contents/Resources/125A_MixEngine.license" -Force
           Copy-Item "dist/manuals/125A_MixEngine_V2_Bedienungsanleitung_DE.pdf" "$root/Documentation/"
           Copy-Item "dist/manuals/125A_MixEngine_V2_User_Manual_EN.pdf" "$root/Documentation/"
           Copy-Item "README.md" "$root/"
           Copy-Item "RELEASE_NOTES.md" "$root/"
           Copy-Item "LICENSE.txt" "$root/"
+          Copy-Item "dist/manuals/125A_MixEngine_V2_Bedienungsanleitung_DE.pdf" "$fullRoot/Documentation/"
+          Copy-Item "dist/manuals/125A_MixEngine_V2_User_Manual_EN.pdf" "$fullRoot/Documentation/"
+          Copy-Item "README.md" "$fullRoot/"
+          Copy-Item "RELEASE_NOTES.md" "$fullRoot/"
+          Copy-Item "LICENSE.txt" "$fullRoot/"
 
           @"
           125A MixEngine V2 - v2.0.0 - Windows x64
@@ -120,14 +131,25 @@ jobs:
           Complete German and English manuals are in Documentation.
           "@ | Set-Content "$root/INSTALL.txt" -Encoding UTF8
 
-          $zip="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad.zip"
-          if(Test-Path $zip){Remove-Item $zip -Force}
-          Compress-Archive -Path "$root/*" -DestinationPath $zip -CompressionLevel Optimal
-          if(-not (Test-Path $zip)){throw "Gumroad ZIP not created"}
+          Copy-Item "$root/INSTALL.txt" "$fullRoot/INSTALL.txt" -Force
+          $demoZip="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-DEMO.zip"
+          $fullZip="dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-FULL.zip"
+          foreach($z in @($demoZip,$fullZip)){if(Test-Path $z){Remove-Item $z -Force}}
+          Compress-Archive -Path "$root/*" -DestinationPath $demoZip -CompressionLevel Optimal
+          Compress-Archive -Path "$fullRoot/*" -DestinationPath $fullZip -CompressionLevel Optimal
+          if(-not (Test-Path $demoZip)){throw "Demo ZIP not created"}
+          if(-not (Test-Path $fullZip)){throw "Full ZIP not created"}
 
-      - name: Upload Gumroad package
+      - name: Upload DEMO Gumroad package
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad
-          path: dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad.zip
+          name: 125A-MixEngine-V2-v2.0.0-DEMO
+          path: dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-DEMO.zip
+          if-no-files-found: error
+
+      - name: Upload FULL Gumroad package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-V2-v2.0.0-FULL
+          path: dist/125A-MixEngine-V2-v2.0.0-Windows-x64-Gumroad-FULL.zip
           if-no-files-found: error
