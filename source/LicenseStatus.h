@@ -10,7 +10,7 @@
 #include <filesystem>
 #endif
 namespace MixEngine::Licensing {
-inline constexpr std::uint64_t kExpectedLicenseHash=0x2992ddda03ce5bd0ULL;
+inline constexpr std::uint64_t kExpectedLicenseHash=0x1a5428d7a0e8bacdULL;
 inline std::uint64_t fnv1a64(const std::string& text) noexcept {std::uint64_t h=14695981039346656037ULL;for(const unsigned char c:text){h^=static_cast<std::uint64_t>(c);h*=1099511628211ULL;}return h;}
 inline bool isLicensed() noexcept {
 #if defined(_WIN32)
