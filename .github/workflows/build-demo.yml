@@ -1,0 +1,116 @@
+name: Build MixEngine V3 Demo and Full
+
+on:
+  push:
+    branches: [Demo]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Verify GUI layout
+        shell: pwsh
+        run: python scripts/verify_gui_layout.py
+
+      - name: Verify parameter and routing contract
+        shell: pwsh
+        run: python scripts/verify_parameter_contract.py
+
+      - name: Verify Channel architecture contract
+        shell: pwsh
+        run: python scripts/verify_channel_contract.py
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DSMTG_CREATE_PLUGIN_LINK=0
+
+      - name: Build plugins and targeted Demo QA
+        run: >-
+          cmake --build build --config Release --target
+          125A-MixEngine
+          125A-MixEngine-Channel
+          demo-timeline-diagnostic
+          host-matrix-diagnostic
+          sample-accuracy-diagnostic
+          mixfx-sample-accuracy-diagnostic
+          denormal-safety-diagnostic
+          validator
+          --parallel
+
+      - name: Run targeted Demo QA
+        shell: pwsh
+        run: |
+          $tests = @(
+            "demo-timeline-diagnostic",
+            "host-matrix-diagnostic",
+            "sample-accuracy-diagnostic",
+            "mixfx-sample-accuracy-diagnostic",
+            "denormal-safety-diagnostic"
+          )
+          foreach ($name in $tests) {
+            $exe = Get-ChildItem build -Recurse -File -Filter "$name.exe" | Select-Object -First 1
+            if (-not $exe) { throw "$name.exe not found" }
+            Write-Host "===== $name ====="
+            & $exe.FullName
+            if ($LASTEXITCODE -ne 0) { throw "$name failed: $LASTEXITCODE" }
+          }
+
+      - name: Steinberg Validator on Channel
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem build -Recurse -File -Filter "validator.exe" | Select-Object -First 1
+          $plugin = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3" | Select-Object -First 1
+          if (-not $validator) { throw "validator.exe not found" }
+          if (-not $plugin) { throw "125A-MixEngine-Channel.vst3 not found" }
+          & $validator.FullName $plugin.FullName
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg validator failed: $LASTEXITCODE" }
+
+      - name: Stage Demo and Full packages
+        shell: pwsh
+        run: |
+          $mixfx = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-Channel.vst3" | Select-Object -First 1
+          if (-not $mixfx) { throw "125A-MixEngine.vst3 not found" }
+          if (-not $channel) { throw "125A-MixEngine-Channel.vst3 not found" }
+
+          New-Item -ItemType Directory -Force package-demo | Out-Null
+          New-Item -ItemType Directory -Force package-full | Out-Null
+          Copy-Item $mixfx.FullName package-demo -Recurse -Force
+          Copy-Item $channel.FullName package-demo -Recurse -Force
+          Copy-Item $mixfx.FullName package-full -Recurse -Force
+          Copy-Item $channel.FullName package-full -Recurse -Force
+
+          foreach ($bundle in @(
+            "package-full\125A-MixEngine.vst3",
+            "package-full\125A-MixEngine-Channel.vst3"
+          )) {
+            $resources = Join-Path $bundle "Contents\Resources"
+            New-Item -ItemType Directory -Force $resources | Out-Null
+            Copy-Item "license\125A_MixEngine.license" (Join-Path $resources "125A_MixEngine.license") -Force
+          }
+
+      - name: Upload DEMO
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.0-DEMO
+          path: package-demo
+          if-no-files-found: error
+
+      - name: Upload FULL
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.0-FULL
+          path: package-full
+          if-no-files-found: error
