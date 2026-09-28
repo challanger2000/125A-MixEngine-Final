@@ -1,5 +1,6 @@
 #include "HardwareControls.h"
 #include "pluginids.h"
+#include "LicenseStatus.h"
 #include "metering.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
 #include "branding_master.h"
@@ -279,6 +280,13 @@ void HardwareFaceplate::draw(VSTGUI::CDrawContext* context)
                   VSTGUI::CPoint{1258,314},VSTGUI::CPoint{1408,314},
                   VSTGUI::CPoint{1258,750},VSTGUI::CPoint{1408,750}})
         screw(p.x,p.y);
+
+    static const bool demo=!Licensing::isLicensed();
+    if(demo){
+        context->setFont(VSTGUI::kNormalFontSmall);
+        context->setFontColor({245,92,82,255});
+        context->drawString("DEMO",rect(1346,38,54,20),VSTGUI::kRightText);
+    }
 
     setDirty(false);
 }
