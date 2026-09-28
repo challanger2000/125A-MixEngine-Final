@@ -8,6 +8,7 @@
 #include "metering.h"
 #include "meter_exchange.h"
 #include "stereo_field.h"
+#include "DemoTimeline.h"
 #include "public.sdk/source/vst/utility/dataexchange.h"
 #include <array>
 #include <atomic>
@@ -164,6 +165,9 @@ private:
     bool lastMeterOutput_=true;
     bool processing_=false,mixFxEngaged_=false;
     Steinberg::int32 mixFxChannelCount_=0;
+    bool licensed_=false;
+    DemoTimeline demoTimeline_{};
+    std::atomic<std::int64_t> mixFxDemoBlockPhase_{0};
 };
 
 } // namespace MixEngine
