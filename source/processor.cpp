@@ -3,6 +3,7 @@
 #include "media_oversampling_live.h"
 #include "nonlinear_cores.h"
 #include "character_morph.h"
+#include "LicenseStatus.h"
 
 #include "base/source/fstreamer.h"
 #include "pluginterfaces/vst/ivstparameterchanges.h"
@@ -147,7 +148,7 @@ Processor::Processor()
 #ifndef MIXENGINE_CHANNEL_BUILD
 tresult PLUGIN_API Processor::queryInterface(const TUID iid,void** obj){if(!obj)return kInvalidArgument;if(std::memcmp(iid,PresonusMixFx::IAudioMixProcessor::iid,16)==0){*obj=static_cast<PresonusMixFx::IAudioMixProcessor*>(this);AudioEffect::addRef();return kResultOk;}if(std::memcmp(iid,PresonusMixFx::IAudioMixChannelProcessor::iid,16)==0){*obj=static_cast<PresonusMixFx::IAudioMixChannelProcessor*>(this);AudioEffect::addRef();return kResultOk;}return AudioEffect::queryInterface(iid,obj);}
 #endif
-tresult PLUGIN_API Processor::initialize(FUnknown* context){auto result=AudioEffect::initialize(context);if(result!=kResultOk)return result;addAudioInput(STR16("Mix Input"),SpeakerArr::kStereo);addAudioOutput(STR16("Mix Output"),SpeakerArr::kStereo);return kResultOk;}
+tresult PLUGIN_API Processor::initialize(FUnknown* context){auto result=AudioEffect::initialize(context);if(result!=kResultOk)return result;addAudioInput(STR16("Mix Input"),SpeakerArr::kStereo);addAudioOutput(STR16("Mix Output"),SpeakerArr::kStereo);licensed_=Licensing::isLicensed();return kResultOk;}
 tresult PLUGIN_API Processor::connect(IConnectionPoint* other){auto result=AudioEffect::connect(other);meterExchange_.onConnect(other,getHostContext());return result;}
 tresult PLUGIN_API Processor::disconnect(IConnectionPoint* other){meterExchange_.onDisconnect(other);return AudioEffect::disconnect(other);}
 tresult PLUGIN_API Processor::setBusArrangements(SpeakerArrangement* inputs,int32 numIns,SpeakerArrangement* outputs,int32 numOuts){if(numIns!=1||numOuts!=1||!inputs||!outputs)return kResultFalse;if(inputs[0]!=SpeakerArr::kMono&&inputs[0]!=SpeakerArr::kStereo)return kResultFalse;if(outputs[0]!=inputs[0])return kResultFalse;return AudioEffect::setBusArrangements(inputs,numIns,outputs,numOuts);}
@@ -163,7 +164,7 @@ tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){sampleRate_=s
  mixFxBlockStartParams_=params_;
  mixFxAutomationSamples_=0;
 #endif
- resetConsoleState();return AudioEffect::setupProcessing(setup);}
+ demoTimeline_.configure(sampleRate_,licensed_);mixFxDemoBlockPhase_.store(0,std::memory_order_relaxed);resetConsoleState();return AudioEffect::setupProcessing(setup);}
 tresult PLUGIN_API Processor::setActive(TBool state){
  if(state){resetConsoleState();meterExchange_.onActivate(processSetup);}
  else{processing_=false;meterExchange_.onDeactivate();}
@@ -407,6 +408,11 @@ double Processor::mixFxCrosstalkSource(int32 targetIndex,int32 lane,int32 sample
 }
 tresult PLUGIN_API Processor::setMixChannelArrangements(SpeakerArrangement* arrangements,int32 count){if(count<0||count>kMaxMixFxChannels)return kInvalidArgument;if(count>0&&!arrangements)return kInvalidArgument;for(int32 i=0;i<count;++i){if(arrangements[i]!=SpeakerArr::kMono&&arrangements[i]!=SpeakerArr::kStereo)return kResultFalse;}mixFxEngaged_=true;mixFxChannelCount_=count;prepareMixFxSnapshotBuffers();resetConsoleState();syncMixFxTargets();return kResultOk;}
 tresult PLUGIN_API Processor::processMixControl(ProcessData* data){
+ if(data&&data->numSamples>0){
+  const auto demoPhase=demoTimeline_.phase();
+  mixFxDemoBlockPhase_.store(demoPhase,std::memory_order_release);
+  demoTimeline_.advance(data->numSamples);
+ }
  if(data){
   // Preserve the values that are active at the first sample of this Mix FX
   // block, then copy every host automation point before committing the final
@@ -673,6 +679,12 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   }
  }else return kResultFalse;
 
+ const auto demoPhase=mixFxDemoBlockPhase_.load(std::memory_order_acquire);
+ if(data.symbolicSampleSize==kSample32)
+  demoTimeline_.processAtPhase(outBus.channelBuffers32,channels,data.numSamples,demoPhase);
+ else
+  demoTimeline_.processAtPhase(outBus.channelBuffers64,channels,data.numSamples,demoPhase);
+
  inputMeter.publish();
  outputMeter.publish();
  outBus.silenceFlags=0;
@@ -927,6 +939,11 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             }
         }
     }else return kResultFalse;
+
+    if(data.symbolicSampleSize==kSample32)
+        demoTimeline_.processAndAdvance(outBus.channelBuffers32,channels,data.numSamples);
+    else
+        demoTimeline_.processAndAdvance(outBus.channelBuffers64,channels,data.numSamples);
 
     inputMeter_.publish();
     outputMeter_.publish();
