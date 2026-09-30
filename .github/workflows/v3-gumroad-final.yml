@@ -1,9 +1,6 @@
 name: FINAL V3 Gumroad Package
 
 on:
-  push:
-    branches:
-      - v3.0.0-development
   workflow_dispatch:
 
 jobs:
