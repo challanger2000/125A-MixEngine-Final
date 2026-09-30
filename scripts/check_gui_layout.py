@@ -29,7 +29,7 @@ EXPECTED_CENTERS = {
     "LabelVUSource": 720.0, "VUSourceSelector": 720.0, "LabelVURef": 720.0,
     "LabelMixTitle": 1323.0, "LabelQuality": 1323.0, "QualitySelector": 1323.0,
     "LabelBypass": 1323.0, "Bypass": 1323.0,
-    "VULeft": 480.0, "VURight": 960.0,
+    "VULeft": 450.0, "VURight": 990.0,
 }
 
 def point(value):
@@ -65,10 +65,10 @@ for path in FILES:
             raise SystemExit(f"{path}: {name} centre {actual} != exact {expected}")
 
     for name, expected_box in {
-        "VULeft": (320.0, 35.0, 320.0, 216.0),
-        "ClipL": (608.0, 58.0, 14.0, 14.0),
-        "VURight": (800.0, 35.0, 320.0, 216.0),
-        "ClipR": (1088.0, 58.0, 14.0, 14.0),
+        "VULeft": (290.0, 35.0, 320.0, 216.0),
+        "ClipL": (578.0, 58.0, 14.0, 14.0),
+        "VURight": (830.0, 35.0, 320.0, 216.0),
+        "ClipR": (1118.0, 58.0, 14.0, 14.0),
         "ConsoleModeSelector": (186.0, 578.0, 164.0, 42.0),
     }.items():
         if views[name] != expected_box:
