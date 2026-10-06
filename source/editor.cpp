@@ -13,7 +13,7 @@ Steinberg::IPlugView* PLUGIN_API Controller::createView(Steinberg::FIDString nam
 #else
         auto* editor=new VSTGUI::VST3Editor(this, "view", "mixengine.uidesc");
 #endif
-        editor->setAllowedZoomFactors({0.75,1.0,1.25,1.5});
+        editor->setAllowedZoomFactors({0.75,0.90,1.0,1.25,1.5});
         return editor;
     }
     return nullptr;
