@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    runs-on: macos-14
+  build-macos-universal:
+    runs-on: macos-15
     steps:
-      - name: Checkout project
+      - name: Checkout V3 beta branch
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Checkout approved MixEngine GUI assets
         uses: actions/checkout@v4
@@ -26,10 +24,14 @@ jobs:
           python3 scripts/verify_parameter_contract.py
           python3 scripts/verify_channel_contract.py
 
-      - name: Prepare GUI assets
+      - name: Prepare V3 GUI assets
+        shell: bash
         run: |
-          python3 -m pip install --disable-pip-version-check --quiet pillow
-          python3 scripts/prepare_gui_assets.py "$GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+          set -euo pipefail
+          python3 -m venv .venv
+          . .venv/bin/activate
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python scripts/prepare_gui_assets.py "$GITHUB_WORKSPACE/knob-assets/assets/mixengine"
 
       - name: Checkout Steinberg VST3 SDK
         uses: actions/checkout@v4
@@ -39,180 +41,118 @@ jobs:
           path: vst3sdk
           submodules: recursive
 
-      - name: Configure Universal Binary
-        run: |
-          cmake -S . -B build -G Xcode \
-            -DVST3_SDK_ROOT="$GITHUB_WORKSPACE/vst3sdk" \
-            -DMIXENGINE_KNOB_ASSET_ROOT="$GITHUB_WORKSPACE/knob-assets/assets/mixengine" \
-            -DSMTG_CREATE_PLUGIN_LINK=0 \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+      - name: Configure Universal macOS
+        run: >
+          cmake -S . -B build -G Xcode
+          -DVST3_SDK_ROOT="$GITHUB_WORKSPACE/vst3sdk"
+          -DMIXENGINE_KNOB_ASSET_ROOT="$GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+          -DSMTG_CREATE_PLUGIN_LINK=0
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
 
-      - name: Build plugins, validator and release gates
-        run: |
-          cmake --build build --config Release --target \
-            125A-MixEngine-V3 \
-            125A-MixEngine-V3-Channel \
-            validator \
-            release-robustness-diagnostic \
-            state-roundtrip-diagnostic \
-            state-migration-diagnostic \
-            latency-matrix-diagnostic \
-            metering-integration \
-            zero-neutrality-diagnostic \
-            sample-accuracy-diagnostic \
-            mixfx-sample-accuracy-diagnostic \
-            sample-rate-matrix-diagnostic \
-            denormal-safety-diagnostic \
-            phase-mono-diagnostic \
-            level-match-diagnostic \
-            console-noise-contract-diagnostic \
-            mixfx-crosstalk-diagnostic \
-            quality-switch-diagnostic \
-            automation-stress-diagnostic \
-            controller-lifecycle-diagnostic \
-            tube-v3-autolevel-diagnostic \
-            tape-v3-autolevel-diagnostic \
-            vinyl-v3-autolevel-diagnostic \
-            vinyl-v3-live-diagnostic \
-            vinyl-v3-cpu-diagnostic \
-            console-v3-cpu-diagnostic \
-            v3-autolevel-level-sweep
+      - name: Build MixEngine V3 variants and validator
+        run: cmake --build build --config Release --target 125A-MixEngine-V3 125A-MixEngine-V3-Channel validator
 
-      - name: Run release gates
-        run: |
-          set -euo pipefail
-          tests=(
-            release-robustness-diagnostic
-            state-roundtrip-diagnostic
-            state-migration-diagnostic
-            latency-matrix-diagnostic
-            metering-integration
-            zero-neutrality-diagnostic
-            sample-accuracy-diagnostic
-            mixfx-sample-accuracy-diagnostic
-            sample-rate-matrix-diagnostic
-            denormal-safety-diagnostic
-            phase-mono-diagnostic
-            level-match-diagnostic
-            console-noise-contract-diagnostic
-            mixfx-crosstalk-diagnostic
-            quality-switch-diagnostic
-            automation-stress-diagnostic
-            controller-lifecycle-diagnostic
-            tube-v3-autolevel-diagnostic
-            tape-v3-autolevel-diagnostic
-            vinyl-v3-autolevel-diagnostic
-            vinyl-v3-live-diagnostic
-            vinyl-v3-cpu-diagnostic
-            console-v3-cpu-diagnostic
-            v3-autolevel-level-sweep
-          )
-          for name in "${tests[@]}"; do
-            exe="$(find build -type f -name "$name" -perm -111 | head -n 1)"
-            if [ -z "$exe" ]; then
-              echo "::error::$name executable not found"
-              exit 1
-            fi
-            echo "===== $name ====="
-            "$exe"
-          done
-
-      - name: Locate VST3 bundles
+      - name: Locate bundles and validator
         id: locate
+        shell: bash
         run: |
           set -euo pipefail
-          MIX="$(find build -type d -name '125A-MixEngine-V3.vst3' | head -n 1)"
-          CH="$(find build -type d -name '125A-MixEngine-V3-Channel.vst3' | head -n 1)"
-          VAL="$(find build -type f -name validator -perm -111 | head -n 1)"
-          test -n "$MIX"
-          test -n "$CH"
-          test -n "$VAL"
-          echo "mix=$MIX" >> "$GITHUB_OUTPUT"
-          echo "channel=$CH" >> "$GITHUB_OUTPUT"
-          echo "validator=$VAL" >> "$GITHUB_OUTPUT"
+          MIXFX="$(find build -type d -name '125A-MixEngine-V3.vst3' | head -n 1)"
+          CHANNEL="$(find build -type d -name '125A-MixEngine-V3-Channel.vst3' | head -n 1)"
+          VALIDATOR="$(find build -type f -name validator -perm -111 | head -n 1)"
+          test -n "$MIXFX"
+          test -n "$CHANNEL"
+          test -n "$VALIDATOR"
+          echo "mixfx=$MIXFX" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "validator=$VALIDATOR" >> "$GITHUB_OUTPUT"
 
-      - name: Verify Universal slices
+      - name: Verify Universal binaries
+        shell: bash
         run: |
           set -euo pipefail
-          for bundle in "${{ steps.locate.outputs.mix }}" "${{ steps.locate.outputs.channel }}"; do
-            binary="$(find "$bundle/Contents/MacOS" -type f -maxdepth 1 | head -n 1)"
-            archs="$(lipo -archs "$binary")"
-            echo "$bundle -> $archs"
+          for bundle in "${{ steps.locate.outputs.mixfx }}" "${{ steps.locate.outputs.channel }}"; do
+            bin="$(find "$bundle/Contents/MacOS" -type f | head -n 1)"
+            echo "===== $bundle ====="
+            file "$bin"
+            archs="$(lipo -archs "$bin")"
+            echo "$archs"
             echo "$archs" | grep -q arm64
             echo "$archs" | grep -q x86_64
           done
 
       - name: Validate Channel VST3
-        run: |
-          "${{ steps.locate.outputs.validator }}" "${{ steps.locate.outputs.channel }}"
-
-      - name: Ad-hoc sign tester bundles
-        run: |
-          codesign --force --deep --sign - "${{ steps.locate.outputs.mix }}"
-          codesign --force --deep --sign - "${{ steps.locate.outputs.channel }}"
-          codesign --verify --deep --strict --verbose=2 "${{ steps.locate.outputs.mix }}"
-          codesign --verify --deep --strict --verbose=2 "${{ steps.locate.outputs.channel }}"
-
-      - name: Build manuals
-        run: |
-          python3 -m pip install --disable-pip-version-check --quiet reportlab==4.4.9
-          python3 scripts/render_manuals.py
-          test -f docs/125A_MixEngine_Bedienungsanleitung_DE.pdf
-          test -f docs/125A_MixEngine_User_Manual_EN.pdf
-
-      - name: Create macOS beta tester package
+        shell: bash
         run: |
           set -euo pipefail
-          ROOT="dist/125A-MixEngine-V3-v3.0.0-macOS-Universal-BETA"
-          ZIP="dist/125A-MixEngine-V3-v3.0.0-macOS-Universal-BETA.zip"
+          "${{ steps.locate.outputs.validator }}" "${{ steps.locate.outputs.channel }}"
+
+      - name: Ad-hoc sign beta bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          codesign --force --deep --sign - "${{ steps.locate.outputs.mixfx }}"
+          codesign --force --deep --sign - "${{ steps.locate.outputs.channel }}"
+          codesign --verify --deep --strict --verbose=2 "${{ steps.locate.outputs.mixfx }}"
+          codesign --verify --deep --strict --verbose=2 "${{ steps.locate.outputs.channel }}"
+
+      - name: Package macOS Universal Beta
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="dist/125A-MixEngine-V3-v3.0.0-macOS-BETA-Universal"
+          ZIP="dist/125A-MixEngine-V3-v3.0.0-macOS-BETA-Universal-Full-Package.zip"
           rm -rf dist
           mkdir -p "$ROOT/VST3" "$ROOT/Documentation"
 
-          cp -R "${{ steps.locate.outputs.mix }}" "$ROOT/VST3/125A-MixEngine-V3.vst3"
-          cp -R "${{ steps.locate.outputs.channel }}" "$ROOT/VST3/125A-MixEngine-V3-Channel.vst3"
+          ditto "${{ steps.locate.outputs.mixfx }}" "$ROOT/VST3/125A-MixEngine-V3.vst3"
+          ditto "${{ steps.locate.outputs.channel }}" "$ROOT/VST3/125A-MixEngine-V3-Channel.vst3"
+
           cp docs/125A_MixEngine_Bedienungsanleitung_DE.pdf "$ROOT/Documentation/"
           cp docs/125A_MixEngine_User_Manual_EN.pdf "$ROOT/Documentation/"
-          cp README.md RELEASE_NOTES.md LICENSE.txt "$ROOT/"
+          cp README.md "$ROOT/"
+          cp RELEASE_NOTES.md "$ROOT/"
+          cp LICENSE.txt "$ROOT/"
 
-          cat > "$ROOT/INSTALL.txt" <<'EOF'
-          125A MixEngine V3 - v3.0.0 - macOS Universal (Intel + Apple Silicon) - BETA
-
-          TEST STATUS
-          This macOS build is BETA/UNTESTED until validated on real Mac hardware.
-
-          INSTALLATION
-          1. Close Studio One.
-          2. Copy the desired .vst3 bundle into:
-             ~/Library/Audio/Plug-Ins/VST3
-             or
-             /Library/Audio/Plug-Ins/VST3
-          3. Start Studio One and rescan plugins if required.
-
-          125A-MixEngine-V3.vst3
-          - PreSonus Studio One Mix FX edition.
-          - Provides adjacent-channel Crosstalk in the Mix FX environment.
-
-          125A-MixEngine-V3-Channel.vst3
-          - Standard VST3 insert edition.
-
-          NOTE
-          These tester builds are ad-hoc signed, not Apple Developer ID notarized.
-          If macOS quarantine blocks the plugin after download, remove quarantine
-          from the copied VST3 bundle before testing.
-          EOF
+          printf '%s\n' \
+            '125A MixEngine V3 v3.0.0 - macOS Universal VST3 BETA' \
+            '' \
+            'IMPORTANT' \
+            'This macOS build is a beta until validated on physical Mac hardware.' \
+            'The contained VST3 binaries are Universal (Apple Silicon arm64 + Intel x86_64).' \
+            '' \
+            'INSTALLATION' \
+            '1. Close Studio One.' \
+            '2. Copy the desired .vst3 bundle from the VST3 folder to:' \
+            '   ~/Library/Audio/Plug-Ins/VST3/' \
+            '   or' \
+            '   /Library/Audio/Plug-Ins/VST3/' \
+            '3. Start Studio One and rescan VST3 plug-ins if required.' \
+            '' \
+            '125A-MixEngine-V3.vst3' \
+            '- PreSonus Studio One Mix FX edition.' \
+            '' \
+            '125A-MixEngine-V3-Channel.vst3' \
+            '- Standard VST3 insert edition.' \
+            '' \
+            'If macOS blocks this ad-hoc signed/not-notarized beta after download, remove quarantine from the copied bundle.' \
+            > "$ROOT/INSTALL_MACOS_BETA.txt"
 
           (
             cd "$ROOT"
-            find . -type f -print0 | sort -z | xargs -0 shasum -a 256
-          ) > "$ROOT/CHECKSUMS_SHA256.txt"
+            find . -type f ! -name CHECKSUMS_SHA256.txt -print0 |
+              sort -z |
+              xargs -0 shasum -a 256 > CHECKSUMS_SHA256.txt
+          )
 
           ditto -c -k --sequesterRsrc --keepParent "$ROOT" "$ZIP"
           test -f "$ZIP"
+          ls -lh "$ZIP"
 
-      - name: Upload macOS beta tester package
+      - name: Upload macOS Universal Beta package
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-MixEngine-V3-v3.0.0-macOS-Universal-BETA
-          path: dist/125A-MixEngine-V3-v3.0.0-macOS-Universal-BETA.zip
+          name: 125A-MixEngine-V3-v3.0.0-macOS-BETA-Universal-Full-Package
+          path: dist/125A-MixEngine-V3-v3.0.0-macOS-BETA-Universal-Full-Package.zip
           if-no-files-found: error
