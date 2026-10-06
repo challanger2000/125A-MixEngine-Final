@@ -3,6 +3,7 @@
 #include "vstgui/lib/controls/cknob.h"
 #include "vstgui/lib/controls/cbuttons.h"
 #include "vstgui/lib/controls/ccontrol.h"
+#include "vstgui/lib/cbitmap.h"
 #include "vstgui/lib/cview.h"
 #include <string>
 #include <vector>
@@ -30,22 +31,25 @@ public:
 class HardwareKnob final : public VSTGUI::CAnimKnob {
 public:
     enum class Style { Large, Medium, Small };
-    HardwareKnob(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, Style style);
+    HardwareKnob(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, Style style, VSTGUI::CBitmap* filmstrip);
     HardwareKnob(const HardwareKnob& other);
-    ~HardwareKnob() override = default;
+    ~HardwareKnob() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareKnob(*this); }
     void draw(VSTGUI::CDrawContext* context) override;
 private:
     Style style_;
+    VSTGUI::CBitmap* filmstrip_ {nullptr};
 };
 
 class HardwareToggle final : public VSTGUI::COnOffButton {
 public:
-    HardwareToggle(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, bool ledLeft=false, bool moduleLedAbove=false, bool blueLed=false);
+    HardwareToggle(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* filmstrip, bool ledLeft=false, bool moduleLedAbove=false, bool blueLed=false);
     HardwareToggle(const HardwareToggle& other);
+    ~HardwareToggle() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareToggle(*this); }
     void draw(VSTGUI::CDrawContext* context) override;
 private:
+    VSTGUI::CBitmap* filmstrip_ {nullptr};
     bool ledLeft_ {false};
     bool moduleLedAbove_ {false};
     bool blueLed_ {false};
@@ -88,10 +92,14 @@ private:
 
 class HardwareVUMeter final : public VSTGUI::CControl {
 public:
-    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag);
+    HardwareVUMeter(const VSTGUI::CRect& size, VSTGUI::IControlListener* listener, int32_t tag, VSTGUI::CBitmap* face, VSTGUI::CBitmap* cover);
     HardwareVUMeter(const HardwareVUMeter& other);
+    ~HardwareVUMeter() override;
     VSTGUI::CBaseObject* newCopy() const override { return new HardwareVUMeter(*this); }
     void draw(VSTGUI::CDrawContext* context) override;
+private:
+    VSTGUI::CBitmap* filmstrip_ {nullptr};
+    VSTGUI::CBitmap* cover_ {nullptr};
 };
 
 class HardwareClipLed final : public VSTGUI::CControl {

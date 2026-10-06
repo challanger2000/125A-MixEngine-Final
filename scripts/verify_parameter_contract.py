@@ -240,11 +240,8 @@ critical = [
     "outputSource?outputMeter_:inputMeter_",
     "mixFxMeterSource_.load(std::memory_order_relaxed)>=0.5",
     "widthGain=2.0*std::clamp",
-    "mixFxWidth_.load",
     "params_[kParamWidth]",
-    "mixFxDepth_.load",
     "params_[kParamDepth]",
-    "mixFxLowMono_.load",
     "params_[kParamLowMono]",
     "processStereoFieldSample",
     "stereoDepthGain(depthBipolar)",
@@ -253,6 +250,17 @@ critical = [
 for needle in critical:
     if needle not in processor:
         fail(f"critical DSP routing token missing: {needle}")
+
+# The sample-accurate Mix FX path intentionally consumes per-block localParams
+# snapshots instead of atomics inside the audio loop. Keep accepting both the
+# old atomic form and the current sample-accurate routing form.
+for atomic_token, local_token in [
+    ("mixFxWidth_.load", "localParams[kParamWidth]"),
+    ("mixFxDepth_.load", "localParams[kParamDepth]"),
+    ("mixFxLowMono_.load", "localParams[kParamLowMono]"),
+]:
+    if atomic_token not in processor and local_token not in processor:
+        fail(f"critical DSP routing missing: {atomic_token} or {local_token}")
 # Crosstalk is a real Mix FX-only channel-to-channel feature. The standard
 # Channel build keeps ID 7 hidden for state ABI compatibility and must not use it.
 for needle in (
@@ -278,14 +286,21 @@ if processor.count("processStereoFieldSample(") != 2:
     fail("normal and Mix FX paths are not both using the shared stereo stage")
 if "2500.0/sampleRate_" in processor or "0.25*depthBipolar" in processor:
     fail("legacy weak DEPTH equation returned")
-if "return processTubeNonlinearCore(x,type,amount);" not in processor:
-    fail("live Tube path is no longer routed through the tested shared core")
+tube_wrapper_line = "double Processor::processTubeSample(double x,TubeChannelState& state,double typeMorph,double amount,int osFactor){return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);}"
+if tube_wrapper_line not in processor:
+    fail("live Tube wrapper is no longer routed through the V3 Tube model")
+if processor.count("processTubeSample(") < 5:
+    fail("normal and Mix FX paths are not both routed through the shared Tube wrapper")
 if processor.count("outBus.silenceFlags=0;") < 2:
     fail("normal and Mix FX paths are not both conservative about output silence metadata")
 
 # 9) VU telemetry and face must use one calibrated non-linear scale.
 if "vuScaleNormalizedFromDb" not in metering:
     fail("shared calibrated VU scale mapping missing")
+if "kSineRmsOffsetDb = -3.010299956639812" not in metering:
+    fail("VU sine RMS/peak reference calibration missing")
+if "const double needleAngle=(220.0+100.0*value)*kPi/180.0;" not in hardware:
+    fail("loaded bitmap VU needle mapping changed")
 for needle in [
     "vuScaleNormalizedFromDb(static_cast<double>(db))",
     "vuScaleNormalizedFromDb(mark.db)",
@@ -297,6 +312,13 @@ for needle in [
         fail(f"VU face/needle calibration token missing: {needle}")
 if "218.0+104.0*value" in hardware:
     fail("legacy mismatched VU needle angle returned")
+
+# FINAL v1.1.0 safeguards that V2 must preserve.
+if processor.count("inputMatchGain=autoGainOn?1.0/inputGain:1.0;") < 2:
+    fail("FINAL Input Match compensation was not preserved in both processing paths")
+for needle in ("compressionEnvelope", "magneticMemory", "transformerMemory", "stylusMemory"):
+    if needle not in processor and needle not in processor_h:
+        fail(f"merged FINAL/V2 DSP state missing: {needle}")
 
 print(f"Parameter/routing contract PASS: {len(EXPECTED_PARAMS)} stored parameters, "
       f"{len(EXPECTED_GUI)} GUI controls, {len(EXPECTED_MIXFX)} Mix FX mirrors")

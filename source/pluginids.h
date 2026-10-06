@@ -5,11 +5,12 @@
 
 namespace MixEngine {
 
-static const Steinberg::FUID kProcessorUID (0x4A17C2D3, 0x8E5F41B0, 0x9C2A63E1, 0x715A9B44);
-static const Steinberg::FUID kControllerUID (0xB8D2517E, 0x3C6A4D92, 0xA1475E20, 0x6F39C8B1);
+// V3 uses distinct class IDs so V2 and V3 can be installed and loaded side by side.
+static const Steinberg::FUID kProcessorUID (0xDB6E7D25, 0x92A85E13, 0x877AD5B4, 0xDA4C1D37);
+static const Steinberg::FUID kControllerUID (0xD7581724, 0xFC9C5CD5, 0xA1EEAA60, 0xB43EA4C7);
 
-static const Steinberg::FUID kChannelProcessorUID (0x0F9EFCF3, 0x80C94604, 0xB58940B8, 0x6D6B13E9);
-static const Steinberg::FUID kChannelControllerUID (0xC39D1F81, 0x1058489F, 0x9B925AA3, 0xAB9BBB69);
+static const Steinberg::FUID kChannelProcessorUID (0xB667A41A, 0x93E15E40, 0x97A44D18, 0xF0989B14);
+static const Steinberg::FUID kChannelControllerUID (0xF8A45740, 0xB085582A, 0x8F4AF5EA, 0xE4A9A3BD);
 
 enum ParamIDs : Steinberg::Vst::ParamID {
     kParamBypass = 0,

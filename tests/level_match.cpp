@@ -209,12 +209,11 @@ int main(){
                          <<" ON="<<onDb<<" dB"
                          <<" improvement="<<(std::abs(offDb)-std::abs(onDb))<<" dB\n";
 
-                // Level Match is deliberately fixed/transparent rather than a
-                // dynamic loudness normalizer. It should nevertheless move the
-                // representative RMS level toward unity, and stay within a
-                // conservative +/-2.5 dB window at these production settings.
-                if(std::abs(onDb)>2.5)ok=false;
-                if(std::abs(onDb)>std::abs(offDb)+0.25)ok=false;
+                // V3 Level Match is a slow programme-energy compensation stage.
+                // It must remove obvious loudness bias without behaving like a
+                // fast compressor. On this mixed-spectrum fixture, each module
+                // and the full chain must settle close enough for fair A/B use.
+                if(std::abs(onDb)>0.75)ok=false;
             }
         }
 

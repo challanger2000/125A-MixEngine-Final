@@ -1,45 +1,46 @@
 # Release Notes
 
-## 125A MixEngine v1.1.0 - 2026-09-22
+## 125A MixEngine V3 v3.0.0 - 2026-09-26
 
-### Tube / Tape refinement
+### DSP / sound engine
 
-- Tube and Tape now retain a subtle hardware-like base character when the module is enabled at 0% Amount.
-- Amount controls now span from subtle coloration to substantially stronger character at 100%.
-- Tube and Tape Level Match compensation was recalibrated against the refined DSP.
-- Input Level Match now compensates the linear input-gain component while preserving nonlinear drive into the processing chain.
-- Tape processing retains independent Hiss control and correct oversampling/latency participation at 0% Amount.
-- Channel and Mix FX editions use the same updated DSP core.
+- New V3 Console, Tube, Tape and Vinyl processing with higher-detail nonlinear modelling.
+- Preserves the established MixEngine signal flow:
+  `INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT`.
+- True 0% neutral points remain enforced for intensity controls.
+- Quality modes remain Eco 1x / Normal 2x / High 4x.
+- Mix FX Crosstalk remains true adjacent-channel, lane-preserving and callback-order independent.
+- Level Match remains fixed, parameter-dependent compensation rather than an adaptive loudness normalizer.
+- VU reference calibration is corrected so a DAW sine set to -18 / -14 / -10 dBFS lands at 0 VU for the selected reference.
 
-### Validation
+### Host / automation / stability
 
-- Steinberg Validator: 47/47 tests passed.
-- Full DSP diagnostics passed, including Tube/Tape oversampling, aliasing, fixed 21-sample latency, phase/mono behaviour, Level Match, automation stress, and exact Channel/Mix FX DSP parity.
-- Measured Level Match at the production test point: Tube +0.0013 dB, Tape -0.0049 dB, full chain -0.0685 dB.
+- Standard VST3 and Mix FX automation are applied at host-supplied sample offsets.
+- Fixed host latency per sample rate, independent of module state, Quality and Bypass:
+  - 44.1 kHz: 28 samples
+  - 48 kHz: 29 samples
+  - 96 kHz: 36 samples
+  - 192 kHz: 50 samples
+- Complete V3 state roundtrip and V2/intermediate migration matrix verified.
+- Offline/realtime parity, lifecycle/restart, non-finite recovery and denormal safety verified.
+- Mono/stereo, float32/float64 and sample-rate matrices verified.
 
-## 125A MixEngine v1.0.0 - 2026-09-19
+### GUI
 
-Initial commercial release candidate/final source baseline.
-
-### Included
-
-- PreSonus Studio One Mix FX edition
-- Standard Windows x64 VST3 Channel edition
-- shared modular DSP chain: Console, Tube, Tape, Glue, Vinyl, Stereo
-- true adjacent-channel Mix FX Crosstalk
-- independent Console Noise, Tape Hiss and Vinyl Surface
-- three reference levels and VU source selection
-- 1x / 2x / 4x quality modes
-- fixed 21-sample reported latency
-- procedural VSTGUI with 75/100/125/150% UI scaling
-- German and English PDF manuals
-
-### Final Console Drive correction
-
-Console Drive was recalibrated before release so that **0% is a true identity point in the nonlinear core**. Saturation, peak rounding and density now increase progressively with Drive instead of being strongly present at the zero position.
-
-A dedicated diagnostic permanently guards this behaviour.
+- New 125A hardware-style V3 interface with raised blue module plates on a dark chassis.
+- High-resolution Vernier and gunmetal controls.
+- Restored 125A VU artwork with calibrated live needle.
+- Integrated CLIP jewel indicators.
+- 75 / 100 / 125 / 150% UI scaling.
+- Final layout and asset geometry guarded by automated QA.
 
 ### Validation
 
-The final validation suite covers DSP finiteness, oversampling, alias behaviour, latency, metering, mono/phase behaviour, Channel/Mix FX parity, Level Match, automation stress, real adjacent-channel Crosstalk, GUI contracts and the Steinberg validator for the Channel edition.
+- Steinberg VST3 Validator: 47 tests passed, 0 failed on the standard Channel build.
+- Full V3 Research Diagnostics passed.
+- Channel/Mix FX latency and DSP parity diagnostics passed.
+- Sample-accurate automation, crosstalk, metering, auto-level, CPU scaling, aliasing, state, phase/mono, program-material and robustness diagnostics passed.
+
+## 125A MixEngine V2 v2.0.0 - 2026-09-24
+
+Previous production generation.

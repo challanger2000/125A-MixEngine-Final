@@ -1,0 +1,186 @@
+name: V3 Research Diagnostics
+
+concurrency:
+  group: v3-research-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [v3.0.0-development]
+    paths-ignore:
+      - ".github/v3-gumroad-final-trigger"
+      - ".github/workflows/v3-gumroad-final.yml"
+
+jobs:
+  tape-v3:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+
+      - name: Checkout approved MixEngine GUI assets
+        uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Knob-Designer
+          ref: c09cff5d958969eb025fe09255173e65103deae9
+          path: knob-assets
+          fetch-depth: 1
+
+      - name: Verify approved MixEngine GUI assets
+        shell: pwsh
+        run: |
+          $root = "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+          $required = @(
+            "knobs/125A_MixEngine_Vernier_L_384px_300pct_128f.png",
+            "knobs/125A_MixEngine_Small_Gunmetal_384px_300pct_128f.png",
+            "hardware/125A_MixEngine_Push_Button_64px_100pct_3states.png",
+            "hardware/125A_MixEngine_Push_Button_96px_150pct_3states.png",
+            "hardware/125A_MixEngine_Push_Button_128px_200pct_3states.png",
+            "hardware/125A_MixEngine_Push_Button_192px_300pct_3states.png",
+            "meters/125A_MixEngine_VU_Face_400x270px_Master.png"
+          )
+          foreach ($name in $required) {
+            $path = Join-Path $root $name
+            if (-not (Test-Path $path -PathType Leaf)) { throw "Missing approved GUI asset: $path" }
+          }
+          Write-Host "MixEngine V3 GUI prototype assets: $($required.Count)/$($required.Count) present"
+
+      - name: Verify GUI XML and exact layout geometry
+        shell: pwsh
+        run: python scripts/check_gui_layout.py resource/mixengine.uidesc resource/mixengine_channel.uidesc
+
+      - name: Verify parameter and Channel contracts
+        shell: pwsh
+        run: |
+          python scripts/verify_parameter_contract.py
+          python scripts/verify_channel_contract.py
+
+      - name: Prepare high-resolution GUI atlases
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python scripts/prepare_gui_assets.py "$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine"
+
+      - name: Checkout Steinberg VST3 SDK
+        uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          path: vst3sdk
+          submodules: recursive
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:GITHUB_WORKSPACE/vst3sdk" -DMIXENGINE_KNOB_ASSET_ROOT="$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine" -DSMTG_CREATE_PLUGIN_LINK=0
+
+      - name: Build tape V3 diagnostics
+        shell: pwsh
+        run: cmake --build build --config Release --target 125A-MixEngine-V3 125A-MixEngine-V3-Channel oversampling-roundtrip oversampling-alias tube-oversampling media-oversampling console-core-equivalence console-tube-island console-tube-ordering oversampling-latency metering-diagnostic metering-integration processor-latency-integration phase-mono-diagnostic host-matrix-diagnostic state-roundtrip-diagnostic state-migration-diagnostic release-robustness-diagnostic latency-matrix-diagnostic zero-neutrality-diagnostic quality-switch-diagnostic automation-stress-diagnostic parameter-transition-diagnostic sample-accuracy-diagnostic range-philosophy-diagnostic stereo-field-diagnostic glue-transient-diagnostic vinyl-material-diagnostic tape-memory-diagnostic tape-hiss-contract-diagnostic secondary-controls-diagnostic console-character-diagnostic console-vintage-memory-diagnostic character-morph-diagnostic sonic-impact-diagnostic program-material-diagnostic sample-rate-matrix-diagnostic level-match-diagnostic console-noise-contract-diagnostic denormal-safety-diagnostic tape-v3-autolevel-diagnostic console-v3-research-diagnostic mixfx-console-v3-diagnostic console-v3-alias-diagnostic console-v3-adaa-diagnostic console-v3-adaa-production-gate console-v3-prepared-adaa-diagnostic console-v3-prepared-cpu-diagnostic console-v3-correction-adaa-diagnostic console-v3-residual-adaa-diagnostic console-v3-correction-adaa2-diagnostic console-v3-cpu-diagnostic mixfx-crosstalk-diagnostic mixfx-sample-accuracy-diagnostic tube-v3-research-diagnostic tube-v3-autolevel-diagnostic tape-v3-research-diagnostic tape-v3-ja-oracle-diagnostic tape-v3-sample-rate-diagnostic vinyl-v3-tracing-oracle-diagnostic vinyl-v3-surrogate-diagnostic vinyl-v3-alias-diagnostic vinyl-v3-live-diagnostic vinyl-v3-autolevel-diagnostic vinyl-v3-cpu-diagnostic v3-autolevel-level-sweep controller-lifecycle-diagnostic
+
+      - name: Verify V3 side-by-side identity
+        shell: pwsh
+        run: |
+          $ids = Get-Content "source/pluginids.h" -Raw
+          $mixFactory = Get-Content "source/factory.cpp" -Raw
+          $channelFactory = Get-Content "source/factory_channel.cpp" -Raw
+          $cmake = Get-Content "CMakeLists.txt" -Raw
+
+          if (-not $cmake.Contains("project(MixEngine VERSION 3.0.0")) { throw "V3 identity: project version is not 3.0.0" }
+          if (-not $mixFactory.Contains('"125A MixEngine V3"')) { throw "V3 identity: Mix FX class name is not V3" }
+          if (-not $channelFactory.Contains('"125A MixEngine V3 Channel"')) { throw "V3 identity: Channel class name is not V3" }
+
+          $stableIds = git show origin/main:source/pluginids.h
+          $stableMixFactory = git show origin/main:source/factory.cpp
+          $stableChannelFactory = git show origin/main:source/factory_channel.cpp
+          if (-not $stableIds) { throw "V3 identity: could not read stable main plugin IDs" }
+
+          $uidPattern = 'FUID\s+\w+\s*\(([^\)]+)\)'
+          $stableUidMatches = [regex]::Matches(($stableIds -join "`n"), $uidPattern)
+          $v3UidMatches = [regex]::Matches($ids, $uidPattern)
+          if ($stableUidMatches.Count -lt 4 -or $v3UidMatches.Count -lt 4) { throw "V3 identity: expected four class IDs in both stable and V3" }
+          $stableUids = @($stableUidMatches | ForEach-Object { $_.Groups[1].Value.Replace(" ","") })
+          $v3Uids = @($v3UidMatches | ForEach-Object { $_.Groups[1].Value.Replace(" ","") })
+          foreach ($uid in $v3Uids) {
+            if ($stableUids -contains $uid) { throw "V3 identity collision with stable main: $uid" }
+          }
+          if (($stableMixFactory -join "`n").Contains('"125A MixEngine V3"')) { throw "Stable main unexpectedly already uses V3 Mix FX name" }
+          if (($stableChannelFactory -join "`n").Contains('"125A MixEngine V3 Channel"')) { throw "Stable main unexpectedly already uses V3 Channel name" }
+          Write-Host "Stable-main vs V3 class identity collision check PASS"
+
+          $mix = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3.vst3" | Select-Object -First 1
+          $channel = Get-ChildItem build -Recurse -Directory -Filter "125A-MixEngine-V3-Channel.vst3" | Select-Object -First 1
+          if (-not $mix) { throw "V3 identity: 125A-MixEngine-V3.vst3 bundle missing" }
+          if (-not $channel) { throw "V3 identity: 125A-MixEngine-V3-Channel.vst3 bundle missing" }
+          Write-Host "V3 side-by-side identity PASS"
+
+      - name: Verify Ctrl-click knob reset contract
+        shell: pwsh
+        run: |
+          $control = Get-Content "vst3sdk/vstgui4/vstgui/lib/controls/ccontrol.cpp" -Raw
+          $editor = Get-Content "vst3sdk/vstgui4/vstgui/plugin-bindings/vst3editor.cpp" -Raw
+          $controller = Get-Content "source/controller.cpp" -Raw
+
+          if (-not $control.Contains("event.modifiers.is (ModifierKey::Control)")) { throw "VSTGUI control-reset modifier is not Ctrl" }
+          if (-not $control.Contains("control->setValue (defValue)")) { throw "VSTGUI default-reset value path missing" }
+          if (-not $editor.Contains("defaultValue = parameter->getInfo ().defaultNormalizedValue")) { throw "VST3 parameter default is not propagated to controls" }
+          if (-not $editor.Contains("c->setDefaultValue ((float)defaultValue)")) { throw "VSTGUI control default assignment missing" }
+
+          foreach ($expected in @(
+            'addRange(parameters,STR16("Input Gain"),STR16("dB"),kParamInput,-12.0,12.0,0.0,1);',
+            'addRange(parameters,STR16("Console Drive"),STR16("%"),kParamConsoleDrive,0.0,100.0,25.0,0);',
+            'addRange(parameters,STR16("Tube Amount"),STR16("%"),kParamTubeAmount,0.0,100.0,20.0,0);',
+            'addRange(parameters,STR16("Tape Amount"),STR16("%"),kParamTapeAmount,0.0,100.0,20.0,0);',
+            'addRange(parameters,STR16("Glue Amount"),STR16("%"),kParamGlueAmount,0.0,100.0,15.0,0);',
+            'addRange(parameters,STR16("Vinyl Color"),STR16("%"),kParamVinylCharacter,0.0,100.0,25.0,0);',
+            'addRange(parameters,STR16("Depth"),STR16("%"),kParamDepth,-100.0,100.0,0.0,0);',
+            'addRange(parameters,STR16("Width"),STR16("%"),kParamWidth,0.0,200.0,100.0,0);',
+            'addRange(parameters,STR16("Output Gain"),STR16("dB"),kParamOutput,-12.0,12.0,0.0,1);'
+          )) {
+            if (-not $controller.Contains($expected)) { throw "125A knob default contract missing: $expected" }
+          }
+          Write-Host "125A Ctrl-click knob reset contract PASS"
+
+      - name: Run tape V3 diagnostics
+        shell: pwsh
+        run: |
+          $exe=Get-ChildItem build -Recurse -File -Filter "tape-v3-research-diagnostic.exe"|Select-Object -First 1
+          if(-not $exe){throw "tape-v3-research-diagnostic.exe not found"}
+          & $exe.FullName
+          if($LASTEXITCODE -ne 0){throw "V3 tape research diagnostic failed with exit $LASTEXITCODE"}
+
+          $oracle=Get-ChildItem build -Recurse -File -Filter "tape-v3-ja-oracle-diagnostic.exe"|Select-Object -First 1
+          if(-not $oracle){throw "tape-v3-ja-oracle-diagnostic.exe not found"}
+          & $oracle.FullName
+          if($LASTEXITCODE -ne 0){throw "V3 Jiles-Atherton oracle diagnostic failed with exit $LASTEXITCODE"}
+
+          $matrix=Get-ChildItem build -Recurse -File -Filter "tape-v3-sample-rate-diagnostic.exe"|Select-Object -First 1
+          if(-not $matrix){throw "tape-v3-sample-rate-diagnostic.exe not found"}
+          & $matrix.FullName
+          if($LASTEXITCODE -ne 0){throw "V3 tape sample-rate matrix failed with exit $LASTEXITCODE"}
+
+          $legacy=@("oversampling-roundtrip","oversampling-alias","tube-oversampling","media-oversampling","console-core-equivalence","console-tube-island","console-tube-ordering","oversampling-latency","metering-diagnostic","metering-integration","processor-latency-integration","phase-mono-diagnostic","host-matrix-diagnostic","state-roundtrip-diagnostic","state-migration-diagnostic","release-robustness-diagnostic","latency-matrix-diagnostic","zero-neutrality-diagnostic","quality-switch-diagnostic","automation-stress-diagnostic","parameter-transition-diagnostic","sample-accuracy-diagnostic","range-philosophy-diagnostic","stereo-field-diagnostic","glue-transient-diagnostic","vinyl-material-diagnostic","tape-memory-diagnostic","tape-hiss-contract-diagnostic","secondary-controls-diagnostic","console-character-diagnostic","console-vintage-memory-diagnostic","character-morph-diagnostic","sonic-impact-diagnostic","program-material-diagnostic","sample-rate-matrix-diagnostic","denormal-safety-diagnostic","tape-v3-autolevel-diagnostic","console-v3-research-diagnostic","mixfx-console-v3-diagnostic","console-v3-alias-diagnostic","console-v3-adaa-diagnostic","console-v3-adaa-production-gate","console-v3-prepared-adaa-diagnostic","console-v3-prepared-cpu-diagnostic","console-v3-correction-adaa-diagnostic","console-v3-cpu-diagnostic","mixfx-crosstalk-diagnostic","mixfx-sample-accuracy-diagnostic","tube-v3-research-diagnostic","tube-v3-autolevel-diagnostic","vinyl-v3-tracing-oracle-diagnostic","vinyl-v3-surrogate-diagnostic","vinyl-v3-alias-diagnostic","vinyl-v3-live-diagnostic","vinyl-v3-autolevel-diagnostic","vinyl-v3-cpu-diagnostic","v3-autolevel-level-sweep","controller-lifecycle-diagnostic","level-match-diagnostic","console-noise-contract-diagnostic")
+          foreach($name in $legacy){
+            $d=Get-ChildItem build -Recurse -File -Filter "$name.exe"|Select-Object -First 1
+            if(-not $d){throw "$name.exe not found"}
+            Write-Host "===== $name ====="
+            & $d.FullName
+            if($LASTEXITCODE -ne 0){throw "$name failed with exit $LASTEXITCODE"}
+          }
+
+
+      - name: Research-only rejected candidates
+        shell: pwsh
+        run: |
+          $rejected=@("console-v3-residual-adaa-diagnostic","console-v3-correction-adaa2-diagnostic")
+          foreach($name in $rejected){
+            $d=Get-ChildItem build -Recurse -File -Filter "$name.exe"|Select-Object -First 1
+            if(-not $d){throw "$name.exe not found"}
+            Write-Host "===== $name (NON-GATING RESEARCH) ====="
+            & $d.FullName
+            Write-Host "Exit code $LASTEXITCODE is recorded but intentionally non-gating: candidate rejected for production."
+          }
+          $global:LASTEXITCODE=0
+          exit 0

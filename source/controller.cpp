@@ -7,6 +7,7 @@
 #include "public.sdk/source/vst/vstparameters.h"
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 
 namespace MixEngine {
 using namespace Steinberg;
@@ -152,13 +153,15 @@ tresult PLUGIN_API Controller::setComponentState(IBStream* state){
     for(ParamID id=0;id<kParamCount;++id){
         double v=0.;
         if(!s.readDouble(v)){
-            if(id==kParamTubeType){setParamNormalized(kParamTubeType,.5);setParamNormalized(kParamMeterSource,1.0);break;}
-            if(id==kParamMeterSource){setParamNormalized(kParamMeterSource,1.0);break;}
+            if(id==kParamTubeType){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTubeType,.5);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
+            if(id==kParamMeterSource){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
             if(id==kParamTapeHiss){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
             if(id==kParamVinylNoise){setParamNormalized(kParamVinylNoise,getParamNormalized(kParamConsoleNoise));break;}
             return kResultFalse;
         }
-        setParamNormalized(id,v);
+        if(std::isfinite(v))setParamNormalized(id,std::clamp(v,0.0,1.0));
+        else if(auto* parameter=parameters.getParameter(id))
+            setParamNormalized(id,parameter->getInfo().defaultNormalizedValue);
     }
     return kResultOk;
 }
@@ -171,13 +174,15 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     VSTGUI::CRect r(o.x,o.y,o.x+sz.x,o.y+sz.y);
 
 
-    auto knob=[&](const char* n,ParamID id,HardwareKnob::Style st)->VSTGUI::CView*{
-        if(std::strcmp(name,n)==0)return new HardwareKnob(r,e,id,st);
-        return nullptr;
+    auto knob=[&](const char* n,ParamID id,HardwareKnob::Style st,const char* bitmapName)->VSTGUI::CView*{
+        if(std::strcmp(name,n)!=0)return nullptr;
+        auto* filmstrip=description?description->getBitmap(bitmapName):nullptr;
+        return new HardwareKnob(r,e,id,st,filmstrip);
     };
     auto toggle=[&](const char* n,ParamID id,bool ledLeft=false,bool moduleLedAbove=false,bool blueLed=false)->VSTGUI::CView*{
-        if(std::strcmp(name,n)==0)return new HardwareToggle(r,e,id,ledLeft,moduleLedAbove,blueLed);
-        return nullptr;
+        if(std::strcmp(name,n)!=0)return nullptr;
+        auto* filmstrip=description?description->getBitmap("MixPush"):nullptr;
+        return new HardwareToggle(r,e,id,filmstrip,ledLeft,moduleLedAbove,blueLed);
     };
     auto selector=[&](const char* n,ParamID id,std::vector<std::string> labels)->VSTGUI::CView*{
         if(std::strcmp(name,n)==0)return new HardwareSelector(r,e,id,std::move(labels));
@@ -195,47 +200,47 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=selector("TubeVoiceSelector",kParamTubeType,{"SOFT","BALANCED","HOT"}))return v;
     if(auto* v=selector("TapeSpeedSelector",kParamTapeSpeed,{"7.5","15","30"}))return v;
 
-    if(auto* v=toggle("Bypass",kParamBypass,true,false,false))return v;
+    if(auto* v=toggle("Bypass",kParamBypass,false,true,false))return v;
     if(auto* v=toggle("ConsolePower",kParamConsoleOn,false,true,false))return v;
     if(auto* v=toggle("TubePower",kParamTubeOn,false,true,false))return v;
     if(auto* v=toggle("TapePower",kParamTapeOn,false,true,false))return v;
     if(auto* v=toggle("GluePower",kParamGlueOn,false,true,false))return v;
     if(auto* v=toggle("VinylPower",kParamVinylOn,false,true,false))return v;
-    if(auto* v=toggle("LevelMatch",kParamAutoGain,false,false,true))return v;
+    if(auto* v=toggle("LevelMatch",kParamAutoGain,false,true,true))return v;
 
     if(std::strcmp(name,"HardwareFaceplate")==0)return new HardwareFaceplate(r);
     if(std::strcmp(name,"BrandLogo")==0)return new HardwareLogo(r);
     if(std::strcmp(name,"UIScale")==0)return new HardwareUIScale(r,e);
-    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL);
-    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR);
+    if(std::strcmp(name,"VULeft")==0)return new HardwareVUMeter(r,e,kParamMeterL,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
+    if(std::strcmp(name,"VURight")==0)return new HardwareVUMeter(r,e,kParamMeterR,description?description->getBitmap("MixVUFace"):nullptr,description?description->getBitmap("MixVUOverlay"):nullptr);
     if(std::strcmp(name,"ClipL")==0)return new HardwareClipLed(r,e,kParamClipL);
     if(std::strcmp(name,"ClipR")==0)return new HardwareClipLed(r,e,kParamClipR);
 
-    if(auto* v=knob("Input",kParamInput,HardwareKnob::Style::Large))return v;
-    if(auto* v=knob("ConsoleDrive",kParamConsoleDrive,HardwareKnob::Style::Medium))return v;
+    if(auto* v=knob("Input",kParamInput,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
+    if(auto* v=knob("ConsoleDrive",kParamConsoleDrive,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
 #ifndef MIXENGINE_CHANNEL_BUILD
-    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small))return v;
+    if(auto* v=knob("Crosstalk",kParamConsoleCrosstalk,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
 #endif
-    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("TubeAmount",kParamTubeAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("TapeAmount",kParamTapeAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("GlueAmount",kParamGlueAmount,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("VinylCharacter",kParamVinylCharacter,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium))return v;
-    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small))return v;
-    if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large))return v;
+    if(auto* v=knob("ConsoleNoise",kParamConsoleNoise,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("TubeAmount",kParamTubeAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
+    if(auto* v=knob("TapeAmount",kParamTapeAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
+    if(auto* v=knob("TapeStability",kParamTapeStability,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("TapeHiss",kParamTapeHiss,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("GlueAmount",kParamGlueAmount,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
+    if(auto* v=knob("GlueCharacter",kParamGlueCharacter,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("VinylCharacter",kParamVinylCharacter,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
+    if(auto* v=knob("VinylWear",kParamVinylWear,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("VinylNoise",kParamVinylNoise,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("Depth",kParamDepth,HardwareKnob::Style::Medium,"MixKnobGunmetalMAtlas"))return v;
+    if(auto* v=knob("Width",kParamWidth,HardwareKnob::Style::Medium,"MixKnobGunmetalMAtlas"))return v;
+    if(auto* v=knob("LowMono",kParamLowMono,HardwareKnob::Style::Small,"MixKnobGunmetalSAtlas"))return v;
+    if(auto* v=knob("Output",kParamOutput,HardwareKnob::Style::Large,"MixKnobVernierAtlas"))return v;
 
     // Static full-custom VSTGUI legends. These deliberately avoid CTextLabel so
     // typography and rendering stay under the same hardware-style renderer.
     if(auto* v=label("LabelVUSource","VU SOURCE",10.0,true,true))return v;
     if(auto* v=label("LabelVURef","0 VU = REF LEVEL",9.0,false,true))return v;
-    if(auto* v=label("LabelMixTitle","MIX ENGINE",14.0,true,false))return v;
+    if(auto* v=label("LabelMixTitle","MIX ENGINE V3",13.0,true,false))return v;
     if(auto* v=label("LabelQuality","QUALITY",10.0,true,true))return v;
     if(auto* v=label("LabelBypass","BYPASS",10.0,true,true))return v;
 
@@ -250,7 +255,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
 
     if(auto* v=label("LabelInputGain","INPUT GAIN",10.5,true,false))return v;
     if(auto* v=label("LabelRefLevel","REF LEVEL",9.5,true,true))return v;
-    if(auto* v=label("LabelDbfs","dBFS",8.5,false,true))return v;
+    if(auto* v=label("LabelDbfs","dBFS",8.8,false,true))return v;
     if(auto* v=label("LabelDrive","DRIVE",10.5,true,false))return v;
     if(auto* v=label("LabelMode","MODE",9.5,true,true))return v;
 #ifndef MIXENGINE_CHANNEL_BUILD
@@ -261,7 +266,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=label("LabelVoice","VOICE",9.5,true,true))return v;
     if(auto* v=label("LabelTapeAmount","AMOUNT",10.5,true,false))return v;
     if(auto* v=label("LabelSpeed","SPEED",9.5,true,true))return v;
-    if(auto* v=label("LabelIps","ips",8.5,false,true))return v;
+    if(auto* v=label("LabelIps","ips",8.8,false,true))return v;
     if(auto* v=label("LabelStability","STABILITY",8.8,true,false))return v;
     if(auto* v=label("LabelHiss","HISS",8.8,true,false))return v;
     if(auto* v=label("LabelGlueAmount","AMOUNT",10.5,true,false))return v;
@@ -272,7 +277,7 @@ VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VST
     if(auto* v=label("LabelDepth","DEPTH",9.5,true,false))return v;
     if(auto* v=label("LabelWidth","WIDTH",9.5,true,false))return v;
     if(auto* v=label("LabelLowMono","LOW MONO",9.0,true,false))return v;
-    if(auto* v=label("LabelFixed120","FIXED 120 Hz",8.0,false,true))return v;
+    if(auto* v=label("LabelFixed120","FIXED 120 Hz",8.6,false,true))return v;
     if(auto* v=label("LabelOutputGain","OUTPUT GAIN",10.5,true,false))return v;
     if(auto* v=label("LabelLevelMatch","LEVEL MATCH",9.5,true,true))return v;
 

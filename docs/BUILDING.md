@@ -1,11 +1,11 @@
-# Building 125A MixEngine v1.0.0
+# Building 125A MixEngine V3 v3.0.0
 
 ## Supported final build
 
 The release configuration targets **Windows x64 VST3** and produces two plugins from the same source tree:
 
-- `125A-MixEngine.vst3` - PreSonus Mix FX
-- `125A-MixEngine-Channel.vst3` - standard VST3 audio effect
+- `125A-MixEngine-V3.vst3` - PreSonus Mix FX
+- `125A-MixEngine-V3-Channel.vst3` - standard VST3 audio effect
 
 ## Requirements
 
@@ -35,7 +35,7 @@ cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DVST3_SDK_ROOT="$env:VST3
 ## Build both final editions
 
 ```powershell
-cmake --build build --config Release --target 125A-MixEngine 125A-MixEngine-Channel
+cmake --build build --config Release --target 125A-MixEngine-V3 125A-MixEngine-V3-Channel
 ```
 
 ## Diagnostics
@@ -45,7 +45,7 @@ The repository defines standalone diagnostic targets. The GitHub Actions full-va
 Important contracts include:
 
 - Console Drive 0% must be identity in the nonlinear core.
-- Reported host latency is fixed at 21 samples.
+- Reported host latency is fixed for a given sample rate and independent of Quality/modules/Bypass (29 samples at 48 kHz).
 - Mix FX and Channel share the same DSP core.
 - Standard Channel processing must not use the Mix FX Crosstalk parameter.
 - Mix FX Crosstalk is direct-neighbour, lane-preserving and callback-order independent under the observed Studio One Mix FX scheduling model.
