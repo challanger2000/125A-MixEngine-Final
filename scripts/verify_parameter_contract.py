@@ -286,12 +286,8 @@ if processor.count("processStereoFieldSample(") != 2:
     fail("normal and Mix FX paths are not both using the shared stereo stage")
 if "2500.0/sampleRate_" in processor or "0.25*depthBipolar" in processor:
     fail("legacy weak DEPTH equation returned")
-tube_wrapper = re.search(
-    r"double Processor::processTubeSample\\([^\\)]*\\)\\{([^}]*)\\}",
-    processor,
-    re.S,
-)
-if not tube_wrapper or "V3Research::processTubeV3(" not in tube_wrapper.group(1):
+tube_wrapper_line = "double Processor::processTubeSample(double x,TubeChannelState& state,double typeMorph,double amount,int osFactor){return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);}"
+if tube_wrapper_line not in processor:
     fail("live Tube wrapper is no longer routed through the V3 Tube model")
 if processor.count("processTubeSample(") < 5:
     fail("normal and Mix FX paths are not both routed through the shared Tube wrapper")
