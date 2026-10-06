@@ -429,7 +429,7 @@ void HardwareKnob::draw(VSTGUI::CDrawContext* context)
                                   cx+shadowRx+grow,cy+shadowRy+shadowDy+grow*0.50},
                                  VSTGUI::kDrawFilled);
         }
-        context->setFillColor({0,0,0,style_==Style::Small?142u:(style_==Style::Medium?108u:78u)});
+        context->setFillColor({0,0,0,static_cast<uint8_t>(style_==Style::Small?142:(style_==Style::Medium?108:78))});
         context->drawEllipse({cx-shadowRx,cy-shadowRy+shadowDy,
                               cx+shadowRx,cy+shadowRy+shadowDy},
                              VSTGUI::kDrawFilled);
