@@ -931,15 +931,15 @@ VSTGUI::CMouseEventResult HardwareUIScale::onMouseDown(VSTGUI::CPoint& where,con
     if(!editor_||!buttons.isLeftButton()||!getViewSize().pointInside(where))
         return VSTGUI::kMouseEventNotHandled;
 
-    constexpr double factors[] {0.75,1.0,1.25,1.5};
+    constexpr double factors[] {0.75,0.90,1.0,1.25,1.5};
     const double current=editor_->getZoomFactor();
     std::size_t index=0;
     double best=std::abs(current-factors[0]);
-    for(std::size_t i=1;i<4;++i) {
+    for(std::size_t i=1;i<5;++i) {
         const double d=std::abs(current-factors[i]);
         if(d<best) { best=d; index=i; }
     }
-    editor_->setZoomFactor(factors[(index+1)%4]);
+    editor_->setZoomFactor(factors[(index+1)%5]);
     invalid();
     return VSTGUI::kMouseDownEventHandledButDontNeedMovedOrUpEvents;
 }
