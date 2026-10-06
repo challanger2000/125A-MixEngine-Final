@@ -2,6 +2,11 @@ name: macOS V3 Universal Beta
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - macos-v3.0.0-beta
+    paths:
+      - '.github/workflows/v3-macos-universal-beta.yml'
 
 jobs:
   build-macos-universal:
