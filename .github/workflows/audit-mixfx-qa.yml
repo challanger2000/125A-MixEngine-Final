@@ -1,0 +1,74 @@
+name: Native Mix FX module QA (no release packaging)
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/v3.0.0-release-2026-10-14]
+    paths: [.github/workflows/audit-mixfx-qa.yml]
+permissions:
+  contents: read
+jobs:
+  mixfx:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          submodules: recursive
+          path: vst3sdk
+      - uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Knob-Designer
+          ref: c09cff5d958969eb025fe09255173e65103deae9
+          path: knob-assets
+      - uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Plugin-Tester-Final
+          ref: 513cf9a126d5a70ac2bb3c3da3990e9b3c8ab321
+          path: plugin-tester
+      - name: Build only native Mix FX and its QA tools
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force audit-evidence | Out-Null
+          python -m pip install pillow==12.3.0
+          if ($LASTEXITCODE) { throw 'Asset dependency failed' }
+          python scripts/prepare_gui_assets.py knob-assets/assets/mixengine
+          if ($LASTEXITCODE) { throw 'Asset generation failed' }
+          cmake -S . -B build -A x64 "-DVST3_SDK_ROOT=$env:GITHUB_WORKSPACE/vst3sdk" "-DMIXENGINE_KNOB_ASSET_ROOT=$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine" -DSMTG_CREATE_PLUGIN_LINK=0
+          if ($LASTEXITCODE) { throw 'Mix FX configuration failed' }
+          cmake --build build --config Release --target 125A-MixEngine-V3 --parallel 4
+          if ($LASTEXITCODE) { throw 'Mix FX build failed' }
+          cmake -S plugin-tester -B tester-build -A x64 "-DFETCHCONTENT_SOURCE_DIR_VST3SDK=$env:GITHUB_WORKSPACE/vst3sdk"
+          if ($LASTEXITCODE) { throw 'Tester configuration failed' }
+          cmake --build tester-build --config Release --target PluginTester125ADispatcher PluginTester125ALauncher PluginTester125AWorker PluginTester125AReloadProbe PluginTester125AStateProbe PluginTester125AIOEventProbe PluginTester125AValidatorWrapper PluginTester125AEditorLifecycleProbe validator --parallel 4
+          if ($LASTEXITCODE) { throw 'Tester build failed' }
+      - name: Test actual Mix FX factory state controller and editor
+        env:
+          125A_PLUGIN_TESTER_REPORT_DIR: ${{ github.workspace }}/audit-evidence/tester-reports
+        shell: pwsh
+        run: |
+          $bundle=(Resolve-Path build/VST3/Release/125A-MixEngine-V3.vst3).Path
+          $tester=Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester.exe | Select-Object -First 1
+          $editor=Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_EditorLifecycleProbe.exe | Select-Object -First 1
+          if (!$tester -or !$editor) { throw 'QA executable missing' }
+          & $tester.FullName $bundle *> audit-evidence/full-125A-tester.txt
+          $testerCode=$LASTEXITCODE
+          & $editor.FullName $bundle *> audit-evidence/native-editor.txt
+          $editorCode=$LASTEXITCODE
+          foreach ($file in (Get-ChildItem audit-evidence/tester-reports -File -Filter '*.txt')) {
+            $text=Get-Content $file.FullName -Raw
+            if ($text.Length -gt 25000) { $text=$text.Substring(0,25000) }
+            $message=($file.Name+': '+$text).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output ('::notice title=Mix FX QA report::'+$message)
+          }
+          if ($testerCode -or $editorCode) { throw "Mix FX QA exits: tester=$testerCode editor=$editorCode" }
+          Write-Output 'Note: standard audio processing and a zero-test Steinberg result do not verify PreSonus Mix FX runtime. Studio One acceptance remains required.'
+      - name: Preserve exact native Mix FX QA reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MixEngine-V3-native-MixFX-QA-evidence
+          path: audit-evidence/
+          if-no-files-found: warn
