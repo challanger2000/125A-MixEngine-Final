@@ -7,6 +7,38 @@ on:
 permissions:
   contents: read
 jobs:
+  previous-evidence:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - name: Read existing reports without repeating their build
+        uses: actions/download-artifact@v4
+        with:
+          name: MixEngine-V3-independent-audit-evidence
+          run-id: 38651625028
+          github-token: ${{ github.token }}
+          path: previous-evidence
+      - name: Expose exact prior failed gates and their measurements
+        shell: bash
+        run: |
+          python3 - <<'PY_REPORT'
+          from pathlib import Path
+          import os
+          root=Path('previous-evidence')
+          matches=list(root.rglob('failed-targets.txt'))
+          if len(matches)!=1:raise SystemExit('Missing or ambiguous previous failed-targets report')
+          failed=[x.strip() for x in matches[0].read_text(encoding='utf-8-sig').splitlines() if x.strip()]
+          summary='# Prior Windows run 38651625028\nSource: dcf0b923cb52fedbafe243f87d17d3aa8355d1db\nFailed gates: '+', '.join(failed)+'\n'
+          for name in failed:
+              files=list(root.rglob(name+'.txt'))
+              detail=files[0].read_text(encoding='utf-8-sig') if len(files)==1 else 'Report missing or ambiguous'
+              summary+='\n## '+name+'\n```text\n'+detail[:20000]+'\n```\n'
+              message=(name+': '+detail[:15000]).replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+              print('::warning title=Previous Windows failed gate::'+message)
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(summary,encoding='utf-8')
+          PY_REPORT
   audit:
     runs-on: windows-2022
     timeout-minutes: 40
@@ -64,16 +96,22 @@ jobs:
             }
           }
           $failed | Set-Content audit-evidence/failed-targets.txt
+          foreach ($gate in $failed) {
+            $path="audit-evidence/$gate.txt"
+            $details=if (Test-Path $path) { Get-Content $path -Raw } else { 'Executable/report missing' }
+            if ($details.Length -gt 15000) { $details=$details.Substring(0,15000) }
+            $message=($gate+': '+$details).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error title=Audit gate $gate::$message"
+          }
           if ($failed.Count) { throw "Failed gates: $($failed -join ', ')" }
-      - name: Read pinned private 125A tester (separate access gate)
+      - name: Read pinned public Final 125A tester
         id: tester_checkout
         if: ${{ !cancelled() }}
         uses: actions/checkout@v4
         with:
-          repository: challanger2000/125A-Plugin-Tester
-          ref: 70aeb0d9fa82541699994e050ab35ab625e8a417
+          repository: challanger2000/125A-Plugin-Tester-Final
+          ref: 513cf9a126d5a70ac2bb3c3da3990e9b3c8ab321
           path: plugin-tester
-          token: ${{ secrets.AUDIT_QA_READ_TOKEN || github.token }}
       - name: Build official 125A tester and native editor probe
         id: tester_build
         if: ${{ !cancelled() && steps.tester_checkout.outcome == 'success' }}

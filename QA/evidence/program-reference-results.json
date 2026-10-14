@@ -1,0 +1,57 @@
+{
+  "baseline": "23b4ddb669f02dbeb780a87a997522d98c7f426c",
+  "audit": "dcf0b923cb52fedbafe243f87d17d3aa8355d1db",
+  "sdk_fixture_sha256": "7e3fd3a093fcc4b94418664adac487781e402ed26e75fef9a5046476a0f38522",
+  "results": [
+    {
+      "fixture": "synthetic",
+      "scale": 1.0,
+      "frames": 48000,
+      "bit_exact": true,
+      "finite": true,
+      "peak": 0.30520182130348333,
+      "rms": 0.14737547432857395,
+      "sha256": "e743195038ae3eab6981b34a35e3b59776913d57cbf616b5aae1c0bcd85ff1a4"
+    },
+    {
+      "fixture": "sdk-drum",
+      "scale": 0.25,
+      "frames": 230401,
+      "bit_exact": true,
+      "finite": true,
+      "peak": 0.17309311548419734,
+      "rms": 0.027278302519098924,
+      "sha256": "47878946d6a9cf4faaaaef22cfd00137b6e8cb55bae3fca92b7aeffca12c9741"
+    },
+    {
+      "fixture": "sdk-drum",
+      "scale": 0.5,
+      "frames": 230401,
+      "bit_exact": true,
+      "finite": true,
+      "peak": 0.22311830049897902,
+      "rms": 0.05185972944600508,
+      "sha256": "01380c0d69a93a628ecb59d3bc7a6754cdb2c98bec9fb98bb6d03ae1551109d5"
+    },
+    {
+      "fixture": "sdk-drum",
+      "scale": 1.0,
+      "frames": 230401,
+      "bit_exact": true,
+      "finite": true,
+      "peak": 0.3078915321798341,
+      "rms": 0.10050394965739519,
+      "sha256": "c402df3e0770aad5d565425e6cb38d649cd9eccce96386522c047c5258d4ba0c"
+    },
+    {
+      "fixture": "sdk-drum",
+      "scale": 2.0,
+      "frames": 230401,
+      "bit_exact": true,
+      "finite": true,
+      "peak": 0.6747297213018422,
+      "rms": 0.19772591496638056,
+      "sha256": "24b7ec6698c9c7e199ec7e9a3e2f2539ad6045e04f1c2a977380702b8f7d13d4"
+    }
+  ]
+}
