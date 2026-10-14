@@ -343,6 +343,10 @@ add_executable(audit-realtime tests/audit_realtime.cpp source/processor.cpp
  ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp)
 target_include_directories(audit-realtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(audit-realtime PRIVATE sdk)
+if(WIN32)
+ target_compile_definitions(audit-realtime PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+ target_link_libraries(audit-realtime PRIVATE avrt)
+endif()
 
 if(UNIX AND NOT APPLE AND SMTG_ENABLE_VSTGUI_SUPPORT)
  find_package(X11 REQUIRED)

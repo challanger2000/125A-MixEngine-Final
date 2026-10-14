@@ -14,6 +14,10 @@
 #if defined(__linux__)
 #include <time.h>
 #endif
+#if defined(_WIN32)
+#include <windows.h>
+#include <avrt.h>
+#endif
 
 namespace {thread_local bool track=false;thread_local std::size_t allocations=0;}
 void* operator new(std::size_t n){if(track)++allocations;if(auto* p=std::malloc(n?n:1))return p;throw std::bad_alloc();}
@@ -27,6 +31,30 @@ using namespace Steinberg::Vst;
 using Clock=std::chrono::steady_clock;
 namespace {
 void check(bool value){if(!value)throw 1;}
+struct AudioScheduling {
+#if defined(_WIN32)
+ HANDLE task=nullptr;
+#endif
+ explicit AudioScheduling(bool requested){
+  if(!requested)return;
+#if defined(_WIN32)
+  DWORD index=0;task=AvSetMmThreadCharacteristicsW(L"Pro Audio",&index);
+  if(!task){std::cout<<"NOT VERIFIED: MMCSS Pro Audio registration failed, Windows error="<<GetLastError()<<"\n";throw 1;}
+  if(!AvSetMmThreadPriority(task,AVRT_PRIORITY_HIGH)){
+   const auto error=GetLastError();AvRevertMmThreadCharacteristics(task);task=nullptr;
+   std::cout<<"NOT VERIFIED: MMCSS priority failed, Windows error="<<error<<"\n";throw 1;
+  }
+  std::cout<<"MMCSS Pro Audio / HIGH active for this diagnostic thread only; not a DAW acceptance test\n";
+#else
+  std::cout<<"NOT VERIFIED: MMCSS requires Windows\n";throw 1;
+#endif
+ }
+ ~AudioScheduling(){
+#if defined(_WIN32)
+  if(task)AvRevertMmThreadCharacteristics(task);
+#endif
+ }
+};
 void set(ParameterChanges& c,ParamID id,double value,int offset=0){int32 qi=0,pi=0;auto*q=c.addParameterData(id,qi);check(q&&q->addPoint(offset,value,pi)==kResultTrue);}
 template<class Sample>bool run(double sr,int block,int channels,bool paced,bool dense=false){
  auto p=std::make_unique<MixEngine::Processor>();
@@ -83,7 +111,9 @@ template<class Sample>bool run(double sr,int block,int channels,bool paced,bool 
 }
 }
 int main(int argc,char** argv){try{
- const bool dense=argc==2&&std::string(argv[1])=="--automation";
+ const bool mmcss=argc==2&&std::string(argv[1])=="--automation-mmcss";
+ const bool dense=argc==2&&(std::string(argv[1])=="--automation"||mmcss);
+ AudioScheduling scheduling(mmcss);
  double overhead=0;for(int i=0;i<10000;++i){auto a=Clock::now();auto b=Clock::now();overhead+=std::chrono::duration<double,std::micro>(b-a).count();}
  std::cout<<"Clock-pair mean overheadUs="<<overhead/10000<<"\n";
  bool ok=true;

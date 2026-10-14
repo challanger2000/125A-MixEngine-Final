@@ -93,6 +93,8 @@ jobs:
             if ($target -eq 'audit-realtime') {
               & $exe.FullName --automation *> 'audit-evidence/audit-realtime-dense.txt'
               if ($LASTEXITCODE) { $failed+='audit-realtime-dense' }
+              & $exe.FullName --automation-mmcss *> 'audit-evidence/audit-realtime-mmcss.txt'
+              if ($LASTEXITCODE) { $failed+='audit-realtime-mmcss' }
             }
           }
           $failed | Set-Content audit-evidence/failed-targets.txt
@@ -101,7 +103,7 @@ jobs:
             $details=if (Test-Path $path) { Get-Content $path -Raw } else { 'Executable/report missing' }
             if ($details.Length -gt 15000) { $details=$details.Substring(0,15000) }
             $message=($gate+': '+$details).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-            Write-Output "::error title=Audit gate $gate::$message"
+            Write-Output ('::error title=Audit gate '+$gate+'::'+$message)
           }
           if ($failed.Count) { throw "Failed gates: $($failed -join ', ')" }
       - name: Read pinned public Final 125A tester
@@ -119,8 +121,103 @@ jobs:
         run: |
           cmake -S plugin-tester -B tester-build -A x64 "-DFETCHCONTENT_SOURCE_DIR_VST3SDK=$env:GITHUB_WORKSPACE/vst3sdk"
           if ($LASTEXITCODE) { throw 'Tester configuration failed' }
-          cmake --build tester-build --config Release --target PluginTester125ADispatcher PluginTester125ALauncher PluginTester125AWorker PluginTester125AReloadProbe PluginTester125AStateProbe PluginTester125AIOEventProbe PluginTester125AValidatorWrapper PluginTester125AEditorLifecycleProbe validator --parallel 4
+          cmake --build tester-build --config Release --target PluginTester125ADispatcher PluginTester125ALauncher PluginTester125AWorker PluginTester125AReloadProbe PluginTester125AStateProbe PluginTester125AIOEventProbe PluginTester125AValidatorWrapper PluginTester125AEditorLifecycleProbe PluginTester125AGuardSelfTest PluginTester125AQAGoodControl PluginTester125AQABadLifecycle PluginTester125AQABadNaN PluginTester125AQABadState PluginTester125AQABadIO PluginTester125AQAGoodEditor PluginTester125AQABadEditor validator --parallel 4
           if ($LASTEXITCODE) { throw 'Tester build failed' }
+      - name: Verify production Job Object guard
+        if: ${{ !cancelled() && steps.tester_build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $launcher = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester.exe | Select-Object -First 1
+          $single = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_Single.exe | Select-Object -First 1
+          $helper = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_GuardSelfTest.exe | Select-Object -First 1
+          if (-not $launcher) { throw "125A_Plugin_Tester.exe not found" }
+          if (-not $single) { throw "125A_Plugin_Tester_Single.exe not found" }
+          if (-not $helper) { throw "125A_Plugin_Tester_GuardSelfTest.exe not found" }
+          & $launcher.FullName --guard-selftest $helper.FullName *> audit-evidence/tester-guard-selftest.txt
+          if ($LASTEXITCODE -ne 0) { throw "Production launcher guard self-test failed with exit code $LASTEXITCODE" }
+
+      - name: Verify Steinberg validator self-test
+        if: ${{ !cancelled() && steps.tester_build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $validator = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_SteinbergValidator.exe | Select-Object -First 1
+          $validatorCore = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_SteinbergValidatorCore.exe | Select-Object -First 1
+          if (-not $validator) { throw "125A_Plugin_Tester_SteinbergValidator.exe not found" }
+          if (-not $validatorCore) { throw "125A_Plugin_Tester_SteinbergValidatorCore.exe not found" }
+          & $validator.FullName -selftest *> audit-evidence/validator-selftest.txt
+          if ($LASTEXITCODE -ne 0) { throw "Steinberg validator self-test failed with exit code $LASTEXITCODE" }
+
+      - name: Verify tester specificity, sensitivity and JSON with VST3 fixtures
+        if: ${{ !cancelled() && steps.tester_build.outcome == 'success' }}
+        shell: pwsh
+        run: |
+          $launcher = Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester.exe | Select-Object -First 1
+          if (-not $launcher) { throw "125A_Plugin_Tester.exe not found" }
+
+          $env:125A_PLUGIN_TESTER_REPORT_DIR = Join-Path (Get-Location) "audit-evidence\tester-selftest"
+          Remove-Item $env:125A_PLUGIN_TESTER_REPORT_DIR -Recurse -Force -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path $env:125A_PLUGIN_TESTER_REPORT_DIR | Out-Null
+
+          function Find-Fixture([string]$name) {
+            $f = Get-ChildItem tester-build -Recurse -Directory -Filter "$name.vst3" | Select-Object -First 1
+            if (-not $f) { throw "$name.vst3 fixture not found" }
+            return $f
+          }
+          function Find-Report([string]$stem, [string]$suffix) {
+            Get-ChildItem $env:125A_PLUGIN_TESTER_REPORT_DIR -File -Filter "${stem}_*${suffix}" -ErrorAction SilentlyContinue | Select-Object -First 1
+          }
+          function Dump-FixtureDiagnostics([string]$stem) {
+            Write-Host "----- BEGIN 125A FIXTURE DIAGNOSTICS -----"
+            foreach ($file in (Get-ChildItem $env:125A_PLUGIN_TESTER_REPORT_DIR -File -Filter "${stem}_*" -ErrorAction SilentlyContinue)) {
+              Write-Host "===== $($file.FullName) ====="
+              Get-Content $file.FullName -Raw | Write-Host
+            }
+            Write-Host "----- END 125A FIXTURE DIAGNOSTICS -----"
+          }
+          function Run-Fixture([string]$name, [int]$expectedExit, [string]$expectedStatus, [string]$requiredReportText, [string]$requiredIoText = "", [string]$requiredEditorText = "") {
+            $fixture = Find-Fixture $name
+            $stem = [System.IO.Path]::GetFileNameWithoutExtension($fixture.Name)
+            Write-Host "Running production tester against $($fixture.FullName)"
+            & $launcher.FullName $fixture.FullName
+            $actual = $LASTEXITCODE
+            $guard = Find-Report $stem "_125A_QA_Guard_Report.txt"
+            $report = Find-Report $stem "_125A_QA_Report.txt"
+            $json = Find-Report $stem "_125A_QA_Report.json"
+            $ioProbe = Find-Report $stem "_125A_IO_Event_Probe.txt"
+            $editorProbe = Find-Report $stem "_125A_Editor_Lifecycle_Probe.txt"
+            if ($actual -ne $expectedExit) { Dump-FixtureDiagnostics $stem; throw "$name returned launcher exit $actual; expected $expectedExit" }
+            if ($guard) { Dump-FixtureDiagnostics $stem; throw "$name produced a guard/inconclusive report during a deterministic fixture test" }
+            if (-not $report) { Dump-FixtureDiagnostics $stem; throw "$name did not produce the expected QA report" }
+            if (-not $json) { Dump-FixtureDiagnostics $stem; throw "$name did not produce the expected JSON report" }
+            if (-not $ioProbe) { Dump-FixtureDiagnostics $stem; throw "$name did not produce the structured I/O/event probe report" }
+            if (-not $editorProbe) { Dump-FixtureDiagnostics $stem; throw "$name did not produce the structured editor lifecycle probe report" }
+            $reportText = Get-Content $report.FullName -Raw
+            if (-not $reportText.Contains($requiredReportText)) { Dump-FixtureDiagnostics $stem; throw "$name report did not contain expected evidence: $requiredReportText" }
+            $ioText = Get-Content $ioProbe.FullName -Raw
+            if (-not $ioText.Contains("ExitCode: ") -or -not $ioText.Contains("Result: ") -or -not $ioText.Contains("FirstFailure: ")) { Dump-FixtureDiagnostics $stem; throw "$name I/O probe report is missing structured fields" }
+            if ($ioText.Contains("Result: FAIL") -and $ioText.Contains("FirstFailure: None")) { Dump-FixtureDiagnostics $stem; throw "$name I/O probe reported FAIL without a concrete first failure" }
+            if ($requiredIoText -and -not $ioText.Contains($requiredIoText)) { Dump-FixtureDiagnostics $stem; throw "$name I/O probe did not contain expected evidence: $requiredIoText" }
+            $editorText = Get-Content $editorProbe.FullName -Raw
+            if (-not $editorText.Contains("Version: 0.2.9")) { Dump-FixtureDiagnostics $stem; throw "$name editor lifecycle probe has wrong tester version" }
+            if ($requiredEditorText -and -not $editorText.Contains($requiredEditorText)) { Dump-FixtureDiagnostics $stem; throw "$name editor lifecycle probe did not contain expected evidence: $requiredEditorText" }
+            $jsonData = Get-Content $json.FullName -Raw | ConvertFrom-Json
+            if ($jsonData.schemaVersion -ne 1) { throw "$name JSON schemaVersion was not 1" }
+            if ($jsonData.status -ne $expectedStatus) { throw "$name JSON status $($jsonData.status); expected $expectedStatus" }
+            if ($jsonData.pluginPath -ne $fixture.FullName) { throw "$name JSON pluginPath mismatch" }
+            if (-not $jsonData.pluginId) { throw "$name JSON pluginId missing" }
+            Write-Host "[PASS] $name returned expected exit/status and produced matching TXT + JSON + structured I/O evidence"
+          }
+
+          Run-Fixture "125A_QA_GoodControl" 0 "PASS" "0 WARNING / 0 FAIL" "Result: PASS"
+          Run-Fixture "125A_QA_BadLifecycle" 1 "FAIL" "[FAIL] Audio torture processing state (32-bit) - setProcessing(true) failed"
+          Run-Fixture "125A_QA_BadNaN" 1 "FAIL" "[FAIL] Audio Silence process (32-bit)"
+          Run-Fixture "125A_QA_BadState" 1 "FAIL" "[FAIL] Component state roundtrip - setState rejected the state returned by getState"
+          Run-Fixture "125A_QA_BadIO" 1 "FAIL" "[FAIL] I/O, sidechain and event isolation" "[FAIL] Bus arrangement - out-of-range bus index was accepted"
+          Run-Fixture "125A_QA_GoodEditor" 0 "PASS" "[PASS] Editor lifecycle / GUI runtime" "" "Result: PASS"
+          Run-Fixture "125A_QA_BadEditor" 1 "FAIL" "last reached stage: class 125A QA Bad Editor - cycle 2 - removed" "" "Stage: class 125A QA Bad Editor - cycle 2 - removed"
+          Write-Host "VST3 fixture QA PASS"
+          exit 0
+
       - name: Full 125A tester and native editor checks on the Channel bundle
         if: ${{ !cancelled() && steps.tester_build.outcome == 'success' }}
         env:
