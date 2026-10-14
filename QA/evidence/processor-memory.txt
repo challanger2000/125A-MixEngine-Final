@@ -1,0 +1,2 @@
+processor: 3917976 object bytes; headless GNU Release; dynamic buffers excluded
+channel: 31304 object bytes; headless GNU Release; dynamic buffers excluded

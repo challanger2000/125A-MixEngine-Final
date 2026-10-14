@@ -15,6 +15,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <limits>
 #if defined(__SSE2__) || defined(_M_X64) || defined(_M_IX86_FP)
 #include <xmmintrin.h>
 #endif
@@ -215,7 +216,7 @@ tresult PLUGIN_API Processor::connect(IConnectionPoint* other){auto result=Audio
 tresult PLUGIN_API Processor::disconnect(IConnectionPoint* other){meterExchange_.onDisconnect(other);return AudioEffect::disconnect(other);}
 tresult PLUGIN_API Processor::setBusArrangements(SpeakerArrangement* inputs,int32 numIns,SpeakerArrangement* outputs,int32 numOuts){if(numIns!=1||numOuts!=1||!inputs||!outputs)return kResultFalse;if(inputs[0]!=SpeakerArr::kMono&&inputs[0]!=SpeakerArr::kStereo)return kResultFalse;if(outputs[0]!=inputs[0])return kResultFalse;return AudioEffect::setBusArrangements(inputs,numIns,outputs,numOuts);}
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 s){return s==kSample32||s==kSample64?kResultTrue:kResultFalse;}
-tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){if(!std::isfinite(setup.sampleRate)||setup.sampleRate<=0.0||setup.maxSamplesPerBlock<=0)return kInvalidArgument;sampleRate_=setup.sampleRate;finiteTail_.store(static_cast<uint32>(std::ceil(2.0*sampleRate_)),std::memory_order_relaxed);reportedLatencySamples_=v3ReportedLatencySamples(sampleRate_);dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
+tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){if(!std::isfinite(setup.sampleRate)||setup.sampleRate<=0.0||setup.sampleRate>double(std::numeric_limits<uint32>::max()-1u)/2.0||setup.maxSamplesPerBlock<=0)return kInvalidArgument;sampleRate_=setup.sampleRate;finiteTail_.store(static_cast<uint32>(std::ceil(2.0*sampleRate_)),std::memory_order_relaxed);reportedLatencySamples_=v3ReportedLatencySamples(sampleRate_);dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
 #ifndef MIXENGINE_CHANNEL_BUILD
  mixFxSnapshotCapacity_=std::max<int32>(1,setup.maxSamplesPerBlock);
  prepareMixFxSnapshotBuffers();

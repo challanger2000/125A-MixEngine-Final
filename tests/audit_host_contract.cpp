@@ -111,6 +111,18 @@ bool tail(bool mix){
  }
  return ok;
 }
+bool invalidTailRate(){
+ auto p=std::make_unique<MixEngine::Processor>();require(p->initialize(nullptr)==kResultOk,"initialize failed");
+ ProcessSetup setup{};setup.sampleRate=48000.;setup.maxSamplesPerBlock=block;setup.symbolicSampleSize=kSample64;setup.processMode=kRealtime;
+ require(p->setupProcessing(setup)==kResultOk,"valid setup failed");
+ const auto latency=p->getLatencySamples(),tail=p->getTailSamples();bool ok=true;
+ for(double rate:{std::numeric_limits<double>::max(),double(std::numeric_limits<uint32>::max())/2.0}){
+  setup.sampleRate=rate;
+  ok=(p->setupProcessing(setup)==kInvalidArgument)&&ok;
+  ok=(p->getLatencySamples()==latency&&p->getTailSamples()==tail)&&ok;
+ }
+ p->terminate();std::cout<<"unrepresentable tail rate rejected atomically="<<ok<<"\n";return ok;
+}
 bool extremeFinite(bool mix){
  Fixture f(mix);ParameterChanges c{64};configuration(c,true);
  std::array<double,block> x{};x[0]=std::numeric_limits<double>::max();x[1]=-x[0];
@@ -131,7 +143,7 @@ bool outputRamp(bool mix){
 }
 }
 int main(){try{
- bool ok=atomicState();
+ bool ok=atomicState();ok=invalidTailRate()&&ok;
 #ifdef MIXENGINE_CHANNEL_BUILD
  const std::array<bool,1> paths{false};
 #else

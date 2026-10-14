@@ -12,6 +12,7 @@ truncated bytes=225 rejected=1 atomic=1
 truncated bytes=231 rejected=1 atomic=1
 truncated bytes=233 rejected=1 atomic=1
 truncated bytes=239 rejected=1 atomic=1
+unrepresentable tail rate rejected atomically=1
 bypass 0 wetResumeMaxDiff=0 dryError=0
 tail 0 sr=44100 reported=88200 lastAbove1e-9=15261 peak=0.0076181
 tail 0 sr=48000 reported=96000 lastAbove1e-9=16309 peak=0.013247

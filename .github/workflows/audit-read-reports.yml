@@ -60,7 +60,8 @@ jobs:
                       record['dll']=bool(struct.unpack_from('<H',data,offset+22)[0]&0x2000)
                       record['contains_version_literal_3_0_0']=b'3.0.0' in data
               if label.endswith('moduleinfo.json'):
-                  record['moduleinfo']=json.loads(data.decode('utf-8-sig'))
+                  # The SDK writes JSON5 with trailing commas; retain original text.
+                  record['moduleinfo_text']=data.decode('utf-8-sig')
               records.append(record)
           for file in sorted(Path('reference-full').rglob('*')):
               if not file.is_file():continue
@@ -72,7 +73,7 @@ jobs:
                               inspect(str(file)+'::'+entry.filename,archive.read(entry))
               elif file.suffix=='.vst3' or file.name=='moduleinfo.json':inspect(str(file),file.read_bytes())
           Path('full-binary-provenance.json').write_text(json.dumps(records,indent=2)+'\n')
-          annotate('Existing FULL bytes from run 37497801176',json.dumps(records,indent=2))
+          for record in records:annotate('Existing FULL bytes from run 37497801176',json.dumps(record,indent=2))
           summary+='\n# Existing FULL bytes\n```json\n'+json.dumps(records,indent=2)+'\n```\n'
           Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(summary,encoding='utf-8')
           PY_REPORT
