@@ -1,0 +1,38 @@
+[
+  {
+    "scale": 0.25,
+    "frames": 230401,
+    "bit_exact": true,
+    "finite": true,
+    "peak": 0.17309311548419734,
+    "rms": 0.027278302519098924,
+    "sha256": "47878946d6a9cf4faaaaef22cfd00137b6e8cb55bae3fca92b7aeffca12c9741"
+  },
+  {
+    "scale": 0.5,
+    "frames": 230401,
+    "bit_exact": true,
+    "finite": true,
+    "peak": 0.22311830049897902,
+    "rms": 0.05185972944600508,
+    "sha256": "01380c0d69a93a628ecb59d3bc7a6754cdb2c98bec9fb98bb6d03ae1551109d5"
+  },
+  {
+    "scale": 1.0,
+    "frames": 230401,
+    "bit_exact": true,
+    "finite": true,
+    "peak": 0.3078915321798341,
+    "rms": 0.10050394965739519,
+    "sha256": "c402df3e0770aad5d565425e6cb38d649cd9eccce96386522c047c5258d4ba0c"
+  },
+  {
+    "scale": 2.0,
+    "frames": 230401,
+    "bit_exact": true,
+    "finite": true,
+    "peak": 0.6747297213018422,
+    "rms": 0.19772591496638056,
+    "sha256": "24b7ec6698c9c7e199ec7e9a3e2f2539ad6045e04f1c2a977380702b8f7d13d4"
+  }
+]

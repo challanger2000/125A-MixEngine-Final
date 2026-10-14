@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [audit/v3.0.0-release-2026-10-14]
+    paths: [source/**, tests/**, scripts/**, CMakeLists.txt, .github/workflows/audit-v3.yml]
 permissions:
   contents: read
 jobs:
@@ -22,11 +23,6 @@ jobs:
           ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
           submodules: recursive
           path: vst3sdk
-      - uses: actions/checkout@v4
-        with:
-          repository: challanger2000/125A-Plugin-Tester
-          ref: 70aeb0d9fa82541699994e050ab35ab625e8a417
-          path: plugin-tester
       - name: Static contracts and approved assets
         shell: pwsh
         run: |
@@ -69,8 +65,18 @@ jobs:
           }
           $failed | Set-Content audit-evidence/failed-targets.txt
           if ($failed.Count) { throw "Failed gates: $($failed -join ', ')" }
-      - name: Build official 125A tester and native editor probe
+      - name: Read pinned private 125A tester (separate access gate)
+        id: tester_checkout
         if: ${{ !cancelled() }}
+        uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Plugin-Tester
+          ref: 70aeb0d9fa82541699994e050ab35ab625e8a417
+          path: plugin-tester
+          token: ${{ secrets.AUDIT_QA_READ_TOKEN || github.token }}
+      - name: Build official 125A tester and native editor probe
+        id: tester_build
+        if: ${{ !cancelled() && steps.tester_checkout.outcome == 'success' }}
         shell: pwsh
         run: |
           cmake -S plugin-tester -B tester-build -A x64 "-DFETCHCONTENT_SOURCE_DIR_VST3SDK=$env:GITHUB_WORKSPACE/vst3sdk"
@@ -78,7 +84,9 @@ jobs:
           cmake --build tester-build --config Release --target PluginTester125ADispatcher PluginTester125ALauncher PluginTester125AWorker PluginTester125AReloadProbe PluginTester125AStateProbe PluginTester125AIOEventProbe PluginTester125AValidatorWrapper PluginTester125AEditorLifecycleProbe validator --parallel 4
           if ($LASTEXITCODE) { throw 'Tester build failed' }
       - name: Full 125A tester and native editor checks on the Channel bundle
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && steps.tester_build.outcome == 'success' }}
+        env:
+          125A_PLUGIN_TESTER_REPORT_DIR: ${{ github.workspace }}/audit-evidence/tester-reports
         shell: pwsh
         run: |
           $bundle=(Resolve-Path build/VST3/Release/125A-MixEngine-V3-Channel.vst3).Path
