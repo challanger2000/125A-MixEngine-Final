@@ -1,0 +1,87 @@
+name: Read existing audit reports and FULL provenance
+on:
+  workflow_dispatch:
+  push:
+    branches: [audit/v3.0.0-release-2026-10-14]
+    paths: [.github/workflows/audit-read-reports.yml]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MixEngine-V3-independent-audit-evidence
+          run-id: 38653452977
+          github-token: ${{ github.token }}
+          path: evidence/channel
+      - uses: actions/download-artifact@v4
+        with:
+          name: MixEngine-V3-native-MixFX-QA-evidence
+          run-id: 38653753293
+          github-token: ${{ github.token }}
+          path: evidence/mixfx
+      - uses: actions/download-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad
+          run-id: 37497801176
+          github-token: ${{ github.token }}
+          path: reference-full
+      - name: Read reports and hash existing FULL bytes (no builds or packages)
+        shell: bash
+        run: |
+          python3 - <<'PY_REPORT'
+          from pathlib import Path
+          import hashlib,json,os,struct,zipfile
+          def annotate(title,text):
+              escaped=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+              print('::notice title='+title+'::'+escaped)
+          summary='# Existing Windows QA reports\n'
+          count=0
+          for file in sorted(Path('evidence').rglob('*.txt')):
+              count+=1
+              text=file.read_text(encoding='utf-8-sig')
+              important=(file.name in ('failed-targets.txt','audit-realtime.txt','audit-realtime-dense.txt','audit-realtime-mmcss.txt','controller-lifecycle-diagnostic.txt','tester-guard-selftest.txt','validator-selftest.txt','native-editor.txt') or file.name.endswith('_125A_QA_Report.txt') or file.name.endswith('_125A_Editor_Lifecycle_Probe.txt'))
+              if important and 'tester-selftest' not in file.parts:
+                  limit=30000
+                  summary+='\n## '+str(file)+'\n```text\n'+text[:limit]+'\n```\n'
+                  annotate('Verified report '+str(file),text[:limit])
+          annotate('Read report count',str(count)+' text reports read; original paths retained')
+          records=[]
+          def inspect(label,data):
+              record=dict(path=label,bytes=len(data),sha256=hashlib.sha256(data).hexdigest())
+              if data.startswith(b'MZ') and len(data)>64:
+                  offset=struct.unpack_from('<I',data,0x3c)[0]
+                  if offset+24<=len(data) and data[offset:offset+4]==b'PE\0\0':
+                      record['pe_machine']=hex(struct.unpack_from('<H',data,offset+4)[0])
+                      record['dll']=bool(struct.unpack_from('<H',data,offset+22)[0]&0x2000)
+                      record['contains_version_literal_3_0_0']=b'3.0.0' in data
+              if label.endswith('moduleinfo.json'):
+                  record['moduleinfo']=json.loads(data.decode('utf-8-sig'))
+              records.append(record)
+          for file in sorted(Path('reference-full').rglob('*')):
+              if not file.is_file():continue
+              if file.suffix=='.zip':
+                  inspect(str(file),file.read_bytes())
+                  with zipfile.ZipFile(file) as archive:
+                      for entry in archive.infolist():
+                          if not entry.is_dir() and (entry.filename.endswith('.vst3') or entry.filename.endswith('moduleinfo.json')):
+                              inspect(str(file)+'::'+entry.filename,archive.read(entry))
+              elif file.suffix=='.vst3' or file.name=='moduleinfo.json':inspect(str(file),file.read_bytes())
+          Path('full-binary-provenance.json').write_text(json.dumps(records,indent=2)+'\n')
+          annotate('Existing FULL bytes from run 37497801176',json.dumps(records,indent=2))
+          summary+='\n# Existing FULL bytes\n```json\n'+json.dumps(records,indent=2)+'\n```\n'
+          Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(summary,encoding='utf-8')
+          PY_REPORT
+      - name: Preserve inspected reports only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MixEngine-V3-readonly-report-inspection
+          path: |
+            evidence/
+            full-binary-provenance.json
+          if-no-files-found: error
