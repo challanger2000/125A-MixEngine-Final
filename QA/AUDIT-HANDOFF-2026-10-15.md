@@ -67,7 +67,7 @@ Keine neuen ParamIDs, UIDs, Versionsnummern, Release-Tags oder kommerziellen Liz
 - Vollständige native Pixelbilder wurden geprüft: 1440×800 bei 100 % sowie 2160×1200 bei 150 % externem Content-Scale. Das UI-interne Zoomlabel bleibt dabei korrekt 100 %; dies ist kein Beweis der fünf internen Zoomstufen. Bilder in `evidence/editor-100.png`, `evidence/editor-150.png`. Master-SVG ist byteidentisch zum aktuellen Branding-Repository (SHA-256 `54984ddaea38043e1449b2e5a8e80351ed73e66d922533814701b98b8fc3bc39`).
 - Linux-Attach-Harness benötigt Runloop im Factory-Host-Kontext und XEmbed-Handschlag; diese Harness-Fehler wurden korrigiert. Bei wiederholtem Öffnen abortiert Cairo/VSTGUI reproduzierbar um Zyklus 4 mit `_get_screen_index: Assertion !reached`. Stack in `evidence/editor-reopen-backtrace.txt`. **Linux Editor Lifecycle FAIL / genaue Verantwortungszuordnung nicht vollständig bewiesen**. Keine SDK-Quellen geändert, kein Linux-Release vorbereitet.
 - Vollständiger 125A Tester auf Linux nicht ausführbar: gepinnter Quellstand benötigt `windows.h` in report_paths.h trotz vorhandenem Linux-Modullader. Keine Tester-Implementierung wurde verändert, um einen Ersatz-PASS zu erzeugen.
-- Windows-Audit: **NOT VERIFIED**. `.github/workflows/audit-v3.yml` ist eine neue manuelle QA-Vorlage für beide Varianten, 58 Funktions-/Controller-/Realtime-Ziele plus dichter Automationslauf sowie gepinnten offiziellen 125A Tester und nativen Editor-Probe. Keine automatischen Push-Trigger, kein Gumroad-/Demo-Paket, keine Release-Erstellung. Targetnamen gegen die tatsächlich gepinnten CMake-Dateien geprüft; Windows/Powershell-Ausführung steht aus.
+- Windows-Audit: **NOT VERIFIED**. `.github/workflows/audit-v3.yml` ist eine neue gebündelte QA-Pipeline für beide Varianten, 58 Funktions-/Controller-/Realtime-Ziele plus dichter Automationslauf sowie gepinnten offiziellen 125A Tester und nativen Editor-Probe. Ein Push-Trigger ausschließlich auf diesem Audit-Branch startet den gebündelten Lauf trotz blockierter Dispatch-API; zusätzlich workflow_dispatch. Kein Gumroad-/Demo-Paket, keine Release-Erstellung. Targetnamen gegen die tatsächlich gepinnten CMake-Dateien geprüft; Windows/Powershell-Ausführung steht aus.
 
 ## 7. Verbleibende Prüfungen / technische Blockaden
 
@@ -80,7 +80,7 @@ Keine neuen ParamIDs, UIDs, Versionsnummern, Release-Tags oder kommerziellen Liz
 
 ## 8. Quellstand
 
-Repository `challanger2000/125A-MixEngine-Final`; Branch `audit/v3.0.0-release-2026-10-14`. Die exakte Übergabe-SHA wird beim Commit/Push in der Chat-Übergabe und Git-Historie festgehalten; dieser Bericht ist Bestandteil dieses Commits. `main`, `v3.0.0-development`, `Demo` und die bestehenden Release-Pipelines wurden nicht überschrieben. Ein ergänzender Guardrail steht auf einem eigenen Engineering-Audit-Branch.
+Repository `challanger2000/125A-MixEngine-Final`; Branch `audit/v3.0.0-release-2026-10-14`. Reparatur-/Evidenz-Commit: `88d8014f6e149927de3fa8da7cbcbc4628eae8dd`; ein nachfolgender QA-Trigger-Commit enthält ausschließlich den branchbegrenzten Windows-Start und diese Dokumentation. Die exakte finale Übergabe-SHA wird beim Commit/Push in der Chat-Übergabe und Git-Historie festgehalten; dieser Bericht ist Bestandteil dieses Commits. `main`, `v3.0.0-development`, `Demo` und die bestehenden Release-Pipelines wurden nicht überschrieben. Ein ergänzender Guardrail steht auf einem eigenen Engineering-Audit-Branch.
 
 ## 9. Studio-One-Abnahme durch den Nutzer
 
