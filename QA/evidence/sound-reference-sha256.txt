@@ -1,0 +1,2 @@
+e743195038ae3eab6981b34a35e3b59776913d57cbf616b5aae1c0bcd85ff1a4  /workspace/audit/current-latest.bin
+e743195038ae3eab6981b34a35e3b59776913d57cbf616b5aae1c0bcd85ff1a4  /workspace/audit/baseline-latest.bin

@@ -1,0 +1,11 @@
+cycle 0 createView
+attach
+pump
+150% native editor geometry=2160x1200
+cycle 1 createView
+attach
+cycle 2 createView
+attach
+cycle 3 createView
+attach
+audit-linux-editor: ../../../src/cairo-xcb-screen.c:219: _get_screen_index: Assertion `!"reached"' failed.

@@ -1,0 +1,27 @@
+truncated bytes=1 rejected=1 atomic=1
+truncated bytes=7 rejected=1 atomic=1
+truncated bytes=8 rejected=1 atomic=0
+truncated bytes=16 rejected=1 atomic=0
+truncated bytes=199 rejected=1 atomic=0
+truncated bytes=207 rejected=1 atomic=0
+truncated bytes=209 rejected=0 atomic=0
+truncated bytes=215 rejected=0 atomic=0
+truncated bytes=217 rejected=0 atomic=0
+truncated bytes=223 rejected=0 atomic=0
+truncated bytes=225 rejected=0 atomic=0
+truncated bytes=231 rejected=0 atomic=0
+truncated bytes=233 rejected=0 atomic=0
+truncated bytes=239 rejected=0 atomic=0
+bypass 0 wetResumeMaxDiff=0.372306 dryError=0
+tail 0 sr=44100 reported=0 lastAbove1e-9=15261 peak=0.0076181
+tail 0 sr=48000 reported=0 lastAbove1e-9=16309 peak=0.013247
+tail 0 sr=96000 reported=0 lastAbove1e-9=28382 peak=0.00332748
+tail 0 sr=192000 reported=0 lastAbove1e-9=56744 peak=0.0106814
+output 0 maxJump=0.596214 5msBound=0.00247906 final=0.796214
+bypass 1 wetResumeMaxDiff=0.372306 dryError=0
+tail 1 sr=44100 reported=0 lastAbove1e-9=15261 peak=0.0076181
+tail 1 sr=48000 reported=0 lastAbove1e-9=16309 peak=0.013247
+tail 1 sr=96000 reported=0 lastAbove1e-9=28382 peak=0.00332748
+tail 1 sr=192000 reported=0 lastAbove1e-9=56744 peak=0.0106814
+output 1 maxJump=0.596214 5msBound=0.00247906 final=0.796214
+FAIL: independent host contracts

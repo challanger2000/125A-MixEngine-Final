@@ -220,20 +220,14 @@ if mixfx_map != EXPECTED_MIXFX:
     wrong = {k: v for k, v in EXPECTED_MIXFX.items() if mixfx_map.get(k) != v}
     fail(f"Mix FX parameter routing changed: {wrong}")
 
-# 7) Legacy state migration must remain symmetrical in processor and controller.
-migration_needles = [
-    "id==kParamTubeType",
-    "id==kParamMeterSource",
-    "id==kParamTapeHiss",
-    "id==kParamVinylNoise",
-]
-for needle in migration_needles:
-    if needle not in processor or needle not in controller:
-        fail(f"state migration case missing: {needle}")
-if "for(ParamID id=0;id<kParamCount;++id)" not in processor:
-    fail("processor state/parameter loop no longer spans kParamCount")
-if "for(ParamID id=0;id<kParamCount;++id)" not in controller:
-    fail("controller state loop no longer spans kParamCount")
+# 7) Both sides must use the same atomic legacy-state decoder.
+codec=(ROOT / "source/state_codec.h").read_text(encoding="utf-8")
+for source in (processor,controller):
+    if "readParameterState(state,defaults,loaded)" not in source:
+        fail("processor/controller must share the atomic state decoder")
+for token in ("count==0&&id>=kParamTubeType", "count!=8", "result=candidate", "kParamTapeHiss", "kParamVinylNoise"):
+    if token not in codec:
+        fail("strict legacy migration decoder missing: "+token)
 
 # 8) Critical DSP routing checks.
 critical = [
@@ -286,8 +280,9 @@ if processor.count("processStereoFieldSample(") != 2:
     fail("normal and Mix FX paths are not both using the shared stereo stage")
 if "2500.0/sampleRate_" in processor or "0.25*depthBipolar" in processor:
     fail("legacy weak DEPTH equation returned")
-if "return processTubeNonlinearCore(x,typeMorph,amount);" not in processor:
-    fail("live Tube path is no longer routed through the tested shared core")
+tube_wrapper_line = "return V3Research::processTubeV3(x,state.v3,sampleRate_,typeMorph,amount,osFactor);"
+if tube_wrapper_line not in processor or processor.count("processTubeSample(") < 5:
+    fail("live Channel and Mix FX paths must route through the V3 Tube model")
 if processor.count("outBus.silenceFlags=0;") < 2:
     fail("normal and Mix FX paths are not both conservative about output silence metadata")
 

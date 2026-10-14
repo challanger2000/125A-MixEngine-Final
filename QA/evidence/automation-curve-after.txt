@@ -1,0 +1,25 @@
+mix=0 bits=32 chunk=64 jump=0 lineError=1.78814e-08
+mix=0 bits=64 chunk=64 jump=0 lineError=0
+mix=0 bits=32 chunk=64 jump=1 lineError=5.96046e-09
+mix=0 bits=64 chunk=64 jump=1 lineError=0
+mix=0 bits=32 chunk=16 jump=0 lineError=1.78814e-08
+mix=0 bits=64 chunk=16 jump=0 lineError=0
+mix=0 bits=32 chunk=16 jump=1 lineError=5.96046e-09
+mix=0 bits=64 chunk=16 jump=1 lineError=0
+mix=0 bits=32 chunk=1 jump=0 lineError=1.78814e-08
+mix=0 bits=64 chunk=1 jump=0 lineError=0
+mix=0 bits=32 chunk=1 jump=1 lineError=5.96046e-09
+mix=0 bits=64 chunk=1 jump=1 lineError=0
+mix=1 bits=32 chunk=64 jump=0 lineError=1.78814e-08
+mix=1 bits=64 chunk=64 jump=0 lineError=0
+mix=1 bits=32 chunk=64 jump=1 lineError=5.96046e-09
+mix=1 bits=64 chunk=64 jump=1 lineError=0
+mix=1 bits=32 chunk=16 jump=0 lineError=1.78814e-08
+mix=1 bits=64 chunk=16 jump=0 lineError=0
+mix=1 bits=32 chunk=16 jump=1 lineError=5.96046e-09
+mix=1 bits=64 chunk=16 jump=1 lineError=0
+mix=1 bits=32 chunk=1 jump=0 lineError=1.78814e-08
+mix=1 bits=64 chunk=1 jump=0 lineError=0
+mix=1 bits=32 chunk=1 jump=1 lineError=5.96046e-09
+mix=1 bits=64 chunk=1 jump=1 lineError=0
+PASS: VST3 linear automation / implicit -1 / adjacent-point jumps

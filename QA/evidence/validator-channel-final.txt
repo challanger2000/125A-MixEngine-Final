@@ -1,0 +1,326 @@
+* Loading module...
+
+	/workspace/build/gui/VST3/Release/125A-MixEngine-V3-Channel.vst3
+
+* Check valid bundle structure...
+
+* Scanning classes...
+
+  Factory Info:
+	vendor = 125A
+	url = 
+	email = 
+
+  Class Info 0:
+	name = 125A MixEngine V3 Channel
+	category = Audio Module Class
+	subCategories = Fx
+	version = 3.0.0
+	sdkVersion = VST 3.8.1
+	cid = B667A41A93E15E4097A44D18F0989B14
+
+  Class Info 1:
+	name = 125A MixEngine V3 Channel Controller
+	category = Component Controller Class
+	subCategories = 
+	version = 3.0.0
+	sdkVersion = VST 3.8.1
+	cid = F8A45740B085582A8F4AF5EAE4A9A3BD
+
+* Checking snapshots...
+
+Info: No snapshots in Bundle.
+
+* Creating tests...
+
+* Running tests...
+
+-------------------------------------------------------------
+TestSuite : 125A MixEngine V3 Channel
+-------------------------------------------------------------
+
+-------------------------------------------------------------
+TestSuite : General Tests
+-------------------------------------------------------------
+
+[Scan Editor Classes]
+Info:  ===Scan Editor Classes ====================================
+Info:  This component has an edit controller class
+Info:     Controller CID: {F8A45740-B085-582A-8F4A-F5EAE4A9A3BD}
+[Succeeded]
+
+[Scan Buses]
+Info:  ===Scan Buses ====================================
+Info:  => Audio Buses: [1 In(s) => 1 Out(s)]
+Info:       In [0]: "Mix Input" (Main-Default Active) 
+Info:       Out[0]: "Mix Output" (Main-Default Active) 
+Info:  => Event Buses: [0 In(s) => 0 Out(s)]
+[Succeeded]
+
+[Scan Parameters]
+Info:  ===Scan Parameters ====================================
+Info:  This component exports 34 parameter(s)
+Info:     Parameter 000 (id=0): [title="Bypass"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 001 (id=1): [title="Input Gain"] [unit="dB"] [type = Float, default = 0.500000, unit = 0]
+Info:     Parameter 002 (id=2): [title="Reference Level"] [unit=""] [type = Discrete, default = 0.500000, unit = 0]
+Info:     Parameter 003 (id=3): [title="Level Match"] [unit=""] [type = Toggle, default = 1.000000, unit = 0]
+Info:     Parameter 004 (id=4): [title="Console On"] [unit=""] [type = Toggle, default = 1.000000, unit = 0]
+Info:     Parameter 005 (id=5): [title="Console Mode"] [unit=""] [type = Discrete, default = 0.333333, unit = 0]
+Info:     Parameter 006 (id=6): [title="Console Drive"] [unit="%"] [type = Float, default = 0.250000, unit = 0]
+Info:     Parameter 007 (id=7): [title="Legacy Crosstalk"] [unit="%"] [type = Float, default = 0.100000, unit = 0]
+Info:  =>Parameter 007 (id=7) is kIsHidden and NOT kIsReadOnly!
+Info:     Parameter 008 (id=23): [title="Console Noise"] [unit="%"] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 009 (id=8): [title="Tube On"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 010 (id=26): [title="Tube Voice"] [unit=""] [type = Discrete, default = 0.500000, unit = 0]
+Info:     Parameter 011 (id=9): [title="Tube Amount"] [unit="%"] [type = Float, default = 0.200000, unit = 0]
+Info:     Parameter 012 (id=10): [title="Tape On"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 013 (id=11): [title="Tape Amount"] [unit="%"] [type = Float, default = 0.200000, unit = 0]
+Info:     Parameter 014 (id=12): [title="Tape Speed"] [unit=""] [type = Discrete, default = 0.500000, unit = 0]
+Info:     Parameter 015 (id=13): [title="Tape Stability"] [unit="%"] [type = Float, default = 0.900000, unit = 0]
+Info:     Parameter 016 (id=28): [title="Tape Hiss"] [unit="%"] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 017 (id=14): [title="Glue On"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 018 (id=15): [title="Glue Amount"] [unit="%"] [type = Float, default = 0.150000, unit = 0]
+Info:     Parameter 019 (id=16): [title="Glue Response"] [unit="%"] [type = Float, default = 0.500000, unit = 0]
+Info:     Parameter 020 (id=17): [title="Vinyl On"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 021 (id=18): [title="Vinyl Color"] [unit="%"] [type = Float, default = 0.250000, unit = 0]
+Info:     Parameter 022 (id=19): [title="Vinyl Wear"] [unit="%"] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 023 (id=29): [title="Vinyl Surface"] [unit="%"] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 024 (id=20): [title="Depth"] [unit="%"] [type = Float, default = 0.500000, unit = 0]
+Info:     Parameter 025 (id=21): [title="Width"] [unit="%"] [type = Float, default = 0.500000, unit = 0]
+Info:     Parameter 026 (id=22): [title="Low Mono"] [unit="%"] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 027 (id=24): [title="Quality"] [unit=""] [type = Discrete, default = 0.500000, unit = 0]
+Info:     Parameter 028 (id=25): [title="Output Gain"] [unit="dB"] [type = Float, default = 0.500000, unit = 0]
+Info:     Parameter 029 (id=27): [title="VU Source"] [unit=""] [type = Toggle, default = 1.000000, unit = 0]
+Info:     Parameter 030 (id=1000): [title="VU Left"] [unit=""] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 031 (id=1001): [title="VU Right"] [unit=""] [type = Float, default = 0.000000, unit = 0]
+Info:     Parameter 032 (id=1002): [title="Clip Left"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+Info:     Parameter 033 (id=1003): [title="Clip Right"] [unit=""] [type = Toggle, default = 0.000000, unit = 0]
+[Succeeded]
+
+[MIDI Mapping]
+Info:  ===MIDI Mapping ====================================
+Info:  No MIDI Mapping interface supplied!
+[Succeeded]
+
+[MIDI Learn]
+Info:  ===MIDI Learn ====================================
+Info:  No MIDI Learn interface supplied!
+[Succeeded]
+
+[Scan Units]
+Info:  ===Scan Units ====================================
+Info:  No units found, while controller implements IUnitInfo !!!
+[Succeeded]
+
+[Scan Programs]
+Info:  ===Scan Programs ====================================
+Info:  This component does not export any programs.
+[Succeeded]
+
+[Terminate/Initialize]
+Info:  ===Terminate/Initialize ====================================
+[Succeeded]
+
+[Check Unit Structure]
+Info:  ===Check Unit Structure ====================================
+Info:  No units found, while controller implements IUnitInfo !!!
+Info:  All units have valid parent IDs.
+[Succeeded]
+
+[Valid State Transition 32bits]
+Info:  ===Valid State Transition 32bits ====================================
+[Succeeded]
+
+[Valid State Transition 64bits]
+Info:  ===Valid State Transition 64bits ====================================
+[Succeeded]
+
+[Bus Consistency]
+Info:  ===Bus Consistency ====================================
+[Succeeded]
+
+[Bus Activation]
+Info:  ===Bus Activation ====================================
+Info:     Bus Activation: Input Audio Bus (0) (kMain)
+Info:     Bus Activation: Output Audio Bus (0) (kMain)
+[Succeeded]
+
+[Check Audio Bus Arrangement]
+Info:  ===Check Audio Bus Arrangement ====================================
+Info:     Check Input Audio Bus Arrangement (0)
+Info:     Check Output Audio Bus Arrangement (0)
+[Succeeded]
+
+[SideChain Arrangement]
+Info:  ===SideChain Arrangement ====================================
+[Succeeded]
+
+[Suspend/Resume]
+Info:  ===Suspend/Resume ====================================
+[Succeeded]
+
+[Note Expression]
+Info:  ===Note Expression ====================================
+Info:  No Note Expression interface supplied!
+[Succeeded]
+
+[Keyswitch]
+Info:  ===Keyswitch ====================================
+Info:  No Keyswitch interface supplied!
+[Succeeded]
+
+[ProcessContext Requirements]
+Info:  ===ProcessContext Requirements ====================================
+Info:  ProcessContextRequirements:
+Info:   - None
+[Succeeded]
+
+-------------------------------------------------------------
+TestSuite : Single Precision (32 bit) Tests
+-------------------------------------------------------------
+
+[Process Test]
+[Succeeded]
+
+[Process function running in another thread]
+Info:  ===Process function running in another thread ====================================
+[Succeeded]
+
+[Silence Flags]
+Info:  ===Silence Flags ====================================
+[Succeeded]
+
+[Silence Processing]
+Info:  ===Silence Processing ====================================
+Info:  The component reported a wrong silent flag for its output buffer! : output is silent but silenceFlags not set !
+[Succeeded]
+
+[Parameters Flush (no Buffer)]
+Info:  ===Parameters Flush (no Buffer) ====================================
+[Succeeded]
+
+[Parameters Flush 2 (only numChannel==0)]
+Info:  ===Parameters Flush 2 (only numChannel==0) ====================================
+[Succeeded]
+
+[Parameters Flush 2 (no Buffer, no parameter change)]
+Info:  ===Parameters Flush 2 (no Buffer, no parameter change) ====================================
+[Succeeded]
+
+[Variable Block Size]
+Info:  ===Variable Block Size ====================================
+[Succeeded]
+
+[Process Format]
+Info:  ===Process Format ====================================
+Info:  ***Tested Sample Rates***
+Info:        22050 Hz - processed successfully!
+Info:        32000 Hz - processed successfully!
+Info:        44100 Hz - processed successfully!
+Info:        48000 Hz - processed successfully!
+Info:        88200 Hz - processed successfully!
+Info:        96000 Hz - processed successfully!
+Info:       192000 Hz - processed successfully!
+Info:       384000 Hz - processed successfully!
+Info:    1234.5678 Hz - processed successfully!
+Info:    12345.678 Hz - processed successfully!
+Info:    123456.78 Hz - processed successfully!
+Info:    1234567.8 Hz - processed successfully!
+[Succeeded]
+
+[Parameter Bypass persistence]
+Info:  ===Parameter Bypass persistence ====================================
+[Succeeded]
+
+[In: Stereo: 2 Channels, Out: Stereo: 2 Channels]
+Info:  ===In: Stereo: 2 Channels, Out: Stereo: 2 Channels ====================================
+[Succeeded]
+
+[In: Mono: 1 Channels, Out: Mono: 1 Channels]
+Info:  ===In: Mono: 1 Channels, Out: Mono: 1 Channels ====================================
+[Succeeded]
+
+[Accuracy: Block, 1 Parameters, Change every100 Samples]
+Info:  ===Accuracy: Block, 1 Parameters, Change every100 Samples ====================================
+[Succeeded]
+
+[Accuracy: Sample, 1 Parameters, Change every100 Samples]
+Info:  ===Accuracy: Sample, 1 Parameters, Change every100 Samples ====================================
+[Succeeded]
+
+-------------------------------------------------------------
+TestSuite : Double Precision (64 bit) Tests
+-------------------------------------------------------------
+
+[Process Test]
+[Succeeded]
+
+[Process function running in another thread]
+Info:  ===Process function running in another thread ====================================
+[Succeeded]
+
+[Silence Flags]
+Info:  ===Silence Flags ====================================
+[Succeeded]
+
+[Silence Processing]
+Info:  ===Silence Processing ====================================
+Info:  The component reported a wrong silent flag for its output buffer! : output is silent but silenceFlags not set !
+[Succeeded]
+
+[Parameters Flush (no Buffer)]
+Info:  ===Parameters Flush (no Buffer) ====================================
+[Succeeded]
+
+[Parameters Flush 2 (only numChannel==0)]
+Info:  ===Parameters Flush 2 (only numChannel==0) ====================================
+[Succeeded]
+
+[Parameters Flush 2 (no Buffer, no parameter change)]
+Info:  ===Parameters Flush 2 (no Buffer, no parameter change) ====================================
+[Succeeded]
+
+[Variable Block Size]
+Info:  ===Variable Block Size ====================================
+[Succeeded]
+
+[Process Format]
+Info:  ===Process Format ====================================
+Info:  ***Tested Sample Rates***
+Info:        22050 Hz - processed successfully!
+Info:        32000 Hz - processed successfully!
+Info:        44100 Hz - processed successfully!
+Info:        48000 Hz - processed successfully!
+Info:        88200 Hz - processed successfully!
+Info:        96000 Hz - processed successfully!
+Info:       192000 Hz - processed successfully!
+Info:       384000 Hz - processed successfully!
+Info:    1234.5678 Hz - processed successfully!
+Info:    12345.678 Hz - processed successfully!
+Info:    123456.78 Hz - processed successfully!
+Info:    1234567.8 Hz - processed successfully!
+[Succeeded]
+
+[Parameter Bypass persistence]
+Info:  ===Parameter Bypass persistence ====================================
+[Succeeded]
+
+[In: Stereo: 2 Channels, Out: Stereo: 2 Channels]
+Info:  ===In: Stereo: 2 Channels, Out: Stereo: 2 Channels ====================================
+[Succeeded]
+
+[In: Mono: 1 Channels, Out: Mono: 1 Channels]
+Info:  ===In: Mono: 1 Channels, Out: Mono: 1 Channels ====================================
+[Succeeded]
+
+[Accuracy: Block, 1 Parameters, Change every100 Samples]
+Info:  ===Accuracy: Block, 1 Parameters, Change every100 Samples ====================================
+[Succeeded]
+
+[Accuracy: Sample, 1 Parameters, Change every100 Samples]
+Info:  ===Accuracy: Sample, 1 Parameters, Change every100 Samples ====================================
+[Succeeded]
+
+-------------------------------------------------------------
+Result: 47 tests passed, 0 tests failed
+-------------------------------------------------------------

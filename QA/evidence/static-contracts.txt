@@ -1,0 +1,5 @@
+Parameter/routing contract PASS: 30 stored parameters, 30 GUI controls, 30 Mix FX mirrors
+Channel contract PASS: dedicated standard VST3 identity, shared DSP/GUI, Mix FX API gated
+/workspace/125A-MixEngine-Final/resource/mixengine.uidesc: XML + bounds + exact centre-axis layout PASS
+/workspace/125A-MixEngine-Final/resource/mixengine_channel.uidesc: XML + bounds + exact centre-axis layout PASS
+Released V3 GUI contracts PASS: atlas resources, geometry, identity, five zoom factors; native interaction remains separate

@@ -1,0 +1,6 @@
+Clock-pair mean overheadUs=0.0232781
+sr=48000 block=64 channels=2 bits=64 paced=1 denseAutomation=1 mean/p95/p99/maxUs=201.062/308.985/668.376/1813.18 deadlineUs=1333.33 overruns=1 newCalls=0 setProcessingUs=0.05
+threadCpuP99/maxUs=670.494/1814.99 (separate CPU timer instrumentation included)
+sr=192000 block=64 channels=2 bits=64 paced=1 denseAutomation=1 mean/p95/p99/maxUs=173.723/257.438/368.725/608.315 deadlineUs=333.333 overruns=10 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=385.431/609.924 (separate CPU timer instrumentation included)
+FAIL: dense continuous automation callback timing and C++ allocations

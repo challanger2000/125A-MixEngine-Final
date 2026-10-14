@@ -79,8 +79,10 @@ std::vector<double> render(const Case& tc,const std::vector<int>& pattern){
 
         ParameterChanges changes{64},outChanges{8};
         if(first)addBaseConfig(changes,tc);
-        if(kEvent>=base && kEvent<base+count)
+        if(kEvent>=base && kEvent<base+count){
+            if(kEvent>base)addPoint(changes,tc.eventId,kEvent-base-1,tc.before);
             addPoint(changes,tc.eventId,kEvent-base,tc.after);
+        }
 
         double* inP[1]{in.data()}; double* outP[1]{out.data()};
         AudioBusBuffers ib{},ob{}; ib.numChannels=1; ib.channelBuffers64=inP; ob.numChannels=1; ob.channelBuffers64=outP;

@@ -1,4 +1,5 @@
 #include "controller.h"
+#include "state_codec.h"
 #include "pluginids.h"
 #include "HardwareControls.h"
 #include "vstgui/plugin-bindings/vst3editor.h"
@@ -111,8 +112,11 @@ tresult PLUGIN_API Controller::initialize(FUnknown* context){
     constexpr int32 meterFlags=ParameterInfo::kIsReadOnly;
     parameters.addParameter(STR16("VU Left"),nullptr,0,0.0,meterFlags,kParamMeterL);
     parameters.addParameter(STR16("VU Right"),nullptr,0,0.0,meterFlags,kParamMeterR);
-    parameters.addParameter(STR16("Clip Left"),nullptr,1,0.0,meterFlags,kParamClipL);
-    parameters.addParameter(STR16("Clip Right"),nullptr,1,0.0,meterFlags,kParamClipR);
+    for(auto id:{kParamClipL,kParamClipR}){
+        auto* clip=new StringListParameter(id==kParamClipL?STR16("Clip Left"):STR16("Clip Right"),id,nullptr,meterFlags);
+        clip->appendString(STR16("Off"));clip->appendString(STR16("On"));
+        setListDefault(clip,0.0);parameters.addParameter(clip);
+    }
     return kResultOk;
 }
 
@@ -149,21 +153,15 @@ void PLUGIN_API Controller::onDataExchangeBlocksReceived(DataExchangeUserContext
 }
 
 tresult PLUGIN_API Controller::setComponentState(IBStream* state){
-    if(!state)return kResultFalse;IBStreamer s(state,kLittleEndian);
-    for(ParamID id=0;id<kParamCount;++id){
-        double v=0.;
-        if(!s.readDouble(v)){
-            if(id==kParamTubeType){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTubeType,.5);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
-            if(id==kParamMeterSource){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamMeterSource,1.0);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
-            if(id==kParamTapeHiss){const double legacy=getParamNormalized(kParamConsoleNoise);setParamNormalized(kParamTapeHiss,legacy);setParamNormalized(kParamVinylNoise,legacy);break;}
-            if(id==kParamVinylNoise){setParamNormalized(kParamVinylNoise,getParamNormalized(kParamConsoleNoise));break;}
-            return kResultFalse;
-        }
-        if(std::isfinite(v))setParamNormalized(id,std::clamp(v,0.0,1.0));
-        else if(auto* parameter=parameters.getParameter(id))
-            setParamNormalized(id,parameter->getInfo().defaultNormalizedValue);
-    }
-    return kResultOk;
+ std::array<double,kParamCount> defaults{},loaded{};
+ for(ParamID id=0;id<kParamCount;++id){
+  auto* parameter=parameters.getParameter(id);
+  if(!parameter)return kResultFalse;
+  defaults[id]=parameter->getInfo().defaultNormalizedValue;
+ }
+ if(!readParameterState(state,defaults,loaded))return kResultFalse;
+ for(ParamID id=0;id<kParamCount;++id)setParamNormalized(id,loaded[id]);
+ return kResultOk;
 }
 
 VSTGUI::CView* Controller::createCustomView(VSTGUI::UTF8StringPtr name,const VSTGUI::UIAttributes& a,const VSTGUI::IUIDescription* description,VSTGUI::VST3Editor* e){

@@ -79,8 +79,10 @@ std::vector<double> render(const Case& tc,const std::vector<int>& pattern){
 
         ParameterChanges changes{64},controlOut{8};
         if(first)addBaseConfig(changes,tc);
-        if(kEvent>=base && kEvent<base+count)
+        if(kEvent>=base && kEvent<base+count){
+            if(kEvent>base)addPoint(changes,tc.eventId,kEvent-base-1,tc.before);
             addPoint(changes,tc.eventId,kEvent-base,tc.after);
+        }
 
         ProcessData control{};
         control.processMode=kRealtime; control.symbolicSampleSize=kSample64; control.numSamples=count;

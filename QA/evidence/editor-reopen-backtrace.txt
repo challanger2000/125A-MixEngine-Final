@@ -1,0 +1,33 @@
+warning: opening /proc/self/mem file failed: Read-only file system (30)
+warning: opening /proc/PID/mem file for lwp 17224.17224 failed: Read-only file system (30)
+[Thread debugging using libthread_db enabled]
+Using host libthread_db library "/lib/x86_64-linux-gnu/libthread_db.so.1".
+cycle 0 createView
+attach
+[New Thread 0x7ffff68cf6c0 (LWP 17228)]
+[Thread 0x7ffff68cf6c0 (LWP 17228) exited]
+[New Thread 0x7ffff5f296c0 (LWP 17229)]
+pump
+150% native editor geometry=2160x1200
+cycle 1 createView
+attach
+cycle 2 createView
+attach
+cycle 3 createView
+attach
+audit-linux-editor: ../../../src/cairo-xcb-screen.c:219: _get_screen_index: Assertion `!"reached"' failed.
+
+Thread 1 "audit-linux-edi" received signal SIGABRT, Aborted.
+0x00007ffff7a5f69c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#0  0x00007ffff7a5f69c in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#1  0x00007ffff7a0ac42 in raise () from /lib/x86_64-linux-gnu/libc.so.6
+#2  0x00007ffff79f34ac in abort () from /lib/x86_64-linux-gnu/libc.so.6
+#3  0x00007ffff79f3420 in ?? () from /lib/x86_64-linux-gnu/libc.so.6
+#4  0x00007ffff725597f in ?? () from /workspace/dependencies/sysroot/usr/lib/x86_64-linux-gnu/libcairo.so.2
+#5  0x00007ffff730e1d3 in cairo_xcb_surface_create () from /workspace/dependencies/sysroot/usr/lib/x86_64-linux-gnu/libcairo.so.2
+#6  0x00007ffff779b9b8 in VSTGUI::X11::DrawHandler::DrawHandler (this=0x55555564c1f8, window=...) at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/platform/linux/x11frame.cpp:171
+#7  VSTGUI::X11::Frame::Impl::Impl (this=0x55555564c1d0, parent=<optimized out>, size=..., frame=0x555555633880) at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/platform/linux/x11frame.cpp:333
+#8  0x00007ffff77987a1 in VSTGUI::X11::Frame::Frame (this=0x555555649cf0, frame=0x555555633880, size=..., parent=2097156, config=<optimized out>, __in_chrg=<optimized out>, __vtt_parm=<optimized out>) at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/cpoint.h:19
+#9  0x00007ffff778131a in VSTGUI::makeOwned<VSTGUI::X11::Frame, VSTGUI::IPlatformFrameCallback*&, VSTGUI::CRect const&, unsigned long&, VSTGUI::IPlatformFrameConfig*&> () at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/vstguibase.h:468
+#10 VSTGUI::LinuxFactory::createFrame (this=this@entry=0x5555556022e0, frame=frame@entry=0x555555633880, size=..., parent=parent@entry=0x200004, parentType=parentType@entry=VSTGUI::PlatformType::kDefaultNative, config=0x555555649ab0) at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/platform/linux/linuxfactory.cpp:131
+#11 0x00007ffff77133aa in VSTGUI::CFrame::open (this=0x555555633860, systemWin=0x200004, systemWindowType=VSTGUI::PlatformType::kDefaultNative, config=0x555555649ab0) at /workspace/dependencies/vst3sdk/vstgui4/vstgui/lib/cframe.cpp:211

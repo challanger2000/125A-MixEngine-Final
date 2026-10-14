@@ -1,4 +1,6 @@
 #include "processor.h"
+#include "state_codec.h"
+#include "automation_curve.h"
 #include "console_oversampling_live.h"
 #include "console_v3_model.h"
 #include "media_oversampling_live.h"
@@ -74,6 +76,12 @@ constexpr double kDefaults[kParamCount] = {
 
 inline double sanitiseNormalized(double value,double fallback) noexcept {
     return std::isfinite(value)?std::clamp(value,0.0,1.0):std::clamp(fallback,0.0,1.0);
+}
+// Pathological finite host buffers must not overflow squared detector/nonlinear
+// terms. Above 120 dBFS, treat the sample as invalid (silence), like NaN/Inf.
+// Ordinary audio is exact; do not inject a huge clamped impulse into the DSP.
+inline double sanitiseAudioSample(double x) noexcept {
+ return std::isfinite(x)&&std::abs(x)<=1.0e6?x:0.0;
 }
 inline double dbToGain(double db) { return std::pow(10.0, db / 20.0); }
 inline double gainToDb(double gain) { return 20.0 * std::log10(std::max(gain, 1.0e-12)); }
@@ -207,7 +215,7 @@ tresult PLUGIN_API Processor::connect(IConnectionPoint* other){auto result=Audio
 tresult PLUGIN_API Processor::disconnect(IConnectionPoint* other){meterExchange_.onDisconnect(other);return AudioEffect::disconnect(other);}
 tresult PLUGIN_API Processor::setBusArrangements(SpeakerArrangement* inputs,int32 numIns,SpeakerArrangement* outputs,int32 numOuts){if(numIns!=1||numOuts!=1||!inputs||!outputs)return kResultFalse;if(inputs[0]!=SpeakerArr::kMono&&inputs[0]!=SpeakerArr::kStereo)return kResultFalse;if(outputs[0]!=inputs[0])return kResultFalse;return AudioEffect::setBusArrangements(inputs,numIns,outputs,numOuts);}
 tresult PLUGIN_API Processor::canProcessSampleSize(int32 s){return s==kSample32||s==kSample64?kResultTrue:kResultFalse;}
-tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){sampleRate_=setup.sampleRate>0.0?setup.sampleRate:44100.0;reportedLatencySamples_=v3ReportedLatencySamples(sampleRate_);dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
+tresult PLUGIN_API Processor::setupProcessing(ProcessSetup& setup){if(!std::isfinite(setup.sampleRate)||setup.sampleRate<=0.0||setup.maxSamplesPerBlock<=0)return kInvalidArgument;sampleRate_=setup.sampleRate;finiteTail_.store(static_cast<uint32>(std::ceil(2.0*sampleRate_)),std::memory_order_relaxed);reportedLatencySamples_=v3ReportedLatencySamples(sampleRate_);dcCoeff_=std::exp(-2.0*kPi*8.0/sampleRate_);lowCoeff_=1.0-std::exp(-2.0*kPi*180.0/sampleRate_);inputMeter_.prepare(sampleRate_);outputMeter_.prepare(sampleRate_);for(auto&m:mixFxInputMeters_)m.prepare(sampleRate_);for(auto&m:mixFxOutputMeters_)m.prepare(sampleRate_);
 #ifndef MIXENGINE_CHANNEL_BUILD
  mixFxSnapshotCapacity_=std::max<int32>(1,setup.maxSamplesPerBlock);
  prepareMixFxSnapshotBuffers();
@@ -224,7 +232,11 @@ tresult PLUGIN_API Processor::setActive(TBool state){
  else{processing_=false;meterExchange_.onDeactivate();}
  return AudioEffect::setActive(state);
 }
-tresult PLUGIN_API Processor::setProcessing(TBool state){const bool p=state!=0;if(p&&!processing_)resetConsoleState();processing_=p;return kResultOk;}
+tresult PLUGIN_API Processor::setProcessing(TBool state){
+ // VST3 permits this call on the processing thread. Setup/activation/state
+ // restore prepare DSP resources; pause/resume preserves the warm signal state.
+ processing_=state!=0;return kResultOk;
+}
 
 void Processor::resetConsoleState(){
  for(auto&s:consoleState_)s={};for(auto&source:mixFxConsoleState_)for(auto&s:source)s={};for(auto&s:tubeState_)s={};for(auto&source:mixFxTubeState_)for(auto&s:source)s={};for(auto&s:tapeState_)s={};for(auto&source:mixFxTapeState_)for(auto&s:source)s={};for(auto&s:glueState_)s={};for(auto&source:mixFxGlueState_)for(auto&s:source)s={};for(auto&s:vinylState_)s={};for(auto&source:mixFxVinylState_)for(auto&s:source)s={};for(auto&s:stereoState_)s={};for(auto&source:mixFxStereoState_)for(auto&s:source)s={};programLevelMatchState_={};for(auto&s:mixFxProgramLevelMatchState_)s={};
@@ -238,6 +250,10 @@ void Processor::resetConsoleState(){
  vinylOversamplingFactor_.fill(1);for(auto&source:mixFxVinylOversamplingFactor_)source.fill(1);
  for(auto&s:tapeDryAligner_)s.reset();for(auto&source:mixFxTapeDryAligner_)for(auto&s:source)s.reset();
  for(auto&s:vinylDryAligner_)s.reset();for(auto&source:mixFxVinylDryAligner_)for(auto&s:source)s.reset();
+ for(auto&s:bypassAligner_)s.reset();for(auto&source:mixFxBypassAligner_)for(auto&s:source)s.reset();
+ firstFrame_=true;mixFxFirstFrame_.fill(true);
+ outputGainState_=dbToGain((params_[kParamOutput]-.5)*24.);mixFxOutputGainState_.fill(outputGainState_);
+ bypassMixState_=params_[kParamBypass]>=.5?1.:0.;mixFxBypassMixState_.fill(bypassMixState_);
  for(auto&s:latencyAligner_)s.reset();for(auto&source:mixFxLatencyAligner_)for(auto&s:source)s.reset();
  inputMeter_.reset();outputMeter_.reset();for(auto&m:mixFxInputMeters_)m.reset();for(auto&m:mixFxOutputMeters_)m.reset();
  clipHoldSamplesL_=clipHoldSamplesR_=0;lastMeterOutput_=true;meterExchangeCountdown_=0;
@@ -258,6 +274,7 @@ void Processor::resetConsoleState(){
 #endif
 }
 void Processor::syncMixFxTargets(){
+ infiniteTail_.store((params_[kParamConsoleOn]>=.5&&params_[kParamConsoleNoise]>0.)||(params_[kParamTapeOn]>=.5&&params_[kParamTapeHiss]>0.)||(params_[kParamVinylOn]>=.5&&params_[kParamVinylNoise]>0.),std::memory_order_relaxed);
  mixFxBypass_.store(params_[kParamBypass],std::memory_order_relaxed);mixFxInput_.store(params_[kParamInput],std::memory_order_relaxed);mixFxCalibration_.store(params_[kParamCalibration],std::memory_order_relaxed);mixFxAutoGain_.store(params_[kParamAutoGain],std::memory_order_relaxed);mixFxConsoleOn_.store(params_[kParamConsoleOn],std::memory_order_relaxed);mixFxConsoleMode_.store(params_[kParamConsoleMode],std::memory_order_relaxed);mixFxConsoleDrive_.store(params_[kParamConsoleDrive],std::memory_order_relaxed);mixFxCrosstalk_.store(params_[kParamConsoleCrosstalk],std::memory_order_relaxed);mixFxTubeOn_.store(params_[kParamTubeOn],std::memory_order_relaxed);mixFxTubeAmount_.store(params_[kParamTubeAmount],std::memory_order_relaxed);mixFxTubeType_.store(params_[kParamTubeType],std::memory_order_relaxed);mixFxTapeOn_.store(params_[kParamTapeOn],std::memory_order_relaxed);mixFxTapeAmount_.store(params_[kParamTapeAmount],std::memory_order_relaxed);mixFxTapeSpeed_.store(params_[kParamTapeSpeed],std::memory_order_relaxed);mixFxTapeStability_.store(params_[kParamTapeStability],std::memory_order_relaxed);mixFxGlueOn_.store(params_[kParamGlueOn],std::memory_order_relaxed);mixFxGlueAmount_.store(params_[kParamGlueAmount],std::memory_order_relaxed);mixFxGlueCharacter_.store(params_[kParamGlueCharacter],std::memory_order_relaxed);mixFxVinylOn_.store(params_[kParamVinylOn],std::memory_order_relaxed);mixFxVinylCharacter_.store(params_[kParamVinylCharacter],std::memory_order_relaxed);mixFxVinylWear_.store(params_[kParamVinylWear],std::memory_order_relaxed);mixFxDepth_.store(params_[kParamDepth],std::memory_order_relaxed);mixFxWidth_.store(params_[kParamWidth],std::memory_order_relaxed);mixFxLowMono_.store(params_[kParamLowMono],std::memory_order_relaxed);mixFxConsoleNoise_.store(params_[kParamConsoleNoise],std::memory_order_relaxed);mixFxTapeHiss_.store(params_[kParamTapeHiss],std::memory_order_relaxed);mixFxVinylNoise_.store(params_[kParamVinylNoise],std::memory_order_relaxed);mixFxQuality_.store(params_[kParamQuality],std::memory_order_relaxed);mixFxOutput_.store(params_[kParamOutput],std::memory_order_relaxed);mixFxMeterSource_.store(params_[kParamMeterSource],std::memory_order_relaxed);
 }
 void Processor::sendMeterExchange(double vuL,double vuR,double clipL,double clipR,int32 numSamples){
@@ -494,15 +511,15 @@ void Processor::captureMixFxInputSnapshot(const ProcessData& data){
    const float* l=bus.channelBuffers32[0];const float* r=lanes>1&&bus.channelBuffers32[1]?bus.channelBuffers32[1]:l;
    for(int32 i=0;i<data.numSamples;++i){
     const double lv=static_cast<double>(l[i]),rv=static_cast<double>(r[i]);
-    left[static_cast<std::size_t>(i)]=std::isfinite(lv)?lv:0.0;
-    right[static_cast<std::size_t>(i)]=std::isfinite(rv)?rv:0.0;
+    left[static_cast<std::size_t>(i)]=sanitiseAudioSample(lv);
+    right[static_cast<std::size_t>(i)]=sanitiseAudioSample(rv);
    }
   }else if(data.symbolicSampleSize==kSample64&&bus.channelBuffers64&&lanes>0&&bus.channelBuffers64[0]){
    const double* l=bus.channelBuffers64[0];const double* r=lanes>1&&bus.channelBuffers64[1]?bus.channelBuffers64[1]:l;
    for(int32 i=0;i<data.numSamples;++i){
     const double lv=static_cast<double>(l[i]),rv=static_cast<double>(r[i]);
-    left[static_cast<std::size_t>(i)]=std::isfinite(lv)?lv:0.0;
-    right[static_cast<std::size_t>(i)]=std::isfinite(rv)?rv:0.0;
+    left[static_cast<std::size_t>(i)]=sanitiseAudioSample(lv);
+    right[static_cast<std::size_t>(i)]=sanitiseAudioSample(rv);
    }
   }else{
    mixFxSnapshotChannels_[static_cast<std::size_t>(channel)]=0;
@@ -531,21 +548,11 @@ void Processor::prepareMixFxConsoleCoupling(){
  const bool haveAutomation=mixFxAutomationSamples_==samples;
 
  for(int32 i=0;i<samples;++i){
-  if(haveAutomation){
-   for(ParamID id=0;id<kParamCount;++id){
-    auto& ai=automationIndex[static_cast<std::size_t>(id)];
-    const auto& lane=mixFxAutomation_[static_cast<std::size_t>(id)];
-    while(ai<lane.size()&&lane[ai].offset<=i){
-     localParams[id]=lane[ai].value;
-     ++ai;
-    }
-   }
-  }
+  if(haveAutomation)applyAutomationLanes(localParams,mixFxBlockStartParams_,mixFxAutomation_,automationIndex,i);
 
-  const bool bypass=localParams[kParamBypass]>=0.5;
   const bool consoleOn=localParams[kParamConsoleOn]>=0.5;
   const double drive=characterControl(localParams[kParamConsoleDrive],0.015);
-  if(bypass||!consoleOn)continue;
+  if(!consoleOn)continue;
 
   const int mode=std::clamp(static_cast<int>(std::lround(localParams[kParamConsoleMode]*3.0)),0,3);
   const double inputGain=dbToGain((localParams[kParamInput]-0.5)*24.0);
@@ -704,18 +711,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
                  [](const auto& lane){return !lane.empty();});
 
  const auto applyAutomationAt=[&](int32 sampleOffset){
-  if(!haveAutomation)return false;
-  bool changed=false;
-  for(ParamID id=0;id<kParamCount;++id){
-   auto& idx=automationIndex[static_cast<std::size_t>(id)];
-   const auto& lane=mixFxAutomation_[static_cast<std::size_t>(id)];
-   while(idx<lane.size()&&lane[idx].offset<=sampleOffset){
-    localParams[id]=lane[idx].value;
-    ++idx;
-    changed=true;
-   }
-  }
-  return changed;
+  return haveAutomation&&applyAutomationLanes(localParams,mixFxBlockStartParams_,mixFxAutomation_,automationIndex,sampleOffset);
  };
 
  bool bypass=false,consoleOn=false,tubeOn=false,tapeOn=false,glueOn=false,vinylOn=false,autoGainOn=false;
@@ -725,6 +721,8 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
  double glueAmount=0.0,glueCharacter=0.5,vinylCharacter=0.0,vinylWear=0.0;
  double widthGain=1.0,depthBipolar=0.0,lowMono=0.0,autoGain=1.0,tubeGainTarget=1.0;
  double tapeGain=1.0,glueGain=1.0,vinylGain=1.0,consoleNoise=0.0,tapeHiss=0.0,vinylNoise=0.0,lowMonoCoeff=0.0,depthCoeff=0.0,depthGain=1.0;
+ const double gainRamp=1.0-std::exp(-1.0/(0.005*sampleRate_));
+ const double bypassStep=1.0/std::max(1.0,0.005*sampleRate_);
  const double characterRamp=1.0-std::exp(-1.0/(0.012*sampleRate_));
 
  const auto refreshDerived=[&](){
@@ -772,7 +770,8 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_);
   depthGain=stereoDepthGain(depthBipolar);
 
-  const int osIslands=bypass?0:
+  infiniteTail_.store((consoleOn&&consoleNoise>0.)||(tapeOn&&tapeHiss>0.)||(vinylOn&&vinylNoise>0.),std::memory_order_relaxed);
+  const int osIslands=
       (static_cast<int>(consoleOn)+
        static_cast<int>(tubeOn)+
        static_cast<int>(tapeOn)+
@@ -788,8 +787,8 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
  auto& tubeGainState=mixFxTubeCompGainState_[static_cast<std::size_t>(index)];
 
  const auto processFrame=[&](int32 sampleIndex,double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){
-  if(!std::isfinite(leftIn))leftIn=0.0;
-  if(!std::isfinite(rightIn))rightIn=0.0;
+  leftIn=sanitiseAudioSample(leftIn);
+  rightIn=sanitiseAudioSample(rightIn);
   tubeTypeState+=characterRamp*(tubeTypeTarget-tubeTypeState);
   tapeSpeedState+=characterRamp*(tapeSpeedTarget-tapeSpeedState);
   tubeGainState+=characterRamp*(tubeGainTarget-tubeGainState);
@@ -799,15 +798,7 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   const double meterR=bypass?rightIn:rightIn*inputGain;
   inputMeter.push(meterL,stereo?meterR:meterL);
 
-  if(bypass){
-   auto& align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];
-   leftOut=align[0].process(leftIn,reportedLatencySamples_);
-   rightOut=stereo?align[1].process(rightIn,reportedLatencySamples_):leftOut;
-   outputMeter.push(leftOut,stereo?rightOut:leftOut);
-   return;
-  }
-
-  double l=meterL,r=meterR;
+  double l=leftIn*inputGain,r=rightIn*inputGain;
   if(consoleOn){
    if(crosstalk>0.0&&mixFxSnapshotSamples_.load(std::memory_order_acquire)==data.numSamples){
     l+=mixFxCrosstalkSource(index,0,sampleIndex)*inputGain*crosstalk;
@@ -852,12 +843,25 @@ tresult Processor::processMixFxChannelInternal(int32 index,ProcessData& data){
   const bool colourStageActive=consoleOn||tubeOn||tapeOn||glueOn||vinylOn;
   const double programmeMatch=programLevelMatchGain(
       mixFxProgramLevelMatchState_[static_cast<std::size_t>(index)],
-      meterL,meterR,l,r,stereo,autoGainOn&&colourStageActive);
+      leftIn*inputGain,rightIn*inputGain,l,r,stereo,autoGainOn&&colourStageActive);
   l*=programmeMatch;r*=programmeMatch;
 
+  auto& gain=mixFxOutputGainState_[static_cast<std::size_t>(index)];
+  if(mixFxFirstFrame_[static_cast<std::size_t>(index)]){
+   gain=outputGain;mixFxBypassMixState_[static_cast<std::size_t>(index)]=bypass?1.0:0.0;
+   mixFxFirstFrame_[static_cast<std::size_t>(index)]=false;
+  }
+  gain+=gainRamp*(outputGain-gain);
+  auto& blend=mixFxBypassMixState_[static_cast<std::size_t>(index)];
+  blend+=std::clamp((bypass?1.0:0.0)-blend,-bypassStep,bypassStep);
+  auto& dry=mixFxBypassAligner_[static_cast<std::size_t>(index)];
+  const double dl=dry[0].process(leftIn,reportedLatencySamples_);
+  const double dr=stereo?dry[1].process(rightIn,reportedLatencySamples_):dl;
   auto& align=mixFxLatencyAligner_[static_cast<std::size_t>(index)];
-  leftOut=align[0].process(l*outputGain*inputMatchGain,latencyDelay);
-  rightOut=stereo?align[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;
+  const double wl=align[0].process(l*gain*inputMatchGain,latencyDelay);
+  const double wr=stereo?align[1].process(r*gain*inputMatchGain,latencyDelay):wl;
+  leftOut=blend==1.0?dl:(blend==0.0?wl:wl+(dl-wl)*blend);
+  rightOut=blend==1.0?dr:(blend==0.0?wr:wr+(dr-wr)*blend);
   outputMeter.push(leftOut,stereo?rightOut:leftOut);
  };
 
@@ -911,6 +915,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     // Parameter-only flushes still need to update the persistent state.
     if(data.numInputs<1||data.numOutputs<1||data.numSamples<=0){
         readParameterChanges(data.inputParameterChanges);
+        syncMixFxTargets();
         return kResultOk;
     }
 
@@ -921,6 +926,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         int32 count=0;
         int32 offset=0;
         ParamValue value=0.0;
+        int32 previousOffset=-1;
+        ParamValue previousValue=0.0;
         bool valid=false;
     };
     std::array<AutomationCursor,kParamCount> automation{};
@@ -958,6 +965,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
             auto& cursor=automation[static_cast<std::size_t>(automationCount++)];
             cursor.queue=queue;
             cursor.id=id;
+            cursor.previousValue=params_[id];
             cursor.count=points;
             cursor.point=-1;
             cursor.valid=true;
@@ -970,10 +978,14 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         for(int32 i=0;i<automationCount;++i){
             auto& cursor=automation[static_cast<std::size_t>(i)];
             while(cursor.valid && cursor.offset<=sampleOffset){
-                params_[cursor.id]=cursor.value;
-                changed=true;
+                cursor.previousOffset=cursor.offset;
+                cursor.previousValue=cursor.value;
                 advanceCursor(cursor);
             }
+            const double value=cursor.valid
+                ?linearAutomationValue(cursor.previousOffset,cursor.previousValue,cursor.offset,cursor.value,sampleOffset)
+                :cursor.previousValue;
+            if(params_[cursor.id]!=value){params_[cursor.id]=value;changed=true;}
         }
         return changed;
     };
@@ -991,7 +1003,9 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     double glueAmount=0.0,glueCharacter=0.5,vinylCharacter=0.0,vinylWear=0.0;
     double widthGain=1.0,depthBipolar=0.0,lowMono=0.0,autoGain=1.0,tubeGainTarget=1.0;
     double tapeGain=1.0,glueGain=1.0,vinylGain=1.0,consoleNoise=0.0,tapeHiss=0.0,vinylNoise=0.0,lowMonoCoeff=0.0,depthCoeff=0.0,depthGain=1.0;
-    const double characterRamp=1.0-std::exp(-1.0/(0.012*sampleRate_));
+    const double gainRamp=1.0-std::exp(-1.0/(0.005*sampleRate_));
+ const double bypassStep=1.0/std::max(1.0,0.005*sampleRate_);
+ const double characterRamp=1.0-std::exp(-1.0/(0.012*sampleRate_));
 
     const auto refreshDerived=[&](){
         bypass=params_[kParamBypass]>=0.5;
@@ -1037,7 +1051,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         depthCoeff=stereoOnePoleCoefficient(2000.0,sampleRate_);
         depthGain=stereoDepthGain(depthBipolar);
 
-        const int osIslands=bypass?0:
+        infiniteTail_.store((consoleOn&&consoleNoise>0.)||(tapeOn&&tapeHiss>0.)||(vinylOn&&vinylNoise>0.),std::memory_order_relaxed);
+  const int osIslands=
             (static_cast<int>(consoleOn)+
              static_cast<int>(tubeOn)+
              static_cast<int>(tapeOn)+
@@ -1049,8 +1064,8 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     refreshDerived();
 
     const auto processFrame=[&](double leftIn,double rightIn,bool stereo,double&leftOut,double&rightOut){
-        if(!std::isfinite(leftIn))leftIn=0.0;
-        if(!std::isfinite(rightIn))rightIn=0.0;
+        leftIn=sanitiseAudioSample(leftIn);
+        rightIn=sanitiseAudioSample(rightIn);
         tubeTypeMorphState_+=characterRamp*(tubeTypeTarget-tubeTypeMorphState_);
         tapeSpeedMorphState_+=characterRamp*(tapeSpeedTarget-tapeSpeedMorphState_);
         tubeCompGainState_+=characterRamp*(tubeGainTarget-tubeCompGainState_);
@@ -1062,14 +1077,7 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
         const double meterR=bypass?rightIn:rightIn*inputGain;
         inputMeter_.push(meterL,stereo?meterR:meterL);
 
-        if(bypass){
-            leftOut=latencyAligner_[0].process(leftIn,reportedLatencySamples_);
-            rightOut=stereo?latencyAligner_[1].process(rightIn,reportedLatencySamples_):leftOut;
-            outputMeter_.push(leftOut,stereo?rightOut:leftOut);
-            return;
-        }
-
-        double l=meterL,r=meterR;
+        double l=leftIn*inputGain,r=rightIn*inputGain;
         if(consoleOn){
             l*=calibrationGain;r*=calibrationGain;
             l=processConsoleSample(l,consoleState_[0],0,0,mode,drive,osFactor,consoleNoise,calibrationGain);
@@ -1102,11 +1110,18 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
 
         const bool colourStageActive=consoleOn||tubeOn||tapeOn||glueOn||vinylOn;
         const double programmeMatch=programLevelMatchGain(
-            programLevelMatchState_,meterL,meterR,l,r,stereo,autoGainOn&&colourStageActive);
+            programLevelMatchState_,leftIn*inputGain,rightIn*inputGain,l,r,stereo,autoGainOn&&colourStageActive);
         l*=programmeMatch;r*=programmeMatch;
 
-        leftOut=latencyAligner_[0].process(l*outputGain*inputMatchGain,latencyDelay);
-        rightOut=stereo?latencyAligner_[1].process(r*outputGain*inputMatchGain,latencyDelay):leftOut;
+        if(firstFrame_){outputGainState_=outputGain;bypassMixState_=bypass?1.0:0.0;firstFrame_=false;}
+        outputGainState_+=gainRamp*(outputGain-outputGainState_);
+        bypassMixState_+=std::clamp((bypass?1.0:0.0)-bypassMixState_,-bypassStep,bypassStep);
+        const double dl=bypassAligner_[0].process(leftIn,reportedLatencySamples_);
+        const double dr=stereo?bypassAligner_[1].process(rightIn,reportedLatencySamples_):dl;
+        const double wl=latencyAligner_[0].process(l*outputGainState_*inputMatchGain,latencyDelay);
+        const double wr=stereo?latencyAligner_[1].process(r*outputGainState_*inputMatchGain,latencyDelay):wl;
+        leftOut=bypassMixState_==1.0?dl:(bypassMixState_==0.0?wl:wl+(dl-wl)*bypassMixState_);
+        rightOut=bypassMixState_==1.0?dr:(bypassMixState_==0.0?wr:wr+(dr-wr)*bypassMixState_);
         outputMeter_.push(leftOut,stereo?rightOut:leftOut);
     };
 
@@ -1152,6 +1167,11 @@ tresult PLUGIN_API Processor::process(ProcessData& data){
     outBus.silenceFlags=0;
     return kResultOk;
 }
-tresult PLUGIN_API Processor::setState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(ParamID id=0;id<kParamCount;++id){double loaded=0.0;if(!streamer.readDouble(loaded)){if(id==kParamTubeType){params_[kParamTubeType]=0.5;params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamMeterSource){params_[kParamMeterSource]=1.0;params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamTapeHiss){params_[kParamTapeHiss]=params_[kParamConsoleNoise];params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}if(id==kParamVinylNoise){params_[kParamVinylNoise]=params_[kParamConsoleNoise];break;}return kResultFalse;}params_[id]=sanitiseNormalized(loaded,kDefaults[id]);}syncMixFxTargets();resetConsoleState();return kResultOk;}
+tresult PLUGIN_API Processor::setState(IBStream* state){
+ std::array<double,kParamCount> defaults{},loaded{};
+ std::copy(std::begin(kDefaults),std::end(kDefaults),defaults.begin());
+ if(!readParameterState(state,defaults,loaded))return kResultFalse;
+ params_=loaded;syncMixFxTargets();resetConsoleState();return kResultOk;
+}
 tresult PLUGIN_API Processor::getState(IBStream* state){if(!state)return kResultFalse;IBStreamer streamer(state,kLittleEndian);for(const auto value:params_)if(!streamer.writeDouble(value))return kResultFalse;return kResultOk;}
 } // namespace MixEngine

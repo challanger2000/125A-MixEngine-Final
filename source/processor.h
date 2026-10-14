@@ -58,6 +58,9 @@ public:
     Steinberg::tresult PLUGIN_API setBusArrangements(Steinberg::Vst::SpeakerArrangement* inputs, Steinberg::int32 numIns, Steinberg::Vst::SpeakerArrangement* outputs, Steinberg::int32 numOuts) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API canProcessSampleSize(Steinberg::int32 symbolicSampleSize) SMTG_OVERRIDE;
     Steinberg::uint32 PLUGIN_API getLatencySamples() SMTG_OVERRIDE { return static_cast<Steinberg::uint32>(reportedLatencySamples_); }
+    Steinberg::uint32 PLUGIN_API getTailSamples() SMTG_OVERRIDE {
+        return infiniteTail_.load(std::memory_order_relaxed)?Steinberg::Vst::kInfiniteTail:finiteTail_.load(std::memory_order_relaxed);
+    }
     Steinberg::tresult PLUGIN_API setupProcessing(Steinberg::Vst::ProcessSetup& setup) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setActive(Steinberg::TBool state) SMTG_OVERRIDE;
     Steinberg::tresult PLUGIN_API setProcessing(Steinberg::TBool state) SMTG_OVERRIDE;
@@ -161,6 +164,14 @@ private:
     std::array<LatencyAligner,kMaxAudioChannels> vinylDryAligner_{};
     std::array<std::array<LatencyAligner,kMaxAudioChannels>,kMaxMixFxChannels> mixFxVinylDryAligner_{};
     std::array<LatencyAligner,kMaxAudioChannels> latencyAligner_{};
+    std::array<LatencyAligner,kMaxAudioChannels> bypassAligner_{};
+    std::array<std::array<LatencyAligner,kMaxAudioChannels>,kMaxMixFxChannels> mixFxBypassAligner_{};
+    double outputGainState_=1.0,bypassMixState_=0.0;
+    bool firstFrame_=true;
+    std::array<bool,kMaxMixFxChannels> mixFxFirstFrame_{};
+    std::array<double,kMaxMixFxChannels> mixFxOutputGainState_{},mixFxBypassMixState_{};
+    std::atomic<Steinberg::uint32> finiteTail_{88200};
+    std::atomic<bool> infiniteTail_{false};
     std::array<std::array<LatencyAligner,kMaxAudioChannels>,kMaxMixFxChannels> mixFxLatencyAligner_{};
     Metering inputMeter_{};
     Metering outputMeter_{};

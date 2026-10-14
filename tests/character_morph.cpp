@@ -6,7 +6,7 @@
 using namespace MixEngine;
 namespace {
 bool close(double a,double b,double eps=1.0e-12){return std::abs(a-b)<=eps;}
-bool finite(double v){return std::isfinite(v);}
+bool isFinite(double v){return std::isfinite(v);}
 }
 int main(){
  bool ok=true;
@@ -26,7 +26,7 @@ int main(){
   const double p=double(i)/2000.0;
   const double y=processTubeNonlinearCore(0.63,p,0.82);
   const auto tc=tapeCharacter(p);
-  if(!finite(y)||!finite(tc.cutoffHz)||!finite(tc.bumpFreqHz)||!finite(tc.wowHz)||!finite(tc.flutterHz))ok=false;
+  if(!isFinite(y)||!isFinite(tc.cutoffHz)||!isFinite(tc.bumpFreqHz)||!isFinite(tc.wowHz)||!isFinite(tc.flutterHz))ok=false;
   maxTubeStep=std::max(maxTubeStep,std::abs(y-prevTube));
   maxCutStep=std::max(maxCutStep,std::abs(tc.cutoffHz-prevCut));
   prevTube=y;prevCut=tc.cutoffHz;

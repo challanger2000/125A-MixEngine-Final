@@ -1,0 +1,8 @@
+OS: Linux-6.18.44-x86_64-with-glibc2.41
+Compiler: GNU C++ 14.2.0, Release -O3 -DNDEBUG
+SDK: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+HIIR: 4589fedb4d08b899514cb605ccd7418bf262ab18
+Assets: c09cff5d958969eb025fe09255173e65103deae9
+CPU affinity count: 5
+/sys/fs/cgroup/cpu.max: 400000 100000
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor: unavailable

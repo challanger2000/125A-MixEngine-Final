@@ -1,0 +1,42 @@
+Clock-pair mean overheadUs=0.0574988
+sr=44100 block=64 channels=1 bits=32 paced=0 mean/p95/p99/maxUs=91.6975/163.736/306.312/1448.03 deadlineUs=1451.25 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=306.895/1449.27 (separate CPU timer instrumentation included)
+sr=44100 block=64 channels=1 bits=64 paced=1 mean/p95/p99/maxUs=88.388/135.283/187.743/747.285 deadlineUs=1451.25 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=188.74/748.28 (separate CPU timer instrumentation included)
+sr=44100 block=64 channels=2 bits=32 paced=0 mean/p95/p99/maxUs=164.609/248.785/403.177/467.403 deadlineUs=1451.25 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=404.16/468.304 (separate CPU timer instrumentation included)
+sr=44100 block=64 channels=2 bits=64 paced=1 mean/p95/p99/maxUs=170.135/234.893/368.845/1956.89 deadlineUs=1451.25 overruns=2 newCalls=0 setProcessingUs=0.161
+threadCpuP99/maxUs=369.769/1958.48 (separate CPU timer instrumentation included)
+sr=48000 block=64 channels=1 bits=32 paced=0 mean/p95/p99/maxUs=85.0821/126.159/184.017/1327.77 deadlineUs=1333.33 overruns=0 newCalls=0 setProcessingUs=0.151
+threadCpuP99/maxUs=184.544/1329.72 (separate CPU timer instrumentation included)
+sr=48000 block=64 channels=1 bits=64 paced=1 mean/p95/p99/maxUs=90.0452/147.402/281.624/769.869 deadlineUs=1333.33 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=286.605/771.334 (separate CPU timer instrumentation included)
+sr=48000 block=64 channels=2 bits=32 paced=0 mean/p95/p99/maxUs=152.089/198.138/274.964/400.763 deadlineUs=1333.33 overruns=0 newCalls=0 setProcessingUs=0.05
+threadCpuP99/maxUs=268.769/401.756 (separate CPU timer instrumentation included)
+sr=48000 block=64 channels=2 bits=64 paced=1 mean/p95/p99/maxUs=154.162/199.6/364.799/459.241 deadlineUs=1333.33 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=365.872/460.934 (separate CPU timer instrumentation included)
+sr=96000 block=64 channels=1 bits=32 paced=0 mean/p95/p99/maxUs=80.9875/118.719/164.908/287.502 deadlineUs=666.667 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=165.315/288.477 (separate CPU timer instrumentation included)
+sr=96000 block=64 channels=1 bits=64 paced=1 mean/p95/p99/maxUs=82.7518/124.377/191.658/366.152 deadlineUs=666.667 overruns=0 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=192.415/367.234 (separate CPU timer instrumentation included)
+sr=96000 block=64 channels=2 bits=32 paced=0 mean/p95/p99/maxUs=154.892/211.649/358.69/531.77 deadlineUs=666.667 overruns=0 newCalls=0 setProcessingUs=0.041
+threadCpuP99/maxUs=359.183/532.81 (separate CPU timer instrumentation included)
+sr=96000 block=64 channels=2 bits=64 paced=1 mean/p95/p99/maxUs=156.52/214.352/377.638/896.089 deadlineUs=666.667 overruns=1 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=378.571/897.131 (separate CPU timer instrumentation included)
+sr=192000 block=64 channels=1 bits=32 paced=0 mean/p95/p99/maxUs=83.4948/132.4/279.431/310.777 deadlineUs=333.333 overruns=0 newCalls=0 setProcessingUs=0.05
+threadCpuP99/maxUs=280.446/311.832 (separate CPU timer instrumentation included)
+sr=192000 block=64 channels=1 bits=64 paced=1 mean/p95/p99/maxUs=84.5118/116.165/263.347/659.543 deadlineUs=333.333 overruns=2 newCalls=0 setProcessingUs=0.16
+threadCpuP99/maxUs=265.544/660.38 (separate CPU timer instrumentation included)
+sr=192000 block=64 channels=2 bits=32 paced=0 mean/p95/p99/maxUs=180.148/190.717/1610.41/4225.34 deadlineUs=333.333 overruns=10 newCalls=0 setProcessingUs=0.04
+threadCpuP99/maxUs=1611.27/4225.7 (separate CPU timer instrumentation included)
+sr=192000 block=64 channels=2 bits=64 paced=1 mean/p95/p99/maxUs=144.073/156.155/231.93/592.172 deadlineUs=333.333 overruns=1 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=229.48/273.806 (separate CPU timer instrumentation included)
+sr=48000 block=1 channels=2 bits=64 paced=0 mean/p95/p99/maxUs=2.84332/2.644/4.046/88.233 deadlineUs=20.8333 overruns=3 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=4.217/88.641 (separate CPU timer instrumentation included)
+sr=48000 block=7 channels=2 bits=64 paced=0 mean/p95/p99/maxUs=16.108/16.294/30.155/37.135 deadlineUs=145.833 overruns=0 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=30.355/37.335 (separate CPU timer instrumentation included)
+sr=48000 block=127 channels=2 bits=64 paced=0 mean/p95/p99/maxUs=295.91/336.987/433.122/830.63 deadlineUs=2645.83 overruns=0 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=432.041/832.075 (separate CPU timer instrumentation included)
+sr=48000 block=256 channels=2 bits=64 paced=0 mean/p95/p99/maxUs=664.43/872.403/1328/2151.67 deadlineUs=5333.33 overruns=0 newCalls=0 setProcessingUs=0.03
+threadCpuP99/maxUs=1329.43/2153.04 (separate CPU timer instrumentation included)
+FAIL: measured full-chain callback timing and C++ allocations

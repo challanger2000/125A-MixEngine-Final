@@ -1,0 +1,117 @@
+Test project /workspace/build/reusable/build
+      Start  1: oversampling-roundtrip
+ 1/56 Test  #1: oversampling-roundtrip ..............   Passed    0.07 sec
+      Start  2: oversampling-alias
+ 2/56 Test  #2: oversampling-alias ..................   Passed    0.05 sec
+      Start  3: tube-oversampling
+ 3/56 Test  #3: tube-oversampling ...................   Passed    0.47 sec
+      Start  4: media-oversampling
+ 4/56 Test  #4: media-oversampling ..................   Passed    0.26 sec
+      Start  5: console-core-equivalence
+ 5/56 Test  #5: console-core-equivalence ............   Passed    0.01 sec
+      Start  6: console-tube-island
+ 6/56 Test  #6: console-tube-island .................   Passed    0.53 sec
+      Start  7: console-tube-ordering
+ 7/56 Test  #7: console-tube-ordering ...............   Passed    0.01 sec
+      Start  8: oversampling-latency
+ 8/56 Test  #8: oversampling-latency ................   Passed    0.00 sec
+      Start  9: metering-diagnostic
+ 9/56 Test  #9: metering-diagnostic .................   Passed    0.01 sec
+      Start 10: stereo-field-diagnostic
+10/56 Test #10: stereo-field-diagnostic .............   Passed    0.00 sec
+      Start 11: metering-integration
+11/56 Test #11: metering-integration ................   Passed    0.02 sec
+      Start 12: processor-latency-integration
+12/56 Test #12: processor-latency-integration .......   Passed    0.12 sec
+      Start 13: phase-mono-diagnostic
+13/56 Test #13: phase-mono-diagnostic ...............   Passed    0.68 sec
+      Start 14: host-matrix-diagnostic
+14/56 Test #14: host-matrix-diagnostic ..............   Passed    1.27 sec
+      Start 15: state-roundtrip-diagnostic
+15/56 Test #15: state-roundtrip-diagnostic ..........   Passed    0.04 sec
+      Start 16: state-migration-diagnostic
+16/56 Test #16: state-migration-diagnostic ..........   Passed    0.05 sec
+      Start 17: release-robustness-diagnostic
+17/56 Test #17: release-robustness-diagnostic .......   Passed    0.06 sec
+      Start 18: latency-matrix-diagnostic
+18/56 Test #18: latency-matrix-diagnostic ...........   Passed    1.87 sec
+      Start 19: console-noise-contract-diagnostic
+19/56 Test #19: console-noise-contract-diagnostic ...   Passed    0.20 sec
+      Start 20: level-match-diagnostic
+20/56 Test #20: level-match-diagnostic ..............   Passed    0.81 sec
+      Start 21: automation-stress-diagnostic
+21/56 Test #21: automation-stress-diagnostic ........   Passed    0.05 sec
+      Start 22: parameter-transition-diagnostic
+22/56 Test #22: parameter-transition-diagnostic .....   Passed    0.52 sec
+      Start 23: mixfx-crosstalk-diagnostic
+23/56 Test #23: mixfx-crosstalk-diagnostic ..........   Passed    0.10 sec
+      Start 24: range-philosophy-diagnostic
+24/56 Test #24: range-philosophy-diagnostic .........   Passed    1.59 sec
+      Start 25: tape-memory-diagnostic
+25/56 Test #25: tape-memory-diagnostic ..............   Passed    0.11 sec
+      Start 26: tape-hiss-contract-diagnostic
+26/56 Test #26: tape-hiss-contract-diagnostic .......   Passed    0.08 sec
+      Start 27: secondary-controls-diagnostic
+27/56 Test #27: secondary-controls-diagnostic .......   Passed    0.18 sec
+      Start 28: glue-transient-diagnostic
+28/56 Test #28: glue-transient-diagnostic ...........   Passed    0.14 sec
+      Start 29: vinyl-material-diagnostic
+29/56 Test #29: vinyl-material-diagnostic ...........   Passed    0.11 sec
+      Start 30: console-character-diagnostic
+30/56 Test #30: console-character-diagnostic ........   Passed    0.49 sec
+      Start 31: console-vintage-memory-diagnostic
+31/56 Test #31: console-vintage-memory-diagnostic ...   Passed    0.03 sec
+      Start 32: quality-switch-diagnostic
+32/56 Test #32: quality-switch-diagnostic ...........   Passed    0.12 sec
+      Start 33: zero-neutrality-diagnostic
+33/56 Test #33: zero-neutrality-diagnostic ..........   Passed    0.18 sec
+      Start 34: sample-accuracy-diagnostic
+34/56 Test #34: sample-accuracy-diagnostic ..........   Passed    0.60 sec
+      Start 35: mixfx-sample-accuracy-diagnostic
+35/56 Test #35: mixfx-sample-accuracy-diagnostic ....   Passed    0.77 sec
+      Start 36: sonic-impact-diagnostic
+36/56 Test #36: sonic-impact-diagnostic .............   Passed    0.70 sec
+      Start 37: program-material-diagnostic
+37/56 Test #37: program-material-diagnostic .........   Passed    0.23 sec
+      Start 38: sample-rate-matrix-diagnostic
+38/56 Test #38: sample-rate-matrix-diagnostic .......   Passed    0.93 sec
+      Start 39: character-morph-diagnostic
+39/56 Test #39: character-morph-diagnostic ..........   Passed    0.00 sec
+      Start 40: denormal-safety-diagnostic
+40/56 Test #40: denormal-safety-diagnostic ..........   Passed    0.04 sec
+      Start 41: tape-v3-research-diagnostic
+41/56 Test #41: tape-v3-research-diagnostic .........   Passed    0.42 sec
+      Start 42: tape-v3-sample-rate-diagnostic
+42/56 Test #42: tape-v3-sample-rate-diagnostic ......   Passed    0.76 sec
+      Start 43: tape-v3-autolevel-diagnostic
+43/56 Test #43: tape-v3-autolevel-diagnostic ........   Passed    0.16 sec
+      Start 44: console-v3-research-diagnostic
+44/56 Test #44: console-v3-research-diagnostic ......   Passed    0.05 sec
+      Start 45: tube-v3-research-diagnostic
+45/56 Test #45: tube-v3-research-diagnostic .........   Passed    0.50 sec
+      Start 46: tube-v3-autolevel-diagnostic
+46/56 Test #46: tube-v3-autolevel-diagnostic ........   Passed    0.75 sec
+      Start 47: mixfx-console-v3-diagnostic
+47/56 Test #47: mixfx-console-v3-diagnostic .........   Passed    0.20 sec
+      Start 48: console-v3-alias-diagnostic
+48/56 Test #48: console-v3-alias-diagnostic .........   Passed    0.12 sec
+      Start 49: vinyl-v3-alias-diagnostic
+49/56 Test #49: vinyl-v3-alias-diagnostic ...........   Passed    0.25 sec
+      Start 50: vinyl-v3-live-diagnostic
+50/56 Test #50: vinyl-v3-live-diagnostic ............   Passed    0.10 sec
+      Start 51: vinyl-v3-autolevel-diagnostic
+51/56 Test #51: vinyl-v3-autolevel-diagnostic .......   Passed    0.34 sec
+      Start 52: v3-autolevel-level-sweep
+52/56 Test #52: v3-autolevel-level-sweep ............   Passed    0.97 sec
+      Start 53: audit-host-contract
+53/56 Test #53: audit-host-contract .................   Passed    1.44 sec
+      Start 54: audit-channel-contract
+54/56 Test #54: audit-channel-contract ..............   Passed    0.61 sec
+      Start 55: automation-curve-contract
+55/56 Test #55: automation-curve-contract ...........   Passed    0.36 sec
+      Start 56: automation-curve-channel-contract
+56/56 Test #56: automation-curve-channel-contract ...   Passed    0.01 sec
+
+100% tests passed out of 56
+
+Total Test time (real) =  20.52 sec

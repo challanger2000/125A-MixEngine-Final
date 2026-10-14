@@ -1,0 +1,37 @@
+Test project /workspace/build/reusable/build
+    Start 42: tape-v3-ja-oracle-diagnostic
+1/4 Test #42: tape-v3-ja-oracle-diagnostic .........   Passed    0.52 sec
+    Start 52: console-v3-adaa-production-gate
+2/4 Test #52: console-v3-adaa-production-gate ......***Failed    1.61 sec
+BASE ch=2 mean/p95/p99/max=26.9507/57.216/120.492/229.085 us
+ADAA ch=2 mean/p95/p99/max=39.2649/80.331/151.108/1022.72 us
+CPU ch=2 p99Ratio=1.25409 deadline=5333.33 us
+BASE ch=8 mean/p95/p99/max=85.757/133.421/160.171/215.895 us
+ADAA ch=8 mean/p95/p99/max=112.679/172.93/272.941/471.189 us
+CPU ch=8 p99Ratio=1.70406 deadline=5333.33 us
+BASE ch=32 mean/p95/p99/max=355.544/550.569/1077.53/1158.38 us
+ADAA ch=32 mean/p95/p99/max=426.101/545.391/662.598/831.743 us
+CPU ch=32 p99Ratio=0.614921 deadline=5333.33 us
+BASE ch=64 mean/p95/p99/max=635.463/778.051/980.496/2712.96 us
+ADAA ch=64 mean/p95/p99/max=1056.33/1067.03/1807.1/14861 us
+CPU ch=64 p99Ratio=1.84305 deadline=5333.33 us
+BASE ch=128 mean/p95/p99/max=1422.4/1766.6/2505.07/11194.8 us
+ADAA ch=128 mean/p95/p99/max=1901.03/3520.49/4106.7/4232.38 us
+CPU ch=128 p99Ratio=1.63936 deadline=5333.33 us
+ADAA chunk determinism 31=0 997=0
+ADAA vs base bestLag=1 relativeResidual=0.0362069
+ADAA startupPeak=0.379492 steadyPeak=0.504737
+FAIL: Console V3 ADAA production gate
+
+    Start 60: vinyl-v3-tracing-oracle-diagnostic
+3/4 Test #60: vinyl-v3-tracing-oracle-diagnostic ...   Passed    0.18 sec
+    Start 61: vinyl-v3-surrogate-diagnostic
+4/4 Test #61: vinyl-v3-surrogate-diagnostic ........   Passed    0.26 sec
+
+75% tests passed, 1 tests failed out of 4
+
+Total Test time (real) =   2.57 sec
+
+The following tests FAILED:
+	 52 - console-v3-adaa-production-gate (Failed)
+Errors while running CTest

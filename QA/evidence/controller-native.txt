@@ -1,0 +1,1 @@
+PASS: compiled VST3 controller lifecycle x32, defaults, atomic malformed states and five legacy lengths. Editor attach/mouse not tested.

@@ -66,7 +66,10 @@ std::vector<double> render(bool mixfx,const std::vector<Setting>& extra){
             for(const auto& [id,v]:cfg)addPoint(changes,id,0,v);
             for(const auto& [id,v]:extra)addPoint(changes,id,0,v);
         }
-        if(kSwitchSample>=base&&kSwitchSample<base+count)addPoint(changes,MixEngine::kParamQuality,kSwitchSample-base,1.0);
+        if(kSwitchSample>=base&&kSwitchSample<base+count){
+            if(kSwitchSample>base)addPoint(changes,MixEngine::kParamQuality,kSwitchSample-base-1,0.0);
+            addPoint(changes,MixEngine::kParamQuality,kSwitchSample-base,1.0);
+        }
 
         double* inP[1]{in.data()}; double* outP[1]{out.data()};
         AudioBusBuffers ib{},ob{}; ib.numChannels=1; ib.channelBuffers64=inP; ob.numChannels=1; ob.channelBuffers64=outP;

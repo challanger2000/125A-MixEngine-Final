@@ -1,0 +1,99 @@
+name: Independent V3 audit (no release packaging)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Knob-Designer
+          ref: c09cff5d958969eb025fe09255173e65103deae9
+          path: knob-assets
+      - uses: actions/checkout@v4
+        with:
+          repository: steinbergmedia/vst3sdk
+          ref: 3cdf9ca5d1f5b1b21e0a86832aa4abe55607bd96
+          submodules: recursive
+          path: vst3sdk
+      - uses: actions/checkout@v4
+        with:
+          repository: challanger2000/125A-Plugin-Tester
+          ref: 70aeb0d9fa82541699994e050ab35ab625e8a417
+          path: plugin-tester
+      - name: Static contracts and approved assets
+        shell: pwsh
+        run: |
+          python -m pip install pillow==12.3.0
+          if ($LASTEXITCODE) { throw 'Pillow installation failed' }
+          python scripts/prepare_gui_assets.py knob-assets/assets/mixengine
+          if ($LASTEXITCODE) { throw 'Asset preparation failed' }
+          python scripts/verify_gui_layout.py
+          if ($LASTEXITCODE) { throw 'GUI contract failed' }
+          python scripts/verify_parameter_contract.py
+          if ($LASTEXITCODE) { throw 'Parameter contract failed' }
+          python scripts/verify_channel_contract.py
+          if ($LASTEXITCODE) { throw 'Channel contract failed' }
+      - name: Configure and build both plugins and audit targets once
+        shell: pwsh
+        run: |
+          cmake -S . -B build -A x64 "-DVST3_SDK_ROOT=$env:GITHUB_WORKSPACE/vst3sdk" "-DMIXENGINE_KNOB_ASSET_ROOT=$env:GITHUB_WORKSPACE/knob-assets/assets/mixengine" -DSMTG_CREATE_PLUGIN_LINK=0
+          if ($LASTEXITCODE) { throw 'Plugin configuration failed' }
+          $source=Get-Content CMakeLists.txt -Raw
+          $targets=@([regex]::Matches($source,'add_executable\(([^ ]+) tests/') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notmatch 'adaa|ja-oracle|tracing-oracle|surrogate|audit-linux-editor|cpu' })
+          $targets+=@('125A-MixEngine-V3','125A-MixEngine-V3-Channel','validator')
+          cmake --build build --config Release --target $targets --parallel 4
+          if ($LASTEXITCODE) { throw 'Audit build failed' }
+      - name: Execute functional regressions and real controller probe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force audit-evidence | Out-Null
+          $source=Get-Content CMakeLists.txt -Raw
+          $targets=@([regex]::Matches($source,'add_executable\(([^ ]+) tests/') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $_ -notmatch 'adaa|ja-oracle|tracing-oracle|surrogate|audit-linux-editor|cpu' })
+          $failed=@()
+          foreach ($target in $targets) {
+            $exe=Get-ChildItem build -Recurse -File -Filter "$target.exe" | Select-Object -First 1
+            if (!$exe) { $failed+=$target; continue }
+            & $exe.FullName *> "audit-evidence/$target.txt"
+            if ($LASTEXITCODE) { $failed+=$target }
+            if ($target -eq 'audit-realtime') {
+              & $exe.FullName --automation *> 'audit-evidence/audit-realtime-dense.txt'
+              if ($LASTEXITCODE) { $failed+='audit-realtime-dense' }
+            }
+          }
+          $failed | Set-Content audit-evidence/failed-targets.txt
+          if ($failed.Count) { throw "Failed gates: $($failed -join ', ')" }
+      - name: Build official 125A tester and native editor probe
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          cmake -S plugin-tester -B tester-build -A x64 "-DFETCHCONTENT_SOURCE_DIR_VST3SDK=$env:GITHUB_WORKSPACE/vst3sdk"
+          if ($LASTEXITCODE) { throw 'Tester configuration failed' }
+          cmake --build tester-build --config Release --target PluginTester125ADispatcher PluginTester125ALauncher PluginTester125AWorker PluginTester125AReloadProbe PluginTester125AStateProbe PluginTester125AIOEventProbe PluginTester125AValidatorWrapper PluginTester125AEditorLifecycleProbe validator --parallel 4
+          if ($LASTEXITCODE) { throw 'Tester build failed' }
+      - name: Full 125A tester and native editor checks on the Channel bundle
+        if: ${{ !cancelled() }}
+        shell: pwsh
+        run: |
+          $bundle=(Resolve-Path build/VST3/Release/125A-MixEngine-V3-Channel.vst3).Path
+          $tester=Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester.exe | Select-Object -First 1
+          $editor=Get-ChildItem tester-build -Recurse -File -Filter 125A_Plugin_Tester_EditorLifecycleProbe.exe | Select-Object -First 1
+          if (!$tester -or !$editor) { throw 'Native QA executables missing' }
+          & $tester.FullName $bundle *> audit-evidence/full-125A-tester.txt
+          $testerCode=$LASTEXITCODE
+          & $editor.FullName $bundle *> audit-evidence/native-editor.txt
+          if ($testerCode -or $LASTEXITCODE) { throw '125A or editor QA failed' }
+      - name: Preserve reports from this exact run
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MixEngine-V3-independent-audit-evidence
+          path: |
+            audit-evidence/
+            build/**/*125A*Report*.txt
+            build/**/*Steinberg*Validator*.txt
+          if-no-files-found: warn

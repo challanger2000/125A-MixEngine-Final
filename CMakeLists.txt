@@ -133,11 +133,16 @@ add_executable(release-robustness-diagnostic tests/release_robustness.cpp source
 target_include_directories(release-robustness-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(release-robustness-diagnostic PRIVATE sdk)
 
-add_executable(controller-lifecycle-diagnostic tests/controller_lifecycle.cpp source/controller.cpp source/editor.cpp source/HardwareControls.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
-target_include_directories(controller-lifecycle-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
-target_link_libraries(controller-lifecycle-diagnostic PRIVATE sdk vstgui_support)
+add_executable(controller-lifecycle-diagnostic tests/controller_lifecycle.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/common/memorystream.cpp)
+target_include_directories(controller-lifecycle-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(controller-lifecycle-diagnostic PRIVATE sdk_hosting sdk_common base pluginterfaces)
 if(WIN32)
- target_sources(controller-lifecycle-diagnostic PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/main/dllmain.cpp)
+ target_sources(controller-lifecycle-diagnostic PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_win32.cpp)
+elseif(APPLE)
+ target_sources(controller-lifecycle-diagnostic PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_mac.mm)
+else()
+ target_sources(controller-lifecycle-diagnostic PRIVATE ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_linux.cpp)
 endif()
 add_executable(latency-matrix-diagnostic tests/latency_matrix.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(latency-matrix-diagnostic PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
@@ -319,3 +324,39 @@ target_link_libraries(vinyl-v3-cpu-diagnostic PRIVATE sdk)
 add_executable(v3-autolevel-level-sweep tests/v3_autolevel_level_sweep.cpp source/processor.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/utility/dataexchange.cpp)
 target_include_directories(v3-autolevel-level-sweep PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
 target_link_libraries(v3-autolevel-level-sweep PRIVATE sdk)
+
+# Independent release-audit regressions; the shipped state/parameter ABI is unchanged.
+add_executable(audit-host-contract tests/audit_host_contract.cpp source/processor.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/common/memorystream.cpp)
+target_include_directories(audit-host-contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(audit-host-contract PRIVATE sdk)
+
+add_executable(audit-channel-contract tests/audit_host_contract.cpp source/processor.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/common/memorystream.cpp)
+target_compile_definitions(audit-channel-contract PRIVATE MIXENGINE_CHANNEL_BUILD=1)
+target_include_directories(audit-channel-contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(audit-channel-contract PRIVATE sdk)
+add_executable(audit-realtime tests/audit_realtime.cpp source/processor.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp)
+target_include_directories(audit-realtime PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(audit-realtime PRIVATE sdk)
+
+if(UNIX AND NOT APPLE AND SMTG_ENABLE_VSTGUI_SUPPORT)
+ find_package(X11 REQUIRED)
+ add_executable(audit-linux-editor tests/audit_linux_editor.cpp
+  ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/module_linux.cpp)
+ target_include_directories(audit-linux-editor PRIVATE "${vst3sdk_SOURCE_DIR}" ${X11_INCLUDE_DIR})
+ target_link_libraries(audit-linux-editor PRIVATE sdk_hosting sdk_common base pluginterfaces ${X11_LIBRARIES})
+endif()
+
+add_executable(automation-curve-contract tests/automation_curve_contract.cpp source/processor.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp)
+target_include_directories(automation-curve-contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(automation-curve-contract PRIVATE sdk)
+add_executable(automation-curve-channel-contract tests/automation_curve_contract.cpp source/processor.cpp
+ ${vst3sdk_SOURCE_DIR}/public.sdk/source/vst/hosting/parameterchanges.cpp)
+target_compile_definitions(automation-curve-channel-contract PRIVATE MIXENGINE_CHANNEL_BUILD=1)
+target_include_directories(automation-curve-channel-contract PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/source" "${CMAKE_BINARY_DIR}" "${vst3sdk_SOURCE_DIR}")
+target_link_libraries(automation-curve-channel-contract PRIVATE sdk)
