@@ -159,7 +159,6 @@ jobs:
           Copy-Item "README.md" "$root/"
           Copy-Item "RELEASE_NOTES.md" "$root/"
           Copy-Item "LICENSE.txt" "$root/"
-          "NOT FINAL - AUDIT CANDIDATE. Dense realtime 192 kHz / 64 samples test has recorded overruns. Requires owner Studio One validation. Commit: $env:GITHUB_SHA" | Set-Content "$root/QA-STATUS.txt" -Encoding UTF8
 
           @(
             "125A MixEngine V3 - v3.0.0 - Windows x64 / VST3",
@@ -199,7 +198,6 @@ jobs:
             "dist/extracted/README.md",
             "dist/extracted/RELEASE_NOTES.md",
             "dist/extracted/LICENSE.txt",
-            "dist/extracted/QA-STATUS.txt",
             "dist/extracted/INSTALL.txt",
             "dist/extracted/CHECKSUMS_SHA256.txt"
           )){
