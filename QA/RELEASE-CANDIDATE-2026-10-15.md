@@ -32,3 +32,14 @@ This file is an INTERNAL release-evidence record, not part of the customer ZIP.
 - Verified 44/44 inner file SHA-256 manifest entries against the ZIP contents; zero mismatch.
 - Both .vst3 bundles and German/English PDF manuals included. Both PDFs have 4 pages and contain corrected Level Match guidance/90% zoom; neither contains the internal NOT FINAL audit status.
 - Audit status belongs only to QA records and artifact naming. Package customer-facing README/notes/manuals exclude internal QA status.
+
+## Windows V3.0.1 candidate — corrected embedded versions (2026-10-15)
+
+- Successful Actions run: https://github.com/challanger2000/125A-MixEngine-Final/actions/runs/38663301857
+- Exact Windows build source commit: `09bd8ad3c44c00122e6ab83a4e3ca5ec81687078`.
+- Artifact ID: `11939932788`; Actions archive SHA-256: `ccd11f98f5430179cacfe4ab42714298d275d4157960e0301861380b5c3950ab`.
+- Inner ZIP filename: `125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64.zip`.
+- Independently inspected inner ZIP SHA-256: **`53dcb18b2bd6826a966119c2e0faeee7e20a1e314491a9584b0b70d43b40b460`** (26,163,863 bytes).
+- Both `VST3/125A-MixEngine-V3.vst3` and `VST3/125A-MixEngine-V3-Channel.vst3` embed `moduleinfo.json` version `3.0.1` for plugin and controller classes. CMake version `3.0.1` drives the compiled factory version.
+- 44/44 packaged SHA-256 manifest entries match ZIP contents; README, release notes and install text identify v3.0.1; both DE/EN manuals are present.
+- Earlier v3.0.0 candidate entries in this document are **historical**, not current. Latest approved commercial FULL stays v3.0.0 pending owner final acceptance. Open realtime gate from prior audit remains documented; package/build SUCCESS does not erase it.
