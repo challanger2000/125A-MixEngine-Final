@@ -1,4 +1,4 @@
-name: V3 Windows Audit Candidate Package
+name: V3.0.1 Windows Audit Candidate Package
 
 on:
   workflow_dispatch:
