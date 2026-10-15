@@ -12,3 +12,15 @@ This file is an INTERNAL release-evidence record, not part of the customer ZIP.
 - Approval: NOT FINAL; customer release not authorized by QA PASS. No claim of passing unresolved gate.
 - Required later: successful candidate build/run and artifact SHA-256, actual ZIP SHA-256, confirmed Studio One/owner acceptance and appropriately recorded risk decision, immutable archive/tag/release, `main` AGENTS/CURRENT sync and Engineering RELEASE-REGISTER/RELEASE-STATUS sync.
 - GitHub Actions artifacts expire: do not rely on their URL alone as the permanent customer-archive location.
+
+## Verified Windows candidate package build
+
+- Workflow run: https://github.com/challanger2000/125A-MixEngine-Final/actions/runs/38660722997 — **SUCCESS** (build, existing release gates, Channel Validator, DE/EN manual generation, package extraction check).
+- Exact workflow/source checkout: `6162cafd1c188f896a9a3cc04b3519bf63d816a0`.
+- Actions artifact ID: `11939175957`.
+- Actions artifact name: `125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64`.
+- Actions artifact archive SHA-256: `5d0bc4d4123871edf3cefffd96c1c9201f3cfac00e96b0fb6b35e659fa2f5171` (the GitHub Actions outer archive, **not** the checksum of the ZIP contained inside).
+- Actions artifact retention expiry: `2027-01-13T00:33:38Z`; a permanent release attachment is still necessary.
+- Customer-facing files: Mix FX VST3, Channel VST3, corrected German and English PDF manuals, README, release notes, license, install guide, per-file SHA-256 manifest. Internal audit-status file is excluded.
+- The existing build workflow did not run the outstanding dense-automation realtime gates again; its **SUCCESS does not supersede** the separately documented audit failure.
+- Final customer package ZIP SHA-256, human DAW signoff and actual publication remain **NOT VERIFIED**. No FINAL/Gumroad-live claim from this candidate artifact.
