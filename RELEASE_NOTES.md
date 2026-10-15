@@ -1,5 +1,13 @@
 # Release Notes
 
+## 125A MixEngine V3 v3.0.1 - 2026-10-15
+
+- Host stability fixes for bypass continuity, atomic corrupt-state rejection and accurate automation ramp interpolation.
+- Smoothed output-gain updates, guarded extreme sample values and improved tail reporting.
+- Preserved established V3 sound with regression reference comparisons; no sound-character redesign.
+- Existing V3.0.0 projects and presets remain supported.
+
+
 ## 125A MixEngine V3 v3.0.0 - 2026-09-26
 
 ### DSP / sound engine
