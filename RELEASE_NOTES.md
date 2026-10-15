@@ -7,10 +7,10 @@
 - New V3 Console, Tube, Tape and Vinyl processing with higher-detail nonlinear modelling.
 - Preserves the established MixEngine signal flow:
   `INPUT -> CONSOLE -> TUBE -> TAPE -> GLUE -> VINYL -> STEREO -> OUTPUT`.
-- True 0% neutral points remain enforced for intensity controls.
+- V3 intentionally retains its base coloration with an enabled color module even when the intensity control reads 0%.
 - Quality modes remain Eco 1x / Normal 2x / High 4x.
 - Mix FX Crosstalk remains true adjacent-channel, lane-preserving and callback-order independent.
-- Level Match remains fixed, parameter-dependent compensation rather than an adaptive loudness normalizer.
+- Level Match combines parameter-dependent compensation with bounded programme-dependent level tracking.
 - VU reference calibration is corrected so a DAW sine set to -18 / -14 / -10 dBFS lands at 0 VU for the selected reference.
 
 ### Host / automation / stability
@@ -31,7 +31,7 @@
 - High-resolution Vernier and gunmetal controls.
 - Restored 125A VU artwork with calibrated live needle.
 - Integrated CLIP jewel indicators.
-- 75 / 100 / 125 / 150% UI scaling.
+- 75 / 90 / 100 / 125 / 150% UI scaling.
 - Final layout and asset geometry guarded by automated QA.
 
 ### Validation
