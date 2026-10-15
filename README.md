@@ -12,7 +12,7 @@
 ## V3 highlights
 
 - Sample-offset accurate automation in both standard VST3 and Mix FX paths
-- True 0% neutral intensity points
+- Preserved V3 console/tube/tape/vinyl character, including intended base coloration when enabled at 0%
 - Continuous monotonic amount/drive laws: 20-50% musical working range, 75-100% strong/creative
 - Continuous Tube Voice and Tape Speed morphing
 - Tape: retained v1.1 program-dependent compression plus V2 magnetic/hysteresis memory
@@ -22,7 +22,7 @@
 - Scoped FTZ/DAZ denormal protection inside audio callbacks with host MXCSR restoration
 - Eco 1x / Normal 2x / High 4x quality modes
 - Fixed host latency per sample rate, independent of Quality/modules/Bypass: **28 samples @44.1 kHz, 29 @48 kHz, 36 @96 kHz, 50 @192 kHz**
-- UI scaling: 75 / 100 / 125 / 150%
+- UI scaling: 75 / 90 / 100 / 125 / 150%
 - 32-bit and 64-bit audio processing
 - Mono and stereo support
 - Tested at 44.1 / 48 / 96 / 192 kHz
@@ -45,7 +45,7 @@ Use **125A MixEngine V3 Channel** as a normal insert on tracks or buses.
 
 0 VU is a reference point, not a target every signal must constantly hit. The selectable references are -18 / -14 / -10 dBFS.
 
-Level Match is parameter-dependent compensation, not an adaptive loudness normalizer. Input Level Match compensates the linear input-gain component while preserving changed drive into nonlinear stages.
+Level Match combines parameter-dependent compensation and bounded programme-dependent tracking. Input Level Match compensates the linear input-gain component while preserving changed drive into nonlinear stages.
 
 ## Validation
 
