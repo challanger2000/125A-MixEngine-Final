@@ -25,7 +25,7 @@ Das VU-Meter arbeitet energiebezogen mit etwa 300 ms Einschwingverhalten. Es ist
 
 **VU Source Input** misst nach Input Gain. **VU Source Output** misst nach dem gesamten DSP inklusive Output Gain.
 
-**Level Match** ist eine feste, parameterabhängige Kompensation. Es ist kein adaptiver Loudness-Normalizer.
+**Level Match** kombiniert parameterabhängige Kompensation mit begrenzter, programmabhängiger Pegelnachführung. Es ist keine vollständige Loudness-Normalisierung.
 
 ## 4. Vollständige Bedienelemente
 
@@ -34,7 +34,7 @@ Das VU-Meter arbeitet energiebezogen mit etwa 300 ms Einschwingverhalten. Es ist
 | Bypass | Schalter | Active / Bypass | Active | Umgeht Klangbearbeitung, behält aber die feste Host-Latenz bei. |
 | Input Gain | Regler | -12.0 bis +12.0 dB | 0.0 dB | Pegel vor allen Klangmodulen. |
 | Reference Level | Wahlschalter | -18 / -14 / -10 dBFS | -14 dBFS | Definiert 0 VU und die interne Kalibrierung. |
-| Level Match | Schalter | Off / On | On | Feste Pegelkompensation der Klangmodule. |
+| Level Match | Schalter | Off / On | On | Parameterabhängige Kompensation und begrenzte programmabhängige Pegelnachführung. |
 | Console On | Schalter | Off / On | On | Aktiviert die Console-Sektion. |
 | Console Mode | Wahlschalter | Clean / Classic / Vintage / Modern | Classic | Vier generische Console-Kennlinien. |
 | Console Drive | Regler | 0 bis 100 % | 25 % | 0 % ist im nichtlinearen Core neutral; höherer Drive erhöht Sättigung, Peak-Rundung und Dichte. |
@@ -42,7 +42,7 @@ Das VU-Meter arbeitet energiebezogen mit etwa 300 ms Einschwingverhalten. Es ist
 | Console Noise | Regler | 0 bis 100 % | 0 % | Separates gefärbtes Console-Grundrauschen. |
 | Tube On | Schalter | Off / On | Off | Aktiviert Tube. |
 | Tube Voice | Wahlschalter | Soft / Balanced / Hot | Balanced | Wählt zunehmend stärkere Drive-/Bias-/Asymmetrie-Charakteristik. |
-| Tube Amount | Regler | 0 bis 100 % | 20 % | Stärke der Tube-Sättigung; 0 % ist neutral. |
+| Tube Amount | Regler | 0 bis 100 % | 20 % | Stärke der Tube-Sättigung; bei aktivem Modul kann bereits bei 0 % eine V3-Grundfärbung bestehen. |
 | Tape On | Schalter | Off / On | Off | Aktiviert Studio-Tape. |
 | Tape Amount | Regler | 0 bis 100 % | 20 % | Tape-Sättigung, weiche Verdichtung und Wet-Anteil. |
 | Tape Speed | Wahlschalter | 7.5 / 15 / 30 ips | 15 ips | Bestimmt Bandbreite, Low-Bump und Transportcharakter. |
@@ -61,7 +61,7 @@ Das VU-Meter arbeitet energiebezogen mit etwa 300 ms Einschwingverhalten. Es ist
 | Output Gain | Regler | -12.0 bis +12.0 dB | 0.0 dB | Finaler Pegel nach allen Modulen. |
 | VU Source | Wahlschalter | Input / Output | Output | Wählt Meterposition. |
 | Quality | Wahlschalter | Eco 1x / Normal 2x / High 4x | Normal 2x | Oversampling-Faktor relevanter nichtlinearer Stufen. |
-| UI Scale | Taster | 75 / 100 / 125 / 150 % | 100 % | Jeder Klick schaltet zyklisch zur nächsten GUI-Größe. |
+| UI Scale | Taster | 75 / 90 / 100 / 125 / 150 % | 100 % | Jeder Klick schaltet zyklisch zur nächsten GUI-Größe. |
 | VU L/R | Anzeige | -20 bis +3 VU | - | Energiebezogene VU-Anzeige. |
 | CLIP L/R | Anzeige | aus / an | - | Peak >= 0 dBFS, Hold ca. 0.75 s. |
 
@@ -78,7 +78,7 @@ Crosstalk koppelt nur **direkte Nachbarn**. Kanal 1 koppelt zu Kanal 2, nicht di
 
 ## 6. Tube
 
-Soft ist die mildeste, Balanced die mittlere und Hot die stärkste Voice. Amount 0 % ist neutral. Mit steigendem Amount nehmen Drive, harmonische Dichte und Asymmetrie zu.
+Soft ist die mildeste, Balanced die mittlere und Hot die stärkste Voice. Bei eingeschaltetem Modul kann auch Amount 0 % noch eine V3-Grundfärbung aufweisen. Mit steigendem Amount nehmen Drive, harmonische Dichte und Asymmetrie zu.
 
 ## 7. Tape
 
