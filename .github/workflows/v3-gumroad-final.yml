@@ -141,8 +141,8 @@ jobs:
       - name: Create Windows candidate package
         shell: pwsh
         run: |
-          $root="dist/125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64"
-          $zip="dist/125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64.zip"
+          $root="dist/125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64"
+          $zip="dist/125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64.zip"
           if(Test-Path dist){Remove-Item dist -Recurse -Force}
           New-Item -ItemType Directory -Force -Path "$root/VST3" | Out-Null
           New-Item -ItemType Directory -Force -Path "$root/Documentation" | Out-Null
@@ -161,7 +161,7 @@ jobs:
           Copy-Item "LICENSE.txt" "$root/"
 
           @(
-            "125A MixEngine V3 - v3.0.0 - Windows x64 / VST3",
+            "125A MixEngine V3 - v3.0.1 - Windows x64 / VST3",
             "",
             "INSTALLATION",
             "1. Close your DAW.",
@@ -209,6 +209,6 @@ jobs:
       - name: Upload Windows candidate package
         uses: actions/upload-artifact@v4
         with:
-          name: 125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64
-          path: dist/125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64.zip
+          name: 125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64
+          path: dist/125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64.zip
           if-no-files-found: error
