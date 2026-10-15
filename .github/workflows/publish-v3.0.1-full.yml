@@ -1,0 +1,47 @@
+name: Publish approved MixEngine V3.0.1 Windows FULL
+on:
+  push:
+    branches:
+      - release/v3.0.1-windows-candidate
+    paths:
+      - '.github/workflows/publish-v3.0.1-full.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Retrieve the already-validated Windows package
+        uses: actions/download-artifact@v4
+        with:
+          name: 125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64
+          run-id: 38663301857
+          github-token: ${{ github.token }}
+          path: release-input
+      - name: Verify original bytes and prepare customer filename
+        shell: bash
+        run: |
+          set -euo pipefail
+          src=release-input/125A-MixEngine-V3-v3.0.1-AUDIT-CANDIDATE-Windows-x64.zip
+          test -f "$src"
+          echo '53dcb18b2bd6826a966119c2e0faeee7e20a1e314491a9584b0b70d43b40b460  '"$src" | sha256sum -c -
+          mkdir -p dist
+          cp "$src" dist/125A-MixEngine-V3-v3.0.1-Windows-x64-Gumroad-FINAL-FULL.zip
+          sha256sum dist/*.zip
+      - name: Publish immutable-source customer release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view v3.0.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo 'Release v3.0.1 already exists; refusing to overwrite'; exit 1
+          fi
+          gh release create v3.0.1 dist/125A-MixEngine-V3-v3.0.1-Windows-x64-Gumroad-FINAL-FULL.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --target 09bd8ad3c44c00122e6ab83a4e3ca5ec81687078 \
+            --title '125A MixEngine V3.0.1 - Windows x64 VST3 FULL' \
+            --notes 'Windows x64 VST3 FULL package containing Mix FX and Channel variants, DE/EN manuals, install notes, license and file checksums. Fixes bypass continuity, automation interpolation, state corruption handling and output gain smoothing. Package SHA-256: 53dcb18b2bd6826a966119c2e0faeee7e20a1e314491a9584b0b70d43b40b460. Source/build: 09bd8ad3c44c00122e6ab83a4e3ca5ec81687078; GitHub Actions run 38663301857. Internal remaining stress-test uncertainty is documented in QA/AUDIT-HANDOFF-2026-10-15.md; this release does not assert that gate passed.' \
+            --latest
