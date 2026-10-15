@@ -1,11 +1,15 @@
-# Codex entry point — current Windows FULL release
+# Codex entry point — latest approved Windows FULL
 
-**LATEST OWNER-APPROVED WINDOWS x64 VST3 FULL VERSION: 3.0.0**
+**LATEST OWNER-APPROVED WINDOWS x64 VST3 FULL VERSION: 3.0.1**
 
-**Authoritative customer package (owner's archived Gumroad FULL):** `125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip`.
+**Customer ZIP:** `125A-MixEngine-V3-v3.0.1-Windows-x64-Gumroad-FINAL-FULL.zip`.
 
-This version is the baseline for new audits and fixes, regardless of older README or newer Demo branch labels. It is the owner's release inventory, not a claim that a particular GitHub commit or local ZIP hash has just been reverified.
+**Permanent GitHub release:** https://github.com/challanger2000/125A-MixEngine-Final/releases/tag/v3.0.1
 
-**Before editing:** Read [125A Engineering START-HERE](https://github.com/challanger2000/125A-Engineering/blob/main/START-HERE.md) in its required order, then this repository's `CURRENT.md` / `CURRENT-RELEASE.md` if present, manifests, version-specific FULL source, and the [release register](https://github.com/challanger2000/125A-Engineering/blob/main/RELEASE-REGISTER.md). Resolve the exact source baseline from evidence. Never silently substitute Demo for FULL, or treat the newest commit as a release. When provenance is unclear, distinguish owner-approved version from source commit certainty, and investigate before making code changes.
+**Exact binary/source commit:** `09bd8ad3c44c00122e6ab83a4e3ca5ec81687078` (tag v3.0.1); build https://github.com/challanger2000/125A-MixEngine-Final/actions/runs/38663301857
 
-Do not modify release binaries, customer packages, or existing audit work merely to update this navigation file. On a new approved release, update this AGENTS.md version and package reference in the same release change.
+**ZIP SHA-256:** `53dcb18b2bd6826a966119c2e0faeee7e20a1e314491a9584b0b70d43b40b460`.
+
+**Internal QA limitations:** consult `QA/AUDIT-HANDOFF-2026-10-15.md` on the audit branch and the 3.0.1 candidate release record. Prior dense automation timing overruns at 192 kHz/64 samples remain documented; this is an owner-approved release decision, not a claim that that test passed.
+
+**Before working:** Follow https://github.com/challanger2000/125A-Engineering/blob/main/START-HERE.md in mandatory order. V3.0.1 tag/source is authoritative, not this main branch's historical V1 documentation. Demo is separate and must not override the FULL baseline.
