@@ -1,6 +1,6 @@
 # 125A MixEngine - Bedienungsanleitung
 
-Version 3.0.0 - Windows x64 VST3
+Version 3.0.1 - Windows x64 VST3
 
 ## 1. Überblick
 
