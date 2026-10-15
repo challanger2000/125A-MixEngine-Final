@@ -25,7 +25,7 @@ The VU meter uses an energy envelope with roughly 300 ms settling behaviour. It 
 
 **VU Source Input** is measured after Input Gain. **VU Source Output** is measured after the complete DSP including Output Gain.
 
-**Level Match** is fixed parameter-dependent compensation. It is not an adaptive loudness normalizer.
+**Level Match** combines parameter-dependent compensation with bounded programme-dependent level tracking. It is not a full loudness normalizer.
 
 ## 4. Complete control reference
 
@@ -34,7 +34,7 @@ The VU meter uses an energy envelope with roughly 300 ms settling behaviour. It 
 | Bypass | Switch | Active / Bypass | Active | Bypasses coloration while preserving fixed host latency. |
 | Input Gain | Knob | -12.0 to +12.0 dB | 0.0 dB | Level before all coloration stages. |
 | Reference Level | Selector | -18 / -14 / -10 dBFS | -14 dBFS | Defines 0 VU and internal calibration. |
-| Level Match | Switch | Off / On | On | Fixed compensation for coloration stages. |
+| Level Match | Switch | Off / On | On | Parameter-dependent compensation and bounded programme-dependent level tracking. |
 | Console On | Switch | Off / On | On | Enables Console. |
 | Console Mode | Selector | Clean / Classic / Vintage / Modern | Classic | Four generic console transfer characters. |
 | Console Drive | Knob | 0 to 100 % | 25 % | 0 % is neutral in the nonlinear core; higher Drive adds saturation, peak rounding and density. |
@@ -42,7 +42,7 @@ The VU meter uses an energy envelope with roughly 300 ms settling behaviour. It 
 | Console Noise | Knob | 0 to 100 % | 0 % | Independent coloured console floor noise. |
 | Tube On | Switch | Off / On | Off | Enables Tube. |
 | Tube Voice | Selector | Soft / Balanced / Hot | Balanced | Selects progressively stronger drive/bias/asymmetry behaviour. |
-| Tube Amount | Knob | 0 to 100 % | 20 % | Tube saturation amount; 0 % is neutral. |
+| Tube Amount | Knob | 0 to 100 % | 20 % | Tube saturation amount; enabled V3 coloration can remain at 0 %. |
 | Tape On | Switch | Off / On | Off | Enables studio tape. |
 | Tape Amount | Knob | 0 to 100 % | 20 % | Tape saturation, soft compression and wet contribution. |
 | Tape Speed | Selector | 7.5 / 15 / 30 ips | 15 ips | Changes bandwidth, low bump and transport character. |
@@ -61,7 +61,7 @@ The VU meter uses an energy envelope with roughly 300 ms settling behaviour. It 
 | Output Gain | Knob | -12.0 to +12.0 dB | 0.0 dB | Final level after all stages. |
 | VU Source | Selector | Input / Output | Output | Chooses meter position. |
 | Quality | Selector | Eco 1x / Normal 2x / High 4x | Normal 2x | Oversampling factor for relevant nonlinear stages. |
-| UI Scale | Button | 75 / 100 / 125 / 150 % | 100 % | Each click cycles to the next GUI size. |
+| UI Scale | Button | 75 / 90 / 100 / 125 / 150 % | 100 % | Each click cycles to the next GUI size. |
 | VU L/R | Meter | -20 to +3 VU | - | Energy-based VU display. |
 | CLIP L/R | Indicator | off / on | - | Peak >= 0 dBFS, hold about 0.75 s. |
 
@@ -78,7 +78,7 @@ Crosstalk couples only **direct neighbours**. Channel 1 couples to channel 2, no
 
 ## 6. Tube
 
-Soft is the mildest voice, Balanced is the middle setting and Hot is the strongest. Amount 0 % is neutral. Increasing Amount raises drive, harmonic density and asymmetry.
+Soft is the mildest voice, Balanced is the middle setting and Hot is the strongest. With the module enabled, Amount 0 % may still retain V3 base coloration. Increasing Amount raises drive, harmonic density and asymmetry.
 
 ## 7. Tape
 
