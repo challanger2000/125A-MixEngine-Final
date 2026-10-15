@@ -69,8 +69,8 @@ channel_factory = (ROOT / "source/factory_channel.cpp").read_text(encoding="utf-
 if 'sizeof(MixEngine::Processor) < 64 * 1024' not in channel_factory:
     fail("Channel processor size regression guard missing")
 
-if 'project(MixEngine VERSION 3.0.0' not in cmake:
-    fail("project version is not V3 3.0.0")
+if 'project(MixEngine VERSION 3.0.1' not in cmake:
+    fail("project version is not V3 3.0.1")
 mix_factory = (ROOT / "source/factory.cpp").read_text(encoding="utf-8")
 if '#define stringPluginName "125A MixEngine V3"' not in mix_factory:
     fail("Mix FX factory is not V3")
