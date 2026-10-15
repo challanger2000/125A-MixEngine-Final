@@ -138,7 +138,7 @@ jobs:
           if(-not (Test-Path "docs/125A_MixEngine_Bedienungsanleitung_DE.pdf")){throw "German V3 PDF missing"}
           if(-not (Test-Path "docs/125A_MixEngine_User_Manual_EN.pdf")){throw "English V3 PDF missing"}
 
-      - name: Create final Gumroad package
+      - name: Create Windows candidate package
         shell: pwsh
         run: |
           $root="dist/125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64"
@@ -206,7 +206,7 @@ jobs:
 
           Write-Host "AUDIT CANDIDATE package/extraction PASS; NOT FINAL"
 
-      - name: Upload final Gumroad package
+      - name: Upload Windows candidate package
         uses: actions/upload-artifact@v4
         with:
           name: 125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64
