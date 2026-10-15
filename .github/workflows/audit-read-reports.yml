@@ -15,7 +15,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: MixEngine-V3-independent-audit-evidence
-          run-id: 38653452977
+          run-id: 38656678023
           github-token: ${{ github.token }}
           path: evidence/channel
       - uses: actions/download-artifact@v4
@@ -77,6 +77,28 @@ jobs:
           summary+='\n# Existing FULL bytes\n```json\n'+json.dumps(records,indent=2)+'\n```\n'
           Path(os.environ['GITHUB_STEP_SUMMARY']).write_text(summary,encoding='utf-8')
           PY_REPORT
+      - name: Expose FULL hashes and final summaries within per-step annotation limits
+        shell: bash
+        run: |
+          python3 - <<'PY_FINAL'
+          from pathlib import Path
+          import json
+          def notice(title,text):
+              escaped=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
+              print('::notice title='+title+'::'+escaped)
+          records=json.loads(Path('full-binary-provenance.json').read_text())
+          if not records:raise RuntimeError('Existing FULL contained no inspected bytes')
+          # GitHub limits notices per step and truncates their bodies. Keep these
+          # separate from the longer diagnostic reports; retain raw files above.
+          for record in records:
+              notice('Existing FULL bytes from run 37497801176',json.dumps(record,indent=2))
+          for file in sorted(Path('evidence').rglob('*_125A_QA_Report.txt')):
+              if 'tester-selftest' not in file.parts:
+                  notice('Final QA summary '+str(file),file.read_text(encoding='utf-8-sig')[-3200:])
+          for name in ('audit-host-contract.txt','audit-channel-contract.txt'):
+              for file in Path('evidence/channel').rglob(name):
+                  notice('Final processor contract '+name,file.read_text(encoding='utf-8-sig')[-3200:])
+          PY_FINAL
       - name: Preserve inspected reports only
         if: always()
         uses: actions/upload-artifact@v4
