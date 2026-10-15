@@ -1,0 +1,42 @@
+e processing - Supported
+[PASS] 64-bit sample processing - Supported
+[PASS] Processing setup matrix - 44100 Hz: 10/10 block sizes accepted
+[PASS] Processing setup matrix - 48000 Hz: 10/10 block sizes accepted
+[PASS] Processing setup matrix - 88200 Hz: 10/10 block sizes accepted
+[PASS] Processing setup matrix - 96000 Hz: 10/10 block sizes accepted
+[PASS] Processing setup matrix - 192000 Hz: 10/10 block sizes accepted
+[PASS] Processing setup summary - 50/50 sample-rate/buffer-size combinations accepted
+[PASS] Processing setup restore - 48 kHz / 512 samples accepted
+[PASS] Default bus activation - 2 default-active bus(es) activated
+[PASS] Audio torture lifecycle (32-bit) - setupProcessing / setActive / setProcessing succeeded
+[PASS] Audio Silence process (32-bit) - finite output; peak=9.48741e-05, rms=4.45405e-05, dc=-3.7489e-05
+[PASS] Audio Impulse process (32-bit) - finite output; peak=0.424645, rms=0.0399253, dc=0.000984452
+[PASS] Audio DC process (32-bit) - finite output; peak=0.514046, rms=0.330195, dc=0.318017
+[PASS] Audio Denormal process (32-bit) - finite output; peak=0.280157, rms=0.152333, dc=-0.120884
+[PASS] Sustained processing (32-bit) - 256 blocks / 131072 samples stable; 50186 us total; 196 us/block
+[PASS] Parameter automation stress (32-bit) - 29 automatable parameter(s), 87 sample-accurate point(s), 1 process block(s) accepted
+[PASS] Bypass processing stress (32-bit) - Bypass ON/OFF parameter changes were accepted during processing with finite output
+[PASS] Audio torture lifecycle (64-bit) - setupProcessing / setActive / setProcessing succeeded
+[PASS] Audio Silence process (64-bit) - finite output; peak=0.159627, rms=0.0463601, dc=0.00503589
+[PASS] Audio Impulse process (64-bit) - finite output; peak=0.300399, rms=0.108581, dc=-0.0424756
+[PASS] Audio DC process (64-bit) - finite output; peak=0.331237, rms=0.197209, dc=0.189251
+[PASS] Audio Denormal process (64-bit) - finite output; peak=0.476844, rms=0.409118, dc=-0.387082
+[PASS] Sustained processing (64-bit) - 256 blocks / 131072 samples stable; 325166 us total; 1270 us/block
+[PASS] Lifecycle stress (32-bit) - 8 repeated activate/process/deactivate cycles completed cleanly
+[PASS] Offline processing (32-bit) - Offline setup and process block completed with finite output
+[PASS] Post-stress state restore - Saved component state restored after processing stress
+[INFO] Factory class - 125A MixEngine V3 Channel Controller | category=Component Controller Class
+[PASS] Supported audio processor class - 1 supported processor class(es)
+
+[PASS] Reload/instantiation stress - 5 complete module reload and instance lifecycle cycles passed
+
+[PASS] Fresh-instance state verification - Component state survived transfer to a separately initialized instance and re-save
+
+[PASS] Editor lifecycle / GUI runtime - 5 complete create/attach/runtime/detach/destroy cycles passed for each supplied editor
+
+[PASS] I/O, sidechain and event isolation - Bus arrangements, activation/restoration plus applicable sidechain and dense event processing completed without contradiction
+
+[PASS] Steinberg VST3 validator - Official Steinberg validator completed successfully
+
+RESULT: 47 PASS / 0 WARNING / 0 FAIL
+RELEASE: PASS

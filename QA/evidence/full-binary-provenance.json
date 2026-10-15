@@ -1,0 +1,40 @@
+{
+  "source_commit": "23b4ddb669f02dbeb780a87a997522d98c7f426c",
+  "original_run": 37497801176,
+  "inspection_run": 38658672841,
+  "records": [
+    {
+      "path": "reference-full/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip::VST3/125A-MixEngine-V3.vst3/Contents/x86_64-win/125A-MixEngine-V3.vst3",
+      "bytes": 4278784,
+      "sha256": "55259070237e58ab0b41561a847333ec09b955091a43e5526fecaf08af5733a1",
+      "pe_machine": "0x8664",
+      "dll": true,
+      "contains_version_literal_3_0_0": true
+    },
+    {
+      "path": "reference-full/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip::VST3/125A-MixEngine-V3.vst3/Contents/Resources/moduleinfo.json",
+      "bytes": 1004,
+      "sha256": "b0c32c14f2f2cff05904d0b9768eda54c2124f200eb6636232efc4288a332616",
+      "moduleinfo_text": "{\r\n  \"Name\": \"125A-MixEngine-V3\",\r\n  \"Version\": \"3.0.0\",\r\n  \"Factory Info\": {\r\n    \"Vendor\": \"125A\",\r\n    \"URL\": \"\",\r\n    \"E-Mail\": \"\",\r\n    \"Flags\": {\r\n      \"Unicode\": true,\r\n      \"Classes Discardable\": false,\r\n      \"Component Non Discardable\": false,\r\n    },\r\n  },\r\n  \"Classes\": [\r\n    {\r\n      \"CID\": \"DB6E7D2592A85E13877AD5B4DA4C1D37\",\r\n      \"Category\": \"Audio Mix Processor\",\r\n      \"Name\": \"125A MixEngine V3\",\r\n      \"Vendor\": \"125A\",\r\n      \"Version\": \"3.0.0\",\r\n      \"SDKVersion\": \"VST 3.8.1\",\r\n      \"Sub Categories\": [\r\n        \"Fx\",\r\n      ],\r\n      \"Class Flags\": 1,\r\n      \"Cardinality\": 2147483647,\r\n      \"Snapshots\": [\r\n      ],\r\n    },\r\n    {\r\n      \"CID\": \"D7581724FC9C5CD5A1EEAA60B43EA4C7\",\r\n      \"Category\": \"Component Controller Class\",\r\n      \"Name\": \"125A MixEngine V3 Controller\",\r\n      \"Vendor\": \"125A\",\r\n      \"Version\": \"3.0.0\",\r\n      \"SDKVersion\": \"VST 3.8.1\",\r\n      \"Class Flags\": 0,\r\n      \"Cardinality\": 2147483647,\r\n      \"Snapshots\": [\r\n      ],\r\n    },\r\n  ],\r\n}"
+    },
+    {
+      "path": "reference-full/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip::VST3/125A-MixEngine-V3-Channel.vst3/Contents/x86_64-win/125A-MixEngine-V3-Channel.vst3",
+      "bytes": 4248576,
+      "sha256": "3ab49d99f2e2655cc5bd92e825ec477d99720dbe3b201ecb48c3f6b425fee1e8",
+      "pe_machine": "0x8664",
+      "dll": true,
+      "contains_version_literal_3_0_0": true
+    },
+    {
+      "path": "reference-full/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip::VST3/125A-MixEngine-V3-Channel.vst3/Contents/Resources/moduleinfo.json",
+      "bytes": 1027,
+      "sha256": "c7f83c3afb12afe098bbbd88ab79d0bbf0994375138a2aab45cf3ca85d2d4cd1",
+      "moduleinfo_text": "{\r\n  \"Name\": \"125A-MixEngine-V3-Channel\",\r\n  \"Version\": \"3.0.0\",\r\n  \"Factory Info\": {\r\n    \"Vendor\": \"125A\",\r\n    \"URL\": \"\",\r\n    \"E-Mail\": \"\",\r\n    \"Flags\": {\r\n      \"Unicode\": true,\r\n      \"Classes Discardable\": false,\r\n      \"Component Non Discardable\": false,\r\n    },\r\n  },\r\n  \"Classes\": [\r\n    {\r\n      \"CID\": \"B667A41A93E15E4097A44D18F0989B14\",\r\n      \"Category\": \"Audio Module Class\",\r\n      \"Name\": \"125A MixEngine V3 Channel\",\r\n      \"Vendor\": \"125A\",\r\n      \"Version\": \"3.0.0\",\r\n      \"SDKVersion\": \"VST 3.8.1\",\r\n      \"Sub Categories\": [\r\n        \"Fx\",\r\n      ],\r\n      \"Class Flags\": 1,\r\n      \"Cardinality\": 2147483647,\r\n      \"Snapshots\": [\r\n      ],\r\n    },\r\n    {\r\n      \"CID\": \"F8A45740B085582A8F4AF5EAE4A9A3BD\",\r\n      \"Category\": \"Component Controller Class\",\r\n      \"Name\": \"125A MixEngine V3 Channel Controller\",\r\n      \"Vendor\": \"125A\",\r\n      \"Version\": \"3.0.0\",\r\n      \"SDKVersion\": \"VST 3.8.1\",\r\n      \"Class Flags\": 0,\r\n      \"Cardinality\": 2147483647,\r\n      \"Snapshots\": [\r\n      ],\r\n    },\r\n  ],\r\n}"
+    },
+    {
+      "path": "reference-full/125A-MixEngine-V3-v3.0.0-Windows-x64-Gumroad.zip",
+      "bytes": 26159995,
+      "sha256": "7dfb8e9c088fe999eda3592a8d149135afd0e6511277cdd99db1684987e95731"
+    }
+  ]
+}

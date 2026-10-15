@@ -1,0 +1,45 @@
+125A Plugin Tester / Quality Checker
+Version: 0.2.9
+Plugin: D:\a\125A-MixEngine-Final\125A-MixEngine-Final\build\VST3\Release\125A-MixEngine-V3.vst3
+
+[PASS] Plugin path - D:\a\125A-MixEngine-Final\125A-MixEngine-Final\build\VST3\Release\125A-MixEngine-V3.vst3
+[PASS] Module load - VST3 module loaded successfully
+[PASS] Factory classes - 2 class(es)
+[INFO] Factory class - 125A MixEngine V3 | category=Audio Mix Processor
+[PASS] Component creation - 125A MixEngine V3
+[PASS] Component initialize - 125A MixEngine V3
+[INFO] Bus count - Audio Input buses: 1
+[PASS] Bus metadata - Audio Input #0, channels=2, defaultActive=yes
+[INFO] Bus count - Audio Output buses: 1
+[PASS] Bus metadata - Audio Output #0, channels=2, defaultActive=yes
+[INFO] Bus count - Event Input buses: 0
+[INFO] Bus count - Event Output buses: 0
+[PASS] Controller initialize - Separate controller initialized
+[PASS] Component/controller connection - Bidirectional IConnectionPoint connection established
+[INFO] Parameter count - 34
+[PASS] Parameter metadata - All parameters have valid IDs/defaults/current values
+[INFO] Bypass parameter metadata - One bypass parameter exported
+[PASS] Parameter conversion stress - 170 normalized/plain conversions returned finite in-range values
+[INFO] Component state size - 240 bytes
+[PASS] Component state roundtrip - getState/setState succeeded
+[PASS] Controller component-state sync - setComponentState accepted component state
+[INFO] Controller state - No controller-specific state returned
+[PASS] IAudioProcessor - Audio processor interface available
+[INFO] Processor latency - 21 samples
+[INFO] Processor tail - 88200 samples
+[INFO] Standard VST3 processing lifecycle - Not applicable: Audio Mix Processor uses the host-specific Mix FX channel lifecycle
+[INFO] Factory class - 125A MixEngine V3 Controller | category=Component Controller Class
+[PASS] Supported audio processor class - 1 supported processor class(es)
+
+[PASS] Reload/instantiation stress - 5 complete module reload and instance lifecycle cycles passed
+
+[PASS] Fresh-instance state verification - Component state survived transfer to a separately initialized instance and re-save
+
+[PASS] Editor lifecycle / GUI runtime - 5 complete create/attach/runtime/detach/destroy cycles passed for each supplied editor
+
+[PASS] I/O, sidechain and event isolation - Bus arrangements, activation/restoration plus applicable sidechain and dense event processing completed without contradiction
+
+[PASS] Steinberg VST3 validator - Official Steinberg validator completed successfully
+
+RESULT: 20 PASS / 0 WARNING / 0 FAIL
+RELEASE: PASS
