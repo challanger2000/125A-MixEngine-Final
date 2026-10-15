@@ -24,3 +24,11 @@ This file is an INTERNAL release-evidence record, not part of the customer ZIP.
 - Customer-facing files: Mix FX VST3, Channel VST3, corrected German and English PDF manuals, README, release notes, license, install guide, per-file SHA-256 manifest. Internal audit-status file is excluded.
 - The existing build workflow did not run the outstanding dense-automation realtime gates again; its **SUCCESS does not supersede** the separately documented audit failure.
 - Final customer package ZIP SHA-256, human DAW signoff and actual publication remain **NOT VERIFIED**. No FINAL/Gumroad-live claim from this candidate artifact.
+
+## Independently inspected package bytes
+
+- Inner customer-package ZIP: `125A-MixEngine-V3-v3.0.0-AUDIT-CANDIDATE-Windows-x64.zip`, **26,163,711 bytes**.
+- Actual inner ZIP SHA-256: **`0e8a8357489c4dfe0c809128bc86f42a694d61c4798cb39f808ecdd935fdbfbb`**.
+- Verified 44/44 inner file SHA-256 manifest entries against the ZIP contents; zero mismatch.
+- Both .vst3 bundles and German/English PDF manuals included. Both PDFs have 4 pages and contain corrected Level Match guidance/90% zoom; neither contains the internal NOT FINAL audit status.
+- Audit status belongs only to QA records and artifact naming. Package customer-facing README/notes/manuals exclude internal QA status.
